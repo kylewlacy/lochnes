@@ -1,6 +1,9 @@
 #[derive(Debug)]
 pub struct Rom {
     pub header: RomHeader,
+    pub prg_rom: Vec<u8>,
+    pub chr_rom: Vec<u8>,
+    pub title: String,
 }
 
 impl Rom {
@@ -29,13 +32,38 @@ impl Rom {
             }
         }
 
-        Ok(Rom { header })
+        let prg_rom: Vec<_> = bytes.take(header.prg_rom_size_bytes).collect();
+        if prg_rom.len() != header.prg_rom_size_bytes {
+            return Err(RomError::UnexpectedEof);
+        }
+
+        let chr_rom: Vec<_> = bytes.take(header.chr_rom_size_bytes).collect();
+        if chr_rom.len() != header.chr_rom_size_bytes {
+            return Err(RomError::UnexpectedEof);
+        }
+
+        let title: Vec<_> = bytes.take(128).collect();
+        let title = String::from_utf8_lossy(&title).into_owned();
+
+        let eof = bytes.next();
+        if eof != None {
+            return Err(RomError::ExpectedEof);
+        }
+
+        Ok(Rom {
+            header,
+            prg_rom,
+            chr_rom,
+            title,
+        })
     }
 }
 
 #[derive(Debug)]
 pub enum RomError {
     InvalidHeader,
+    UnexpectedEof,
+    ExpectedEof,
 }
 
 #[derive(Debug)]
