@@ -1,0 +1,6 @@
+[package]
+authors = ["Kyle Lacy <kylelacy+git@pm.me>"]
+name = "lochnes"
+version = "0.1.0"
+[dependencies]
+structopt = "0.2.10"
