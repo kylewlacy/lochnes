@@ -32,9 +32,12 @@ struct Options {
 fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
-    let nes = nes::Nes::new_from_rom(rom);
-    println!("{:#X?}", nes.cpu);
-    Ok(())
+    let mut nes = nes::Nes::new_from_rom(rom);
+
+    loop {
+        println!("{:X?}", nes.cpu);
+        nes.step();
+    }
 }
 
 #[derive(Debug)]

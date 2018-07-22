@@ -48,6 +48,16 @@ impl Nes {
 
         lo as u16 | ((hi as u16) << 8)
     }
+
+    pub fn step(&mut self) {
+        let pc = self.cpu.pc;
+
+        let opcode = self.read_u8(pc);
+        let opcode = Opcode::from_u8(opcode);
+        match opcode {
+
+        }
+    }
 }
 
 #[derive(Debug)]
