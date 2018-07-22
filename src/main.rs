@@ -9,6 +9,7 @@ use std::fs;
 use structopt::StructOpt;
 
 mod rom;
+mod nes;
 
 fn main() {
     let opts = Options::from_args();
@@ -31,7 +32,8 @@ struct Options {
 fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
-    println!("{:#?}", rom.header);
+    let nes = nes::Nes::new_from_rom(rom);
+    println!("{:#X?}", nes.cpu);
     Ok(())
 }
 
