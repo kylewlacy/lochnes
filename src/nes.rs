@@ -72,3 +72,17 @@ impl Cpu {
         }
     }
 }
+
+enum Opcode {
+
+}
+
+impl Opcode {
+    fn from_u8(opcode: u8) -> Self {
+        match opcode {
+            opcode => {
+                unimplemented!("Unhandled opcode: 0x{:X}", opcode);
+            }
+        }
+    }
+}
