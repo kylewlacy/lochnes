@@ -92,19 +92,19 @@ impl RomHeader {
         }
 
         let prg_rom_size_field = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
         let chr_rom_size_field = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
         let flags_6 = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
         let flags_7 = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
         let prg_ram_size_field = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
         let flags_9 = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
         let flags_10 = bytes.next()
-            .ok_or_else(|| RomError::InvalidHeader)?;
+            .ok_or_else(|| RomError::UnexpectedEof)?;
 
         let expected_zeros = [0, 0, 0, 0, 0].iter().cloned();
         let actual_zeros = (&mut bytes).take(5);
