@@ -51,12 +51,18 @@ impl Nes {
 
     pub fn step(&mut self) {
         let pc = self.cpu.pc;
+        let next_pc;
 
         let opcode = self.read_u8(pc);
         let opcode = Opcode::from_u8(opcode);
         match opcode {
-
+            Opcode::Sei => {
+                self.cpu.set_flags(CpuFlags::I, true);
+                next_pc = pc + 1;
+            }
         }
+
+        self.cpu.pc = next_pc;
     }
 }
 
@@ -130,12 +136,15 @@ bitflags! {
 }
 
 enum Opcode {
-
+    Sei,
 }
 
 impl Opcode {
     fn from_u8(opcode: u8) -> Self {
         match opcode {
+            0x78 => {
+                Opcode::Sei
+            }
             opcode => {
                 unimplemented!("Unhandled opcode: 0x{:X}", opcode);
             }
