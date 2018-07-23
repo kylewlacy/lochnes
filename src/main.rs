@@ -1,5 +1,7 @@
 #![feature(nll, proc_macro_non_items, use_extern_macros, generators, never_type)]
 
+#[macro_use]
+extern crate bitflags;
 extern crate structopt;
 
 use std::path::PathBuf;

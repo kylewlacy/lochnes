@@ -67,7 +67,7 @@ pub struct Cpu {
     pub x: u8,
     pub y: u8,
     pub s: u8,
-    pub p: u8,
+    pub p: CpuFlags,
 }
 
 impl Cpu {
@@ -78,8 +78,54 @@ impl Cpu {
             x: 0,
             y: 0,
             s: 0xFD,
-            p: 0x34,
+            p: CpuFlags::from_bits_truncate(0x34),
         }
+    }
+
+    fn set_flags(&mut self, flags: CpuFlags, value: bool) {
+        // TODO: Prevent the break (`B`) and unused (`U`) flags
+        // from being changed!
+        self.p.set(flags, value);
+    }
+}
+
+bitflags! {
+    pub struct CpuFlags: u8 {
+        /// Carry flag: set when an arithmetic operation resulted in a carry.
+        const C = 1 << 0;
+
+        /// Zero flag: set when an operation results in 0.
+        const Z = 1 << 1;
+
+        /// Interrupt disable flag: set to disable CPU interrupts.
+        const I = 1 << 2;
+
+        /// Decimal mode flag: exists for compatibility with the 6502 (which
+        /// used it for decimal arithmetic), but ignored by the
+        /// Rioch 2A03/2A07 processors used in the NES/Famicom.
+        const D = 1 << 3;
+
+        /// Break flag: set when BRK or PHP are called, cleared when
+        /// the /IRQ or /NMI interrupts are called. When PLP or RTI are called,
+        /// this flag is unaffected.
+        ///
+        /// In other words, this flag isn't exactly "set" or "cleared"-- when an
+        /// interrupt happens, the status register is pushed to the stack. If
+        /// the interrupt was an /IRQ or /NMI interrupt, the value pushed to the
+        /// stack will have this bit cleared; if the interrupt was caused by
+        /// BRK (or if the PHP instruction is used), then the value pushed to
+        /// the stack will have this bit set.
+        const B = 1 << 4;
+
+        /// Unused: this flag is always set to 1
+        const U = 1 << 5;
+
+        /// Overflow flag: set when an operation resulted in a signed overflow.
+        const V = 1 << 6;
+
+        /// Negative flag: set when an operation resulted in a negative value,
+        /// i.e. when the most significant bit (bit 7) is set.
+        const N = 1 << 7;
     }
 }
 
