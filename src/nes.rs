@@ -49,6 +49,24 @@ impl Nes {
         lo as u16 | ((hi as u16) << 8)
     }
 
+    pub fn write_u8(&mut self, addr: u16, value: u8) {
+        let mapper = self.rom.header.mapper;
+        if mapper != 0 {
+            unimplemented!("Unhandled mapper: {}", mapper);
+        }
+
+        match addr {
+            0x8000...0xFFFF => {
+                let rom_offset = addr - 0x8000;
+                let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
+                self.rom.prg_rom[mapped_addr] = value;
+            }
+            _ => {
+                unimplemented!("Unhandled write to address: 0x{:X}", addr);
+            }
+        }
+    }
+
     pub fn step(&mut self) {
         let pc = self.cpu.pc;
         let next_pc;
