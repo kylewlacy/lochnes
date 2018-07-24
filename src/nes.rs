@@ -74,9 +74,24 @@ impl Nes {
         let opcode = self.read_u8(pc);
         let opcode = Opcode::from_u8(opcode);
         match opcode {
+            Opcode::Cld => {
+                self.cpu.set_flags(CpuFlags::D, false);
+                next_pc = pc + 1;
+            }
+            Opcode::LdaImm => {
+                let value = self.read_u8(pc + 1);
+                self.cpu.a = value;
+                next_pc = pc + 2;
+            }
             Opcode::Sei => {
                 self.cpu.set_flags(CpuFlags::I, true);
                 next_pc = pc + 1;
+            }
+            Opcode::StaAbs => {
+                let a = self.cpu.a;
+                let addr = self.read_u16(pc + 1);
+                self.write_u8(addr, a);
+                next_pc = pc + 3;
             }
         }
 
@@ -154,7 +169,10 @@ bitflags! {
 }
 
 enum Opcode {
+    Cld,
+    LdaImm,
     Sei,
+    StaAbs,
 }
 
 impl Opcode {
@@ -162,6 +180,15 @@ impl Opcode {
         match opcode {
             0x78 => {
                 Opcode::Sei
+            }
+            0x8D => {
+                Opcode::StaAbs
+            }
+            0xA9 => {
+                Opcode::LdaImm
+            }
+            0xD8 => {
+                Opcode::Cld
             }
             opcode => {
                 unimplemented!("Unhandled opcode: 0x{:X}", opcode);
