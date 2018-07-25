@@ -1,3 +1,4 @@
+use std::fmt;
 use rom::Rom;
 
 pub struct Nes {
@@ -235,6 +236,39 @@ impl Opcode {
                 unimplemented!("Unhandled opcode: 0x{:X}", opcode);
             }
         }
+    }
+}
+
+impl fmt::Display for Opcode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mnemonic = match self {
+            Opcode::Cld => "CLD",
+            Opcode::LdaAbs | Opcode::LdaImm => "LDA",
+            Opcode::LdxImm => "LDX",
+            Opcode::Sei => "SEI",
+            Opcode::StaAbs => "STA",
+            Opcode::Txs => "TXS",
+        };
+        write!(f, "{}", mnemonic)?;
+        Ok(())
+    }
+}
+
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let opcode = Opcode::from(self);
+        match self {
+            Op::Cld | Op::Sei | Op::Txs => {
+                write!(f, "{}", opcode)?;
+            }
+            Op::LdaAbs { addr } | Op::StaAbs { addr } => {
+                write!(f, "{} ${:04X}", opcode, addr)?;
+            }
+            Op::LdaImm { value } | Op::LdxImm { value } => {
+                write!(f, "{} #${:02X}", opcode, value)?;
+            }
+        }
+        Ok(())
     }
 }
 
