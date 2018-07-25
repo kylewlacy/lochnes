@@ -40,7 +40,9 @@ fn run(opts: Options) -> Result<(), LochnesError> {
 
     loop {
         println!("{:X?}", nes.cpu);
-        nes.step();
+        let step = nes.step();
+        println!("${:04X}: {}", step.pc, step.op);
+        println!();
     }
 }
 
