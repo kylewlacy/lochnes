@@ -78,9 +78,20 @@ impl Nes {
                 self.cpu.set_flags(CpuFlags::D, false);
                 next_pc = pc + 1;
             }
+            Opcode::LdaAbs => {
+                let addr = self.read_u16(pc + 1);
+                let value = self.read_u8(addr);
+                self.cpu.a = value;
+                next_pc = pc + 3;
+            }
             Opcode::LdaImm => {
                 let value = self.read_u8(pc + 1);
                 self.cpu.a = value;
+                next_pc = pc + 2;
+            }
+            Opcode::LdxImm => {
+                let value = self.read_u8(pc + 1);
+                self.cpu.x = value;
                 next_pc = pc + 2;
             }
             Opcode::Sei => {
@@ -92,6 +103,11 @@ impl Nes {
                 let addr = self.read_u16(pc + 1);
                 self.write_u8(addr, a);
                 next_pc = pc + 3;
+            }
+            Opcode::Txs => {
+                let x = self.cpu.x;
+                self.cpu.s = x;
+                next_pc = pc + 1;
             }
         }
 
@@ -168,11 +184,15 @@ bitflags! {
     }
 }
 
+#[derive(Debug)]
 enum Opcode {
     Cld,
+    LdaAbs,
     LdaImm,
+    LdxImm,
     Sei,
     StaAbs,
+    Txs,
 }
 
 impl Opcode {
@@ -184,8 +204,17 @@ impl Opcode {
             0x8D => {
                 Opcode::StaAbs
             }
+            0x9A => {
+                Opcode::Txs
+            }
+            0xA2 => {
+                Opcode::LdxImm
+            }
             0xA9 => {
                 Opcode::LdaImm
+            }
+            0xAD => {
+                Opcode::LdaAbs
             }
             0xD8 => {
                 Opcode::Cld
