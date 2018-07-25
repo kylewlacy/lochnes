@@ -67,51 +67,62 @@ impl Nes {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self) -> CpuStep {
         let pc = self.cpu.pc;
         let next_pc;
 
         let opcode = self.read_u8(pc);
         let opcode = Opcode::from_u8(opcode);
+
+        let op;
         match opcode {
             Opcode::Cld => {
                 self.cpu.set_flags(CpuFlags::D, false);
                 next_pc = pc + 1;
+                op = Op::Cld;
             }
             Opcode::LdaAbs => {
                 let addr = self.read_u16(pc + 1);
                 let value = self.read_u8(addr);
                 self.cpu.a = value;
                 next_pc = pc + 3;
+                op = Op::LdaAbs { addr };
             }
             Opcode::LdaImm => {
                 let value = self.read_u8(pc + 1);
                 self.cpu.a = value;
                 next_pc = pc + 2;
+                op = Op::LdaImm { value };
             }
             Opcode::LdxImm => {
                 let value = self.read_u8(pc + 1);
                 self.cpu.x = value;
                 next_pc = pc + 2;
+                op = Op::LdxImm { value };
             }
             Opcode::Sei => {
                 self.cpu.set_flags(CpuFlags::I, true);
                 next_pc = pc + 1;
+                op = Op::Sei;
             }
             Opcode::StaAbs => {
                 let a = self.cpu.a;
                 let addr = self.read_u16(pc + 1);
                 self.write_u8(addr, a);
                 next_pc = pc + 3;
+                op = Op::StaAbs { addr };
             }
             Opcode::Txs => {
                 let x = self.cpu.x;
                 self.cpu.s = x;
                 next_pc = pc + 1;
+                op = Op::Txs;
             }
         }
 
         self.cpu.pc = next_pc;
+
+        CpuStep { pc, op }
     }
 }
 
@@ -225,4 +236,9 @@ impl Opcode {
             }
         }
     }
+}
+
+pub struct CpuStep {
+    pub pc: u16,
+    pub op: Op,
 }
