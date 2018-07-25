@@ -2,6 +2,8 @@
 
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate enum_kinds;
 extern crate structopt;
 
 use std::path::PathBuf;

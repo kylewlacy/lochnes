@@ -184,14 +184,15 @@ bitflags! {
     }
 }
 
-#[derive(Debug)]
-enum Opcode {
+#[derive(Debug, EnumKind)]
+#[enum_kind(Opcode)]
+pub enum Op {
     Cld,
-    LdaAbs,
-    LdaImm,
-    LdxImm,
+    LdaAbs { addr: u16 },
+    LdaImm { value: u8 },
+    LdxImm { value: u8 },
     Sei,
-    StaAbs,
+    StaAbs { addr: u16 },
     Txs,
 }
 
