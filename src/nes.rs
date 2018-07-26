@@ -220,27 +220,13 @@ pub enum Op {
 impl Opcode {
     fn from_u8(opcode: u8) -> Self {
         match opcode {
-            0x78 => {
-                Opcode::Sei
-            }
-            0x8D => {
-                Opcode::StaAbs
-            }
-            0x9A => {
-                Opcode::Txs
-            }
-            0xA2 => {
-                Opcode::LdxImm
-            }
-            0xA9 => {
-                Opcode::LdaImm
-            }
-            0xAD => {
-                Opcode::LdaAbs
-            }
-            0xD8 => {
-                Opcode::Cld
-            }
+            0x78 => Opcode::Sei,
+            0x8D => Opcode::StaAbs,
+            0x9A => Opcode::Txs,
+            0xA2 => Opcode::LdxImm,
+            0xA9 => Opcode::LdaImm,
+            0xAD => Opcode::LdaAbs,
+            0xD8 => Opcode::Cld,
             opcode => {
                 unimplemented!("Unhandled opcode: 0x{:X}", opcode);
             }
