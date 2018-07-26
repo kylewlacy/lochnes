@@ -35,6 +35,9 @@ impl Nes {
         }
 
         match addr {
+            0x2002 => {
+                self.ppu.ppustatus()
+            }
             0x8000...0xFFFF => {
                 let rom_offset = addr - 0x8000;
                 let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
@@ -60,6 +63,9 @@ impl Nes {
         }
 
         match addr {
+            0x2000 => {
+                self.ppu.set_ppuctrl(value);
+            }
             0x8000...0xFFFF => {
                 let rom_offset = addr - 0x8000;
                 let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
@@ -314,6 +320,14 @@ impl Ppu {
             nametables: [[0; 0x0400]; 4],
             oam: [0; 0x0100],
         }
+    }
+
+    fn set_ppuctrl(&mut self, value: u8) {
+        self.ctrl = PpuCtrlFlags::from_bits_truncate(value);
+    }
+
+    fn ppustatus(&self) -> u8 {
+        self.status.bits()
     }
 }
 
