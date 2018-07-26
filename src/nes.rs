@@ -132,6 +132,8 @@ impl Nes {
 
         self.cpu.pc = next_pc;
 
+        debug_assert_eq!(Opcode::from(&op), opcode);
+
         CpuStep { pc, op }
     }
 }
