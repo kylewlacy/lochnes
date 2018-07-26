@@ -5,17 +5,20 @@ pub struct Nes {
     pub rom: Rom,
     pub ram: [u8; 0x0800],
     pub cpu: Cpu,
+    pub ppu: Ppu,
 }
 
 impl Nes {
     pub fn new_from_rom(rom: Rom) -> Self {
         let ram = [0; 0x0800];
         let cpu = Cpu::new();
+        let ppu = Ppu::new();
 
         let mut nes = Nes {
             rom,
             ram,
             cpu,
+            ppu,
         };
 
         let reset_addr = nes.read_u16(0xFFFC);
