@@ -276,3 +276,76 @@ pub struct CpuStep {
     pub pc: u16,
     pub op: Op,
 }
+
+pub struct Ppu {
+    cycle: u64,
+
+    ctrl: PpuCtrlFlags,
+    mask: PpuMaskFlags,
+    status: PpuStatusFlags,
+    oam_addr: u8,
+    scroll: u16,
+    addr: u16,
+
+    // Latch used for writing to PPUSCROLL and PPUADDR (toggles after a write
+    // to each, used to determine if the high bit or low bit is being written).
+    scroll_addr_latch: bool,
+
+    pattern_tables: [[u8; 0x1000]; 2],
+    nametables: [[u8; 0x0400]; 4],
+    oam: [u8; 0x0100],
+}
+
+impl Ppu {
+    fn new() -> Self {
+        Ppu {
+            cycle: 0,
+            ctrl: PpuCtrlFlags::from_bits_truncate(0x00),
+            mask: PpuMaskFlags::from_bits_truncate(0x00),
+            status: PpuStatusFlags::from_bits_truncate(0x00),
+            oam_addr: 0x00,
+            scroll: 0x0000,
+            addr: 0x0000,
+            scroll_addr_latch: false,
+            pattern_tables: [[0; 0x1000]; 2],
+            nametables: [[0; 0x0400]; 4],
+            oam: [0; 0x0100],
+        }
+    }
+}
+
+bitflags! {
+    pub struct PpuCtrlFlags: u8 {
+        const NAMETABLE_LO = 1 << 0;
+        const NAMETABLE_HI = 1 << 1;
+        const VRAM_ADDR_INCREMENT = 1 << 2;
+        const SPRITE_PATTERN_TABLE_ADDR = 1 << 3;
+        const BACKGROUND_PATTERN_TABLE_ADDR = 1 << 4;
+        const SPRITE_SIZE = 1 << 5;
+        const PPU_MASTER_SLAVE_SELECT = 1 << 6;
+        const VBLANK_INTERRUPT = 1 << 7;
+    }
+}
+
+bitflags! {
+    pub struct PpuMaskFlags: u8 {
+        const GREYSCALE = 1 << 0;
+        const SHOW_BACKGROUND_IN_LEFT_MARGIN = 1 << 1;
+        const SHOW_SPRITES_IN_LEFT_MARGIN = 1 << 2;
+        const SHOW_BACKGROUND = 1 << 3;
+        const SHOW_SPRITES = 1 << 4;
+        const EMPHASIZE_RED = 1 << 5;
+        const EMPHASIZE_GREEN = 1 << 6;
+        const EMPHASIZE_BLUE = 1 << 7;
+    }
+}
+
+bitflags! {
+    pub struct PpuStatusFlags: u8 {
+        // NOTE: Bits 0-4 are unused (but result in bits read from
+        // the PPU's latch)
+        const SPRITE_OVERFLOW = 1 << 5;
+        const SPRITE_ZERO_HIT = 1 << 6;
+        const VBLANK_STARTED = 1 << 7;
+    }
+}
