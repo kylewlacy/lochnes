@@ -35,6 +35,9 @@ impl Nes {
         }
 
         match addr {
+            0x0000...0x07FF => {
+                self.ram[addr as usize]
+            }
             0x2002 => {
                 self.ppu.ppustatus()
             }
@@ -63,6 +66,9 @@ impl Nes {
         }
 
         match addr {
+            0x0000...0x07FF => {
+                self.ram[addr as usize] = value;
+            }
             0x2000 => {
                 self.ppu.set_ppuctrl(value);
             }
