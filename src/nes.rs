@@ -93,6 +93,23 @@ impl Nes {
         }
     }
 
+    fn push_u8(&mut self, value: u8) {
+        let s = self.cpu.s;
+        let stack_addr = 0x0100 & s as u16;
+
+        self.write_u8(stack_addr, value);
+
+        self.cpu.s = s.wrapping_sub(1);
+    }
+
+    fn push_u16(&mut self, value: u16) {
+        let value_hi = ((0xFF00 & value) >> 8) as u8;
+        let value_lo = (0x00FF & value) as u8;
+
+        self.push_u8(value_hi);
+        self.push_u8(value_lo);
+    }
+
     fn step_cpu(&mut self) -> CpuStep {
         let pc = self.cpu.pc;
         let next_pc;
@@ -193,17 +210,8 @@ impl Nes {
                 let addr = self.read_u16(pc + 1);
                 let ret_pc = pc.wrapping_add(3);
                 let push_pc = ret_pc.wrapping_sub(1);
-                let push_pc_hi = ((0xFF00 & push_pc) >> 8) as u8;
-                let push_pc_lo = (0x00FF & push_pc) as u8;
-                let stack_offset_hi = self.cpu.s;
-                let stack_offset_lo = self.cpu.s.wrapping_sub(1);
-                let stack_addr_hi = 0x0100 & stack_offset_hi as u16;
-                let stack_addr_lo = 0x0100 & stack_offset_lo as u16;
 
-                self.write_u8(stack_addr_hi, push_pc_hi);
-                self.write_u8(stack_addr_lo, push_pc_lo);
-
-                self.cpu.s = self.cpu.s.wrapping_sub(2);
+                self.push_u16(push_pc);
 
                 next_pc = addr;
                 op = Op::Jsr { addr };
