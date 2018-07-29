@@ -89,7 +89,7 @@ impl Nes {
         }
     }
 
-    pub fn step(&mut self) -> CpuStep {
+    fn step_cpu(&mut self) -> CpuStep {
         let pc = self.cpu.pc;
         let next_pc;
 
@@ -147,6 +147,28 @@ impl Nes {
         debug_assert_eq!(Opcode::from(&op), opcode);
 
         CpuStep { pc, op }
+    }
+
+    fn step_ppu(&mut self) {
+        let cycle = self.ppu.cycle;
+        // let frame = cycle / 89_342;
+        let frame_cycle = cycle % 89_342;
+        let scanline = frame_cycle / 341;
+        let scanline_cycle = frame_cycle % 341;
+
+        if scanline == 240 && scanline_cycle == 1 {
+            self.ppu.status.set(PpuStatusFlags::VBLANK_STARTED, true);
+        }
+        self.ppu.cycle += 1;
+    }
+
+    pub fn step(&mut self) -> CpuStep {
+        let cpu_step = self.step_cpu();
+        self.step_ppu();
+        self.step_ppu();
+        self.step_ppu();
+
+        cpu_step
     }
 }
 
