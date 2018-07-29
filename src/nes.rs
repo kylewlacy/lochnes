@@ -72,6 +72,12 @@ impl Nes {
             0x2000 => {
                 self.ppu.set_ppuctrl(value);
             }
+            0x2001 => {
+                self.ppu.set_ppumask(value);
+            }
+            0x2005 => {
+                self.ppu.write_ppuscroll(value);
+            }
             0x8000...0xFFFF => {
                 let rom_offset = addr - 0x8000;
                 let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
