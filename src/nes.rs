@@ -324,6 +324,23 @@ impl Ppu {
         self.mask = PpuMaskFlags::from_bits_truncate(value);
     }
 
+    fn write_ppuscroll(&mut self, value: u8) {
+        let latch = self.scroll_addr_latch;
+
+        if latch {
+            let scroll_lo = self.scroll & 0x00FF;
+            let scroll_hi = (value as u16) << 8;
+            self.scroll = scroll_lo | scroll_hi;
+        }
+        else {
+            let scroll_lo = self.scroll as u16;
+            let scroll_hi = self.scroll & 0xFF00;
+            self.scroll = scroll_lo | scroll_hi;
+        }
+
+        self.scroll_addr_latch = !latch;
+    }
+
     fn ppustatus(&self) -> u8 {
         self.status.bits()
     }
