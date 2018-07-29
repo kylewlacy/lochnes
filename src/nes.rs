@@ -320,6 +320,10 @@ impl Ppu {
         self.ctrl = PpuCtrlFlags::from_bits_truncate(value);
     }
 
+    fn set_ppumask(&mut self, value: u8) {
+        self.mask = PpuMaskFlags::from_bits_truncate(value);
+    }
+
     fn ppustatus(&self) -> u8 {
         self.status.bits()
     }
