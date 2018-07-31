@@ -95,7 +95,7 @@ impl Nes {
 
     fn push_u8(&mut self, value: u8) {
         let s = self.cpu.s;
-        let stack_addr = 0x0100 & s as u16;
+        let stack_addr = 0x0100 | s as u16;
 
         self.write_u8(stack_addr, value);
 
