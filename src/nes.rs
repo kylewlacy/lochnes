@@ -233,9 +233,9 @@ impl Nes {
 
                 next_pc = addr;
                 op = Op::Jsr { addr };
-
             }
             Opcode::LdaAbs => {
+                // TODO: Flags!
                 let addr = self.read_u16(pc + 1);
                 let value = self.read_u8(addr);
                 self.cpu.a = value;
@@ -588,7 +588,7 @@ impl Ppu {
             self.scroll = scroll_lo | scroll_hi;
         }
         else {
-            let scroll_lo = self.scroll as u16;
+            let scroll_lo = value as u16;
             let scroll_hi = self.scroll & 0xFF00;
             self.scroll = scroll_lo | scroll_hi;
         }
