@@ -110,6 +110,24 @@ impl Nes {
         self.push_u8(value_lo);
     }
 
+    fn pull_u8(&mut self) -> u8 {
+        let s = self.cpu.s.wrapping_add(1);
+        self.cpu.s = s;
+
+        let stack_addr = 0x0100 | s as u16;
+
+        let value = self.read_u8(stack_addr);
+
+        value
+    }
+
+    fn pull_u16(&mut self) -> u16 {
+        let value_lo = self.pull_u8();
+        let value_hi = self.pull_u8();
+
+        ((value_hi as u16) << 8) | (value_lo as u16)
+    }
+
     fn step_cpu(&mut self) -> CpuStep {
         let pc = self.cpu.pc;
         let next_pc;
