@@ -935,6 +935,23 @@ impl Ppu {
         self.scroll_addr_latch = !latch;
     }
 
+    fn write_ppuaddr(&mut self, value: u8) {
+        let latch = self.scroll_addr_latch;
+
+        if latch {
+            let addr_lo = value as u16;
+            let addr_hi = self.addr & 0xFF00;
+            self.addr = addr_lo | addr_hi;
+        }
+        else {
+            let addr_lo = self.addr & 0x00FF;
+            let addr_hi = (value as u16) << 8;
+            self.addr = addr_lo | addr_hi;
+        }
+
+        self.scroll_addr_latch = !latch;
+    }
+
     fn ppustatus(&self) -> u8 {
         self.status.bits()
     }
