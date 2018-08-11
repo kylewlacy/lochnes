@@ -955,6 +955,20 @@ impl Ppu {
         self.scroll_addr_latch = !latch;
     }
 
+    fn write_ppudata(&mut self, value: u8) {
+        let addr = self.addr;
+        let stride =
+            // Add 1 to the PPU address if the I flag is clear, add 32 if
+            // it is set
+            match self.ctrl.contains(PpuCtrlFlags::VRAM_ADDR_INCREMENT) {
+                false => 1,
+                true => 32
+            };
+
+        self.write_addr(addr, value);
+        self.addr = addr.wrapping_add(stride);
+    }
+
     fn ppustatus(&self) -> u8 {
         self.status.bits()
     }
