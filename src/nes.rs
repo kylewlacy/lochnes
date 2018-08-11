@@ -1,3 +1,4 @@
+use std::u8;
 use std::fmt;
 use rom::Rom;
 
@@ -137,6 +138,58 @@ impl Nes {
 
         let op;
         match opcode {
+            Opcode::AdcZero => {
+                let a = self.cpu.a;
+                let c = if self.cpu.p.contains(CpuFlags::C) { 1 } else { 0 };
+
+                let zero_page = self.read_u8(pc + 1);
+                let addr = zero_page as u16;
+                let value = self.read_u8(addr);
+
+                let result = a as u16 + c as u16 + value as u16;
+                let out = result as u8;
+
+                // TODO: Refactor!
+                let signed_result = result as i8;
+                let signed_out = out as i8;
+                let is_sign_correct =
+                    (signed_result >= 0 && signed_out >= 0)
+                    || (signed_result < 0 && signed_out < 0);
+
+                self.cpu.a = out;
+                self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
+                self.cpu.set_flags(CpuFlags::Z, result == 0);
+                self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
+                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+
+                next_pc = pc + 2;
+                op = Op::AdcZero { zero_page };
+            }
+            Opcode::AdcImm => {
+                let a = self.cpu.a;
+                let c = if self.cpu.p.contains(CpuFlags::C) { 1 } else { 0 };
+
+                let value = self.read_u8(pc + 1);
+
+                let result = a as u16 + c as u16 + value as u16;
+                let out = result as u8;
+
+                // TODO: Refactor!
+                let signed_result = result as i8;
+                let signed_out = out as i8;
+                let is_sign_correct =
+                    (signed_result >= 0 && signed_out >= 0)
+                    || (signed_result < 0 && signed_out < 0);
+
+                self.cpu.a = out;
+                self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
+                self.cpu.set_flags(CpuFlags::Z, result == 0);
+                self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
+                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+
+                next_pc = pc + 2;
+                op = Op::AdcImm { value };
+            }
             Opcode::AndImm => {
                 let a = self.cpu.a;
                 let value = self.read_u8(pc + 1);
@@ -148,6 +201,20 @@ impl Nes {
 
                 next_pc = pc + 2;
                 op = Op::AndImm { value };
+            }
+            Opcode::AndZero => {
+                let a = self.cpu.a;
+                let zero_page = self.read_u8(pc + 1);
+                let addr = zero_page as u16;
+                let value = self.read_u8(addr);
+                let a = a & value;
+                self.cpu.a = a;
+
+                self.cpu.set_flags(CpuFlags::Z, a == 0);
+                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                next_pc = pc + 2;
+                op = Op::AndZero { zero_page };
             }
             Opcode::Beq => {
                 let addr_offset = self.read_i8(pc + 1);
@@ -191,10 +258,28 @@ impl Nes {
                 }
                 op = Op::Bpl { addr_offset };
             }
+            Opcode::Clc => {
+                self.cpu.set_flags(CpuFlags::C, false);
+
+                next_pc = pc + 1;
+                op = Op::Clc;
+            }
             Opcode::Cld => {
                 self.cpu.set_flags(CpuFlags::D, false);
                 next_pc = pc + 1;
                 op = Op::Cld;
+            }
+            Opcode::CmpImm => {
+                let value = self.read_u8(pc + 1);
+                let a = self.cpu.a;
+                let result = a.wrapping_sub(value);
+
+                self.cpu.set_flags(CpuFlags::C, a >= value);
+                self.cpu.set_flags(CpuFlags::Z, a == value);
+                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+
+                next_pc = pc + 2;
+                op = Op::CmpImm { value };
             }
             Opcode::DecZero => {
                 let zero_page = self.read_u8(pc + 1);
@@ -209,6 +294,15 @@ impl Nes {
                 next_pc = pc + 2;
                 op = Op::DecZero { zero_page };
             }
+            Opcode::Dex => {
+                let x = self.cpu.x.wrapping_sub(1);
+                self.cpu.set_flags(CpuFlags::Z, x == 0);
+                self.cpu.set_flags(CpuFlags::N, (x & 0b_1000_0000) != 0);
+                self.cpu.x = x;
+
+                next_pc = pc + 1;
+                op = Op::Dex;
+            }
             Opcode::Dey => {
                 let y = self.cpu.y.wrapping_sub(1);
                 self.cpu.set_flags(CpuFlags::Z, y == 0);
@@ -217,6 +311,37 @@ impl Nes {
 
                 next_pc = pc + 1;
                 op = Op::Dey;
+            }
+            Opcode::EorImm => {
+                let value = self.read_u8(pc + 1);
+                let a = self.cpu.a ^ value;
+                self.cpu.set_flags(CpuFlags::Z, a == 0);
+                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                self.cpu.a = a;
+
+                next_pc = pc + 2;
+                op = Op::EorImm { value };
+            }
+            Opcode::EorZero => {
+                let zero_page = self.read_u8(pc + 1);
+                let addr = zero_page as u16;
+                let value = self.read_u8(addr);
+                let a = self.cpu.a ^ value;
+                self.cpu.set_flags(CpuFlags::Z, a == 0);
+                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                self.cpu.a = a;
+
+                next_pc = pc + 2;
+                op = Op::EorZero { zero_page };
+            }
+            Opcode::Iny => {
+                let y = self.cpu.y.wrapping_add(1);
+                self.cpu.set_flags(CpuFlags::Z, y == 0);
+                self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
+                self.cpu.y = y;
+
+                next_pc = pc + 1;
+                op = Op::Iny;
             }
             Opcode::JmpAbs => {
                 let addr = self.read_u16(pc + 1);
@@ -248,17 +373,100 @@ impl Nes {
                 next_pc = pc + 2;
                 op = Op::LdaImm { value };
             }
+            Opcode::LdaIndY => {
+                let y = self.cpu.y;
+                let target_addr_base = self.read_u8(pc + 1);
+
+                // TODO: Is this right? Does the target address
+                // wrap around the zero page?
+                let addr_base = self.read_u16(target_addr_base as u16);
+                let addr = addr_base.wrapping_add(y as u16);
+                let value = self.read_u8(addr);
+
+                self.cpu.a = value;
+
+                next_pc = pc + 2;
+                op = Op::LdaIndY { target_addr_base };
+            }
+            Opcode::LdaZero => {
+                let zero_page = self.read_u8(pc + 1);
+                let addr = zero_page as u16;
+                let value = self.read_u8(addr);
+                self.cpu.a = value;
+                next_pc = pc + 2;
+                op = Op::LdaZero { zero_page };
+            }
             Opcode::LdxImm => {
                 let value = self.read_u8(pc + 1);
                 self.cpu.x = value;
                 next_pc = pc + 2;
                 op = Op::LdxImm { value };
             }
+            Opcode::LdxZero => {
+                let zero_page = self.read_u8(pc + 1);
+                let addr = zero_page as u16;
+                let value = self.read_u8(addr);
+                self.cpu.x = value;
+                next_pc = pc + 2;
+                op = Op::LdxZero { zero_page };
+            }
             Opcode::LdyImm => {
                 let value = self.read_u8(pc + 1);
                 self.cpu.y = value;
                 next_pc = pc + 2;
                 op = Op::LdyImm { value };
+            }
+            Opcode::LsrA => {
+                let a = self.cpu.a;
+                let carry = (a & 0b_0000_0001) != 0;
+
+                let result = a >> 1;
+                self.cpu.a = result;
+                self.cpu.set_flags(CpuFlags::C, carry);
+                self.cpu.set_flags(CpuFlags::Z, result == 0);
+                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+
+                next_pc = pc + 1;
+                op = Op::LsrA;
+            }
+            Opcode::Pha => {
+                let a = self.cpu.a;
+                self.push_u8(a);
+                next_pc = pc + 1;
+                op = Op::Pha;
+            }
+            Opcode::Pla => {
+                let a = self.pull_u8();
+                self.cpu.a = a;
+
+                self.cpu.set_flags(CpuFlags::Z, a == 0);
+                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                next_pc = pc + 1;
+                op = Op::Pla;
+            }
+            Opcode::RorZero => {
+                let zero_page = self.read_u8(pc + 1);
+                let addr = zero_page as u16;
+                let value = self.read_u8(addr);
+
+                let c = (value & 0b_0000_0001) != 0;
+                let new_value = value >> 1;
+                self.write_u8(addr, new_value);
+
+                self.cpu.set_flags(CpuFlags::C, c);
+                self.cpu.set_flags(CpuFlags::Z, value == 0);
+                self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+
+                next_pc = pc + 2;
+                op = Op::RorZero { zero_page };
+            }
+            Opcode::Rts => {
+                let push_pc = self.pull_u16();
+                let ret_pc = push_pc.wrapping_add(1);
+
+                next_pc = ret_pc;
+                op = Op::Rts;
             }
             Opcode::Sei => {
                 self.cpu.set_flags(CpuFlags::I, true);
@@ -302,11 +510,41 @@ impl Nes {
                 next_pc = pc + 2;
                 op = Op::StyZero { zero_page };
             }
+            Opcode::Tax => {
+                let a = self.cpu.a;
+                self.cpu.x = a;
+                self.cpu.set_flags(CpuFlags::Z, a == 0);
+                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                next_pc = pc + 1;
+                op = Op::Tax;
+            }
+            Opcode::Tay => {
+                let a = self.cpu.a;
+                self.cpu.y = a;
+                self.cpu.set_flags(CpuFlags::Z, a == 0);
+                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                next_pc = pc + 1;
+                op = Op::Tay;
+            }
+            Opcode::Txa => {
+                let x = self.cpu.x;
+                self.cpu.a = x;
+                next_pc = pc + 1;
+                op = Op::Txa;
+            }
             Opcode::Txs => {
                 let x = self.cpu.x;
                 self.cpu.s = x;
                 next_pc = pc + 1;
                 op = Op::Txs;
+            }
+            Opcode::Tya => {
+                let y = self.cpu.y;
+                self.cpu.a = y;
+                next_pc = pc + 1;
+                op = Op::Tya;
             }
         }
 
@@ -412,46 +650,88 @@ bitflags! {
 #[derive(Debug, EnumKind)]
 #[enum_kind(Opcode)]
 pub enum Op {
+    AdcImm { value: u8 },
+    AdcZero { zero_page: u8 },
     AndImm { value: u8 },
+    AndZero { zero_page: u8 },
     Beq { addr_offset: i8 },
     Bne { addr_offset: i8 },
     Bpl { addr_offset: i8 },
+    Clc,
     Cld,
+    CmpImm { value: u8 },
     DecZero { zero_page: u8 },
+    Dex,
     Dey,
+    EorImm { value: u8 },
+    EorZero { zero_page: u8 },
+    Iny,
     JmpAbs { addr: u16 },
     Jsr { addr: u16 },
     LdaAbs { addr: u16 },
     LdaImm { value: u8 },
+    LdaZero { zero_page: u8 },
+    LdaIndY { target_addr_base: u8 },
     LdxImm { value: u8 },
+    LdxZero { zero_page: u8 },
     LdyImm { value: u8 },
+    LsrA,
+    Pha,
+    Pla,
+    RorZero { zero_page: u8 },
+    Rts,
     Sei,
     StaAbs { addr: u16 },
     StaZero { zero_page: u8 },
     StaIndY { target_addr_base: u8 },
     StyZero { zero_page: u8 },
+    Tax,
+    Tay,
+    Txa,
     Txs,
+    Tya,
 }
 
 impl Opcode {
     fn from_u8(opcode: u8) -> Self {
         match opcode {
             0x10 => Opcode::Bpl,
+            0x18 => Opcode::Clc,
             0x20 => Opcode::Jsr,
+            0x25 => Opcode::AndZero,
             0x29 => Opcode::AndImm,
+            0x45 => Opcode::EorZero,
+            0x48 => Opcode::Pha,
+            0x49 => Opcode::EorImm,
+            0x4A => Opcode::LsrA,
             0x4C => Opcode::JmpAbs,
+            0x60 => Opcode::Rts,
+            0x65 => Opcode::AdcZero,
+            0x66 => Opcode::RorZero,
+            0x68 => Opcode::Pla,
+            0x69 => Opcode::AdcImm,
             0x78 => Opcode::Sei,
+            0x8A => Opcode::Txa,
             0x84 => Opcode::StyZero,
             0x85 => Opcode::StaZero,
             0x88 => Opcode::Dey,
             0x8D => Opcode::StaAbs,
             0x91 => Opcode::StaIndY,
+            0x98 => Opcode::Tya,
             0x9A => Opcode::Txs,
             0xA0 => Opcode::LdyImm,
             0xA2 => Opcode::LdxImm,
+            0xA5 => Opcode::LdaZero,
+            0xA6 => Opcode::LdxZero,
+            0xA8 => Opcode::Tay,
             0xA9 => Opcode::LdaImm,
+            0xAA => Opcode::Tax,
             0xAD => Opcode::LdaAbs,
+            0xB1 => Opcode::LdaIndY,
             0xC6 => Opcode::DecZero,
+            0xC8 => Opcode::Iny,
+            0xC9 => Opcode::CmpImm,
+            0xCA => Opcode::Dex,
             0xD0 => Opcode::Bne,
             0xD8 => Opcode::Cld,
             0xF0 => Opcode::Beq,
@@ -465,22 +745,40 @@ impl Opcode {
 impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mnemonic = match self {
-            Opcode::AndImm => "AND",
+            Opcode::AdcImm | Opcode::AdcZero => "ADC",
+            Opcode::AndImm | Opcode::AndZero => "AND",
             Opcode::Beq => "BEQ",
             Opcode::Bne => "BNE",
             Opcode::Bpl => "BPL",
+            Opcode::Clc => "CLC",
             Opcode::Cld => "CLD",
+            Opcode::CmpImm => "CMP",
             Opcode::DecZero => "DEC",
+            Opcode::Dex => "DEX",
             Opcode::Dey => "DEY",
+            Opcode::EorImm | Opcode::EorZero => "EOR",
+            Opcode::Iny => "INY",
             Opcode::JmpAbs => "JMP",
             Opcode::Jsr => "JSR",
-            Opcode::LdaAbs | Opcode::LdaImm => "LDA",
-            Opcode::LdxImm => "LDX",
+            Opcode::LdaAbs
+            | Opcode::LdaImm
+            | Opcode::LdaIndY
+            | Opcode::LdaZero => "LDA",
+            Opcode::LdxImm | Opcode::LdxZero => "LDX",
             Opcode::LdyImm => "LDY",
+            Opcode::LsrA => "LSR",
+            Opcode::Pha => "PHA",
+            Opcode::Pla => "PLA",
+            Opcode::RorZero => "ROR",
+            Opcode::Rts => "RTS",
             Opcode::Sei => "SEI",
             Opcode::StaAbs | Opcode::StaZero | Opcode::StaIndY => "STA",
             Opcode::StyZero => "STY",
+            Opcode::Tax => "TAX",
+            Opcode::Tay => "TAY",
+            Opcode::Txa => "TXA",
             Opcode::Txs => "TXS",
+            Opcode::Tya => "TYA",
         };
         write!(f, "{}", mnemonic)?;
         Ok(())
@@ -491,8 +789,24 @@ impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let opcode = Opcode::from(self);
         match self {
-            Op::Cld | Op::Sei | Op::Txs | Op::Dey => {
+            Op::Clc
+            | Op::Cld
+            | Op::Dex
+            | Op::Dey
+            | Op::Iny
+            | Op::Pha
+            | Op::Pla
+            | Op::Rts
+            | Op::Sei
+            | Op::Tax
+            | Op::Tay
+            | Op::Txa
+            | Op::Txs
+            | Op::Tya => {
                 write!(f, "{}", opcode)?;
+            }
+            Op::LsrA => {
+                write!(f, "{} A", opcode)?;
             }
             Op::LdaAbs { addr }
             | Op::StaAbs { addr }
@@ -500,15 +814,25 @@ impl fmt::Display for Op {
             | Op::Jsr { addr } => {
                 write!(f, "{} ${:04X}", opcode, addr)?;
             }
-            Op::DecZero { zero_page }
+            Op::AdcZero { zero_page }
+            | Op::AndZero { zero_page }
+            | Op::DecZero { zero_page }
+            | Op::EorZero { zero_page }
+            | Op::LdaZero { zero_page }
+            | Op::LdxZero { zero_page }
+            | Op::RorZero { zero_page }
             | Op::StaZero { zero_page }
             | Op::StyZero { zero_page }=> {
                 write!(f, "{} ${:04X}", opcode, *zero_page as u16)?;
             }
-            Op::StaIndY { target_addr_base } => {
+            Op::LdaIndY { target_addr_base }
+            | Op::StaIndY { target_addr_base } => {
                 write!(f, "{} (${:02X}),Y", opcode, target_addr_base)?;
             }
-            Op::AndImm { value }
+            Op::AdcImm { value }
+            | Op::AndImm { value }
+            | Op::CmpImm { value }
+            | Op::EorImm { value }
             | Op::LdaImm { value }
             | Op::LdxImm { value }
             | Op::LdyImm { value } => {
