@@ -579,6 +579,21 @@ impl Ppu {
         self.mask = PpuMaskFlags::from_bits_truncate(value);
     }
 
+    fn write_addr(&mut self, addr: u16, value: u8) {
+        match addr {
+            0x0000...0x0FFF => {
+                self.pattern_tables[0][addr as usize] = value;
+            }
+            0x2000...0x23FF => {
+                let offset = addr as usize - 0x2000;
+                self.nametables[0][offset] = value;
+            }
+            _ => {
+                unimplemented!("Unimplemented write to VRAM address ${:04X}", addr)
+            }
+        }
+    }
+
     fn write_ppuscroll(&mut self, value: u8) {
         let latch = self.scroll_addr_latch;
 
