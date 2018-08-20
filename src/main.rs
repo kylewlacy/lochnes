@@ -1,4 +1,4 @@
-#![feature(nll, proc_macro_non_items, use_extern_macros, generators, never_type, tests)]
+#![feature(nll, proc_macro_non_items, generators, never_type)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use]
