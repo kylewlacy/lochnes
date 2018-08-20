@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Rom {
     pub header: RomHeader,
     pub prg_rom: Vec<u8>,
@@ -66,7 +66,7 @@ pub enum RomError {
     ExpectedEof,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct RomHeader {
     prg_rom_size_bytes: usize,
     chr_rom_size_bytes: usize,
@@ -199,14 +199,14 @@ impl RomHeader {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum MirrorMode {
     Horizontal,
     Vertical,
     FourScreenVram
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum TvSystem {
     Ntsc,
     Pal,
