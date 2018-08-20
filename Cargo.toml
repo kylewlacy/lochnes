@@ -4,4 +4,5 @@ name = "lochnes"
 version = "0.1.0"
 [dependencies]
 bitflags = "1.0.3"
+enum-kinds = "0.4.0"
 structopt = "0.2.10"
