@@ -1,7 +1,10 @@
+cargo-features = ["edition"]
+
 [package]
 authors = ["Kyle Lacy <kylelacy+git@pm.me>"]
 name = "lochnes"
 version = "0.1.0"
+edition = "2018"
 [dependencies]
 bitflags = "1.0.3"
 enum-kinds = "0.4.0"

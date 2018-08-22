@@ -1,11 +1,7 @@
-#![feature(nll, proc_macro_non_items, generators, never_type)]
 #![cfg_attr(test, feature(test))]
 
-#[macro_use]
-extern crate bitflags;
-#[macro_use]
-extern crate enum_kinds;
-extern crate structopt;
+#[macro_use] extern crate bitflags;
+#[macro_use] extern crate enum_kinds;
 #[cfg(test)] extern crate test;
 
 use std::path::PathBuf;

@@ -1,6 +1,6 @@
 use std::u8;
 use std::fmt;
-use rom::Rom;
+use crate::rom::Rom;
 
 pub struct Nes {
     pub rom: Rom,
@@ -36,13 +36,13 @@ impl Nes {
         }
 
         match addr {
-            0x0000...0x07FF => {
+            0x0000..=0x07FF => {
                 self.ram[addr as usize]
             }
             0x2002 => {
                 self.ppu.ppustatus()
             }
-            0x8000...0xFFFF => {
+            0x8000..=0xFFFF => {
                 let rom_offset = addr - 0x8000;
                 let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
                 self.rom.prg_rom[mapped_addr]
@@ -71,7 +71,7 @@ impl Nes {
         }
 
         match addr {
-            0x0000...0x07FF => {
+            0x0000..=0x07FF => {
                 self.ram[addr as usize] = value;
             }
             0x2000 => {
@@ -89,7 +89,7 @@ impl Nes {
             0x2007 => {
                 self.ppu.write_ppudata(value);
             }
-            0x8000...0xFFFF => {
+            0x8000..=0xFFFF => {
                 let rom_offset = addr - 0x8000;
                 let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
                 self.rom.prg_rom[mapped_addr] = value;
@@ -749,7 +749,7 @@ impl Opcode {
 }
 
 impl fmt::Display for Opcode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mnemonic = match self {
             Opcode::AdcImm | Opcode::AdcZero => "ADC",
             Opcode::AndImm | Opcode::AndZero => "AND",
@@ -792,7 +792,7 @@ impl fmt::Display for Opcode {
 }
 
 impl fmt::Display for Op {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let opcode = Opcode::from(self);
         match self {
             Op::Clc
@@ -911,10 +911,10 @@ impl Ppu {
 
     fn write_addr(&mut self, addr: u16, value: u8) {
         match addr {
-            0x0000...0x0FFF => {
+            0x0000..=0x0FFF => {
                 self.pattern_tables[0][addr as usize] = value;
             }
-            0x2000...0x23FF => {
+            0x2000..=0x23FF => {
                 let offset = addr as usize - 0x2000;
                 self.nametables[0][offset] = value;
             }
