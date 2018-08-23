@@ -90,11 +90,6 @@ impl Nes {
             0x2007 => {
                 self.ppu.write_ppudata(value);
             }
-            0x8000..=0xFFFF => {
-                let rom_offset = addr - 0x8000;
-                let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
-                self.rom.prg_rom[mapped_addr] = value;
-            }
             _ => {
                 unimplemented!("Unhandled write to address: 0x{:X}", addr);
             }
