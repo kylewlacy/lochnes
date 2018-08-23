@@ -1,3 +1,4 @@
+#![feature(futures_api, async_await, await_macro, pin)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate bitflags;
@@ -9,13 +10,23 @@ use std::process;
 use std::io;
 use std::fs;
 use structopt::StructOpt;
+use pin_utils::pin_mut;
+use futures::executor::LocalPool;
+use futures::task::Poll;
+use futures::poll;
 
 mod rom;
 mod nes;
 
 fn main() {
+    let mut pool = LocalPool::new();
+    let mut spawner = pool.spawner();
+
     let opts = Options::from_args();
-    match run(opts) {
+    let run_future = run(opts);
+    let run_result = pool.run_until(run_future, &mut spawner);
+
+    match run_result {
         Ok(_) => { }
         Err(err) => {
             eprintln!("{:?}", err);
@@ -31,14 +42,25 @@ struct Options {
     rom: PathBuf,
 }
 
-fn run(opts: Options) -> Result<(), LochnesError> {
+async fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let mut nes = nes::Nes::new_from_rom(rom);
 
     loop {
+        let step = {
+            let step = nes.step();
+            pin_mut!(step);
+
+            loop {
+                match poll!(&mut step) {
+                    Poll::Pending => { }
+                    Poll::Ready(step) => { break step; }
+                }
+            }
+        };
+
         println!("{:X?}", nes.cpu);
-        let step = nes.step();
         println!("${:04X}: {}", step.pc, step.op);
         println!();
     }
@@ -80,12 +102,20 @@ mod tests {
         let steps = env::var("BENCH_STEPS").expect("BENCH_STEPS env var must be set for benchmarking");
         let steps: u64 = steps.parse().unwrap();
 
+
+        let mut pool = LocalPool::new();
+        let mut spawner = pool.spawner();
+
         b.iter(|| {
             let mut nes = nes::Nes::new_from_rom(rom.clone());
 
-            for _ in 0..steps {
-                nes.step();
-            }
+            let run_future = async {
+                for _ in 0..steps {
+                    await!(nes.step());
+                }
+            };
+
+            pool.run_until(run_future, &mut spawner)
         });
     }
 }

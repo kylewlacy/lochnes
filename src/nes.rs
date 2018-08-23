@@ -2,6 +2,7 @@ use std::u8;
 use std::fmt;
 use crate::rom::Rom;
 
+#[derive(Clone)]
 pub struct Nes {
     pub rom: Rom,
     pub ram: [u8; 0x0800],
@@ -135,7 +136,7 @@ impl Nes {
         ((value_hi as u16) << 8) | (value_lo as u16)
     }
 
-    fn step_cpu(&mut self) -> CpuStep {
+    async fn step_cpu(&mut self) -> CpuStep {
         let pc = self.cpu.pc;
         let next_pc;
 
@@ -561,7 +562,7 @@ impl Nes {
         CpuStep { pc, op }
     }
 
-    fn step_ppu(&mut self) {
+    async fn step_ppu(&mut self) {
         let cycle = self.ppu.cycle;
         // let frame = cycle / 89_342;
         let frame_cycle = cycle % 89_342;
@@ -574,17 +575,17 @@ impl Nes {
         self.ppu.cycle += 1;
     }
 
-    pub fn step(&mut self) -> CpuStep {
-        let cpu_step = self.step_cpu();
-        self.step_ppu();
-        self.step_ppu();
-        self.step_ppu();
+    pub async fn step(&mut self) -> CpuStep {
+        let cpu_step = await!(self.step_cpu());
+        await!(self.step_ppu());
+        await!(self.step_ppu());
+        await!(self.step_ppu());
 
         cpu_step
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Cpu {
     pub pc: u16,
     pub a: u8,
@@ -865,6 +866,7 @@ pub struct CpuStep {
     pub op: Op,
 }
 
+#[derive(Clone)]
 pub struct Ppu {
     cycle: u64,
 
