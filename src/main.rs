@@ -1,4 +1,4 @@
-#![feature(futures_api, async_await, await_macro, pin)]
+#![feature(futures_api, async_await, await_macro, pin, extern_crate_item_prelude)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate bitflags;
@@ -20,11 +20,10 @@ mod nes;
 
 fn main() {
     let mut pool = LocalPool::new();
-    let mut spawner = pool.spawner();
 
     let opts = Options::from_args();
     let run_future = run(opts);
-    let run_result = pool.run_until(run_future, &mut spawner);
+    let run_result = pool.run_until(run_future);
 
     match run_result {
         Ok(_) => { }
@@ -104,7 +103,6 @@ mod tests {
 
 
         let mut pool = LocalPool::new();
-        let mut spawner = pool.spawner();
 
         b.iter(|| {
             let mut nes = nes::Nes::new_from_rom(rom.clone());
@@ -115,7 +113,7 @@ mod tests {
                 }
             };
 
-            pool.run_until(run_future, &mut spawner)
+            pool.run_until(run_future)
         });
     }
 }

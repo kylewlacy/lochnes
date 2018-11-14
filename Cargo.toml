@@ -1,5 +1,3 @@
-cargo-features = ["edition"]
-
 [package]
 authors = ["Kyle Lacy <kylelacy+git@pm.me>"]
 name = "lochnes"
@@ -8,6 +6,6 @@ edition = "2018"
 [dependencies]
 bitflags = "1.0.3"
 enum-kinds = "0.4.0"
-futures-preview = "0.3.0-alpha.3"
+futures-preview = "0.3.0-alpha.9"
 pin-utils = "0.1.0-alpha.1"
 structopt = "0.2.10"
