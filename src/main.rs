@@ -1,4 +1,4 @@
-#![feature(futures_api, async_await, await_macro, pin, extern_crate_item_prelude)]
+#![feature(futures_api, async_await, await_macro)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate bitflags;
