@@ -1,22 +1,23 @@
 use std::u8;
 use std::fmt;
+use std::cell::Cell;
 use crate::rom::Rom;
 
 #[derive(Clone)]
 pub struct Nes {
     pub rom: Rom,
-    pub ram: [u8; 0x0800],
+    pub ram: Cell<[u8; 0x0800]>,
     pub cpu: Cpu,
     pub ppu: Ppu,
 }
 
 impl Nes {
     pub fn new_from_rom(rom: Rom) -> Self {
-        let ram = [0; 0x0800];
+        let ram = Cell::new([0; 0x0800]);
         let cpu = Cpu::new();
         let ppu = Ppu::new();
 
-        let mut nes = Nes {
+        let nes = Nes {
             rom,
             ram,
             cpu,
@@ -25,9 +26,14 @@ impl Nes {
 
         let reset_addr = nes.read_u16(0xFFFC);
 
-        nes.cpu.pc = reset_addr;
+        nes.cpu.pc.set(reset_addr);
 
         nes
+    }
+
+    fn ram(&self) -> &[Cell<u8>] {
+        let ram: &Cell<[u8]> = &self.ram;
+        ram.as_slice_of_cells()
     }
 
     pub fn read_u8(&self, addr: u16) -> u8 {
@@ -36,9 +42,11 @@ impl Nes {
             unimplemented!("Unhandled mapper: {}", mapper);
         }
 
+        let ram = self.ram();
+
         match addr {
             0x0000..=0x07FF => {
-                self.ram[addr as usize]
+                ram[addr as usize].get()
             }
             0x2002 => {
                 self.ppu.ppustatus()
@@ -65,15 +73,17 @@ impl Nes {
         lo as u16 | ((hi as u16) << 8)
     }
 
-    pub fn write_u8(&mut self, addr: u16, value: u8) {
+    pub fn write_u8(&self, addr: u16, value: u8) {
         let mapper = self.rom.header.mapper;
         if mapper != 0 {
             unimplemented!("Unhandled mapper: {}", mapper);
         }
 
+        let ram = self.ram();
+
         match addr {
             0x0000..=0x07FF => {
-                self.ram[addr as usize] = value;
+                ram[addr as usize].set(value);
             }
             0x2000 => {
                 self.ppu.set_ppuctrl(value);
@@ -96,16 +106,16 @@ impl Nes {
         }
     }
 
-    fn push_u8(&mut self, value: u8) {
-        let s = self.cpu.s;
+    fn push_u8(&self, value: u8) {
+        let s = self.cpu.s.get();
         let stack_addr = 0x0100 | s as u16;
 
         self.write_u8(stack_addr, value);
 
-        self.cpu.s = s.wrapping_sub(1);
+        self.cpu.s.set(s.wrapping_sub(1));
     }
 
-    fn push_u16(&mut self, value: u16) {
+    fn push_u16(&self, value: u16) {
         let value_hi = ((0xFF00 & value) >> 8) as u8;
         let value_lo = (0x00FF & value) as u8;
 
@@ -113,9 +123,9 @@ impl Nes {
         self.push_u8(value_lo);
     }
 
-    fn pull_u8(&mut self) -> u8 {
-        let s = self.cpu.s.wrapping_add(1);
-        self.cpu.s = s;
+    fn pull_u8(&self) -> u8 {
+        let s = self.cpu.s.get().wrapping_add(1);
+        self.cpu.s.set(s);
 
         let stack_addr = 0x0100 | s as u16;
 
@@ -124,15 +134,15 @@ impl Nes {
         value
     }
 
-    fn pull_u16(&mut self) -> u16 {
+    fn pull_u16(&self) -> u16 {
         let value_lo = self.pull_u8();
         let value_hi = self.pull_u8();
 
         ((value_hi as u16) << 8) | (value_lo as u16)
     }
 
-    async fn step_cpu(&mut self) -> CpuStep {
-        let pc = self.cpu.pc;
+    async fn step_cpu(&self) -> CpuStep {
+        let pc = self.cpu.pc.get();
         let next_pc;
 
         let opcode = self.read_u8(pc);
@@ -141,8 +151,9 @@ impl Nes {
         let op;
         match opcode {
             Opcode::AdcZero => {
-                let a = self.cpu.a;
-                let c = if self.cpu.p.contains(CpuFlags::C) { 1 } else { 0 };
+                let a = self.cpu.a.get();
+                let p = self.cpu.p.get();
+                let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
 
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
@@ -158,7 +169,7 @@ impl Nes {
                     (signed_result >= 0 && signed_out >= 0)
                     || (signed_result < 0 && signed_out < 0);
 
-                self.cpu.a = out;
+                self.cpu.a.set(out);
                 self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
                 self.cpu.set_flags(CpuFlags::Z, result == 0);
                 self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
@@ -168,8 +179,9 @@ impl Nes {
                 op = Op::AdcZero { zero_page };
             }
             Opcode::AdcImm => {
-                let a = self.cpu.a;
-                let c = if self.cpu.p.contains(CpuFlags::C) { 1 } else { 0 };
+                let a = self.cpu.a.get();
+                let p = self.cpu.p.get();
+                let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
 
                 let value = self.read_u8(pc + 1);
 
@@ -183,7 +195,7 @@ impl Nes {
                     (signed_result >= 0 && signed_out >= 0)
                     || (signed_result < 0 && signed_out < 0);
 
-                self.cpu.a = out;
+                self.cpu.a.set(out);
                 self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
                 self.cpu.set_flags(CpuFlags::Z, result == 0);
                 self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
@@ -193,10 +205,10 @@ impl Nes {
                 op = Op::AdcImm { value };
             }
             Opcode::AndImm => {
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 let value = self.read_u8(pc + 1);
                 let a = a & value;
-                self.cpu.a = a;
+                self.cpu.a.set(a);
 
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
@@ -205,12 +217,12 @@ impl Nes {
                 op = Op::AndImm { value };
             }
             Opcode::AndZero => {
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
                 let value = self.read_u8(addr);
                 let a = a & value;
-                self.cpu.a = a;
+                self.cpu.a.set(a);
 
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
@@ -222,7 +234,7 @@ impl Nes {
                 let addr_offset = self.read_i8(pc + 1);
 
                 let pc_after = pc + 2;
-                if self.cpu.p.contains(CpuFlags::Z) {
+                if self.cpu.contains_flags(CpuFlags::Z) {
                     // TODO: Handle offset past page! With that, `i8` shouldn't
                     // be necessary
                     next_pc = (pc_after as i16 + addr_offset as i16) as u16;
@@ -236,7 +248,7 @@ impl Nes {
                 let addr_offset = self.read_i8(pc + 1);
 
                 let pc_after = pc + 2;
-                if self.cpu.p.contains(CpuFlags::Z) {
+                if self.cpu.contains_flags(CpuFlags::Z) {
                     next_pc = pc_after;
                 }
                 else {
@@ -250,7 +262,7 @@ impl Nes {
                 let addr_offset = self.read_i8(pc + 1);
 
                 let pc_after = pc + 2;
-                if self.cpu.p.contains(CpuFlags::N) {
+                if self.cpu.contains_flags(CpuFlags::N) {
                     next_pc = pc_after;
                 }
                 else {
@@ -273,7 +285,7 @@ impl Nes {
             }
             Opcode::CmpImm => {
                 let value = self.read_u8(pc + 1);
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 let result = a.wrapping_sub(value);
 
                 self.cpu.set_flags(CpuFlags::C, a >= value);
@@ -297,29 +309,29 @@ impl Nes {
                 op = Op::DecZero { zero_page };
             }
             Opcode::Dex => {
-                let x = self.cpu.x.wrapping_sub(1);
+                let x = self.cpu.x.get().wrapping_sub(1);
                 self.cpu.set_flags(CpuFlags::Z, x == 0);
                 self.cpu.set_flags(CpuFlags::N, (x & 0b_1000_0000) != 0);
-                self.cpu.x = x;
+                self.cpu.x.set(x);
 
                 next_pc = pc + 1;
                 op = Op::Dex;
             }
             Opcode::Dey => {
-                let y = self.cpu.y.wrapping_sub(1);
+                let y = self.cpu.y.get().wrapping_sub(1);
                 self.cpu.set_flags(CpuFlags::Z, y == 0);
                 self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
-                self.cpu.y = y;
+                self.cpu.y.set(y);
 
                 next_pc = pc + 1;
                 op = Op::Dey;
             }
             Opcode::EorImm => {
                 let value = self.read_u8(pc + 1);
-                let a = self.cpu.a ^ value;
+                let a = self.cpu.a.get() ^ value;
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                self.cpu.a = a;
+                self.cpu.a.set(a);
 
                 next_pc = pc + 2;
                 op = Op::EorImm { value };
@@ -328,19 +340,19 @@ impl Nes {
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
                 let value = self.read_u8(addr);
-                let a = self.cpu.a ^ value;
+                let a = self.cpu.a.get() ^ value;
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                self.cpu.a = a;
+                self.cpu.a.set(a);
 
                 next_pc = pc + 2;
                 op = Op::EorZero { zero_page };
             }
             Opcode::Iny => {
-                let y = self.cpu.y.wrapping_add(1);
+                let y = self.cpu.y.get().wrapping_add(1);
                 self.cpu.set_flags(CpuFlags::Z, y == 0);
                 self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
-                self.cpu.y = y;
+                self.cpu.y.set(y);
 
                 next_pc = pc + 1;
                 op = Op::Iny;
@@ -365,18 +377,18 @@ impl Nes {
                 // TODO: Flags!
                 let addr = self.read_u16(pc + 1);
                 let value = self.read_u8(addr);
-                self.cpu.a = value;
+                self.cpu.a.set(value);
                 next_pc = pc + 3;
                 op = Op::LdaAbs { addr };
             }
             Opcode::LdaImm => {
                 let value = self.read_u8(pc + 1);
-                self.cpu.a = value;
+                self.cpu.a.set(value);
                 next_pc = pc + 2;
                 op = Op::LdaImm { value };
             }
             Opcode::LdaIndY => {
-                let y = self.cpu.y;
+                let y = self.cpu.y.get();
                 let target_addr_base = self.read_u8(pc + 1);
 
                 // TODO: Is this right? Does the target address
@@ -385,7 +397,7 @@ impl Nes {
                 let addr = addr_base.wrapping_add(y as u16);
                 let value = self.read_u8(addr);
 
-                self.cpu.a = value;
+                self.cpu.a.set(value);
 
                 next_pc = pc + 2;
                 op = Op::LdaIndY { target_addr_base };
@@ -394,13 +406,13 @@ impl Nes {
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
                 let value = self.read_u8(addr);
-                self.cpu.a = value;
+                self.cpu.a.set(value);
                 next_pc = pc + 2;
                 op = Op::LdaZero { zero_page };
             }
             Opcode::LdxImm => {
                 let value = self.read_u8(pc + 1);
-                self.cpu.x = value;
+                self.cpu.x.set(value);
                 next_pc = pc + 2;
                 op = Op::LdxImm { value };
             }
@@ -408,22 +420,22 @@ impl Nes {
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
                 let value = self.read_u8(addr);
-                self.cpu.x = value;
+                self.cpu.x.set(value);
                 next_pc = pc + 2;
                 op = Op::LdxZero { zero_page };
             }
             Opcode::LdyImm => {
                 let value = self.read_u8(pc + 1);
-                self.cpu.y = value;
+                self.cpu.y.set(value);
                 next_pc = pc + 2;
                 op = Op::LdyImm { value };
             }
             Opcode::LsrA => {
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 let carry = (a & 0b_0000_0001) != 0;
 
                 let result = a >> 1;
-                self.cpu.a = result;
+                self.cpu.a.set(result);
                 self.cpu.set_flags(CpuFlags::C, carry);
                 self.cpu.set_flags(CpuFlags::Z, result == 0);
                 self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
@@ -432,14 +444,14 @@ impl Nes {
                 op = Op::LsrA;
             }
             Opcode::Pha => {
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 self.push_u8(a);
                 next_pc = pc + 1;
                 op = Op::Pha;
             }
             Opcode::Pla => {
                 let a = self.pull_u8();
-                self.cpu.a = a;
+                self.cpu.a.set(a);
 
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
@@ -476,14 +488,14 @@ impl Nes {
                 op = Op::Sei;
             }
             Opcode::StaAbs => {
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 let addr = self.read_u16(pc + 1);
                 self.write_u8(addr, a);
                 next_pc = pc + 3;
                 op = Op::StaAbs { addr };
             }
             Opcode::StaZero => {
-                let a = self.cpu.a;
+                let a = self.cpu.a.get();
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
                 self.write_u8(addr, a);
@@ -491,8 +503,8 @@ impl Nes {
                 op = Op::StaZero { zero_page };
             }
             Opcode::StaIndY => {
-                let a = self.cpu.a;
-                let y = self.cpu.y;
+                let a = self.cpu.a.get();
+                let y = self.cpu.y.get();
                 let target_addr_base = self.read_u8(pc + 1);
 
                 // TODO: Is this right? Does the target address
@@ -505,7 +517,7 @@ impl Nes {
                 op = Op::StaIndY { target_addr_base };
             }
             Opcode::StyZero => {
-                let y = self.cpu.y;
+                let y = self.cpu.y.get();
                 let zero_page = self.read_u8(pc + 1);
                 let addr = zero_page as u16;
                 self.write_u8(addr, y);
@@ -513,8 +525,8 @@ impl Nes {
                 op = Op::StyZero { zero_page };
             }
             Opcode::Tax => {
-                let a = self.cpu.a;
-                self.cpu.x = a;
+                let a = self.cpu.a.get();
+                self.cpu.x.set(a);
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
 
@@ -522,8 +534,8 @@ impl Nes {
                 op = Op::Tax;
             }
             Opcode::Tay => {
-                let a = self.cpu.a;
-                self.cpu.y = a;
+                let a = self.cpu.a.get();
+                self.cpu.y.set(a);
                 self.cpu.set_flags(CpuFlags::Z, a == 0);
                 self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
 
@@ -531,46 +543,49 @@ impl Nes {
                 op = Op::Tay;
             }
             Opcode::Txa => {
-                let x = self.cpu.x;
-                self.cpu.a = x;
+                let x = self.cpu.x.get();
+                self.cpu.a.set(x);
                 next_pc = pc + 1;
                 op = Op::Txa;
             }
             Opcode::Txs => {
-                let x = self.cpu.x;
-                self.cpu.s = x;
+                let x = self.cpu.x.get();
+                self.cpu.s.set(x);
                 next_pc = pc + 1;
                 op = Op::Txs;
             }
             Opcode::Tya => {
-                let y = self.cpu.y;
-                self.cpu.a = y;
+                let y = self.cpu.y.get();
+                self.cpu.a.set(y);
                 next_pc = pc + 1;
                 op = Op::Tya;
             }
         }
 
-        self.cpu.pc = next_pc;
+        self.cpu.pc.set(next_pc);
 
         debug_assert_eq!(Opcode::from(&op), opcode);
 
         CpuStep { pc, op }
     }
 
-    async fn step_ppu(&mut self) {
-        let cycle = self.ppu.cycle;
+    async fn step_ppu(&self) {
+        let cycle = self.ppu.cycle.get();
         // let frame = cycle / 89_342;
         let frame_cycle = cycle % 89_342;
         let scanline = frame_cycle / 341;
         let scanline_cycle = frame_cycle % 341;
 
         if scanline == 240 && scanline_cycle == 1 {
-            self.ppu.status.set(PpuStatusFlags::VBLANK_STARTED, true);
+            let _ = self.ppu.status.update(|mut status| {
+                status.set(PpuStatusFlags::VBLANK_STARTED, true);
+                status
+            });
         }
-        self.ppu.cycle += 1;
+        self.ppu.cycle.set(cycle + 1);
     }
 
-    pub async fn step(&mut self) -> CpuStep {
+    pub async fn step(&self) -> CpuStep {
         let cpu_step = await!(self.step_cpu());
         await!(self.step_ppu());
         await!(self.step_ppu());
@@ -582,30 +597,36 @@ impl Nes {
 
 #[derive(Debug, Clone)]
 pub struct Cpu {
-    pub pc: u16,
-    pub a: u8,
-    pub x: u8,
-    pub y: u8,
-    pub s: u8,
-    pub p: CpuFlags,
+    pub pc: Cell<u16>,
+    pub a: Cell<u8>,
+    pub x: Cell<u8>,
+    pub y: Cell<u8>,
+    pub s: Cell<u8>,
+    pub p: Cell<CpuFlags>,
 }
 
 impl Cpu {
     fn new() -> Self {
         Cpu {
-            pc: 0,
-            a: 0,
-            x: 0,
-            y: 0,
-            s: 0xFD,
-            p: CpuFlags::from_bits_truncate(0x34),
+            pc: Cell::new(0),
+            a: Cell::new(0),
+            x: Cell::new(0),
+            y: Cell::new(0),
+            s: Cell::new(0xFD),
+            p: Cell::new(CpuFlags::from_bits_truncate(0x34)),
         }
     }
 
-    fn set_flags(&mut self, flags: CpuFlags, value: bool) {
+    fn contains_flags(&self, flags: CpuFlags) -> bool {
+        self.p.get().contains(flags)
+    }
+
+    fn set_flags(&self, flags: CpuFlags, value: bool) {
         // TODO: Prevent the break (`B`) and unused (`U`) flags
         // from being changed!
-        self.p.set(flags, value);
+        let mut p = self.p.get();
+        p.set(flags, value);
+        self.p.set(p);
     }
 }
 
@@ -863,57 +884,70 @@ pub struct CpuStep {
 
 #[derive(Clone)]
 pub struct Ppu {
-    cycle: u64,
+    cycle: Cell<u64>,
 
-    ctrl: PpuCtrlFlags,
-    mask: PpuMaskFlags,
-    status: PpuStatusFlags,
-    oam_addr: u8,
-    scroll: u16,
-    addr: u16,
+    ctrl: Cell<PpuCtrlFlags>,
+    mask: Cell<PpuMaskFlags>,
+    status: Cell<PpuStatusFlags>,
+    oam_addr: Cell<u8>,
+    scroll: Cell<u16>,
+    addr: Cell<u16>,
 
     // Latch used for writing to PPUSCROLL and PPUADDR (toggles after a write
     // to each, used to determine if the high bit or low bit is being written).
-    scroll_addr_latch: bool,
+    scroll_addr_latch: Cell<bool>,
 
-    pattern_tables: [[u8; 0x1000]; 2],
-    nametables: [[u8; 0x0400]; 4],
-    oam: [u8; 0x0100],
+    pattern_tables: Cell<[u8; 2 * 0x1000]>,
+    nametables: Cell<[u8; 4 * 0x0400]>,
+    oam: Cell<[u8; 0x0100]>,
 }
 
 impl Ppu {
     fn new() -> Self {
         Ppu {
-            cycle: 0,
-            ctrl: PpuCtrlFlags::from_bits_truncate(0x00),
-            mask: PpuMaskFlags::from_bits_truncate(0x00),
-            status: PpuStatusFlags::from_bits_truncate(0x00),
-            oam_addr: 0x00,
-            scroll: 0x0000,
-            addr: 0x0000,
-            scroll_addr_latch: false,
-            pattern_tables: [[0; 0x1000]; 2],
-            nametables: [[0; 0x0400]; 4],
-            oam: [0; 0x0100],
+            cycle: Cell::new(0),
+            ctrl: Cell::new(PpuCtrlFlags::from_bits_truncate(0x00)),
+            mask: Cell::new(PpuMaskFlags::from_bits_truncate(0x00)),
+            status: Cell::new(PpuStatusFlags::from_bits_truncate(0x00)),
+            oam_addr: Cell::new(0x00),
+            scroll: Cell::new(0x0000),
+            addr: Cell::new(0x0000),
+            scroll_addr_latch: Cell::new(false),
+            pattern_tables: Cell::new([0; 2 * 0x1000]),
+            nametables: Cell::new([0; 4 * 0x0400]),
+            oam: Cell::new([0; 0x0100]),
         }
     }
 
-    fn set_ppuctrl(&mut self, value: u8) {
-        self.ctrl = PpuCtrlFlags::from_bits_truncate(value);
+    fn pattern_tables(&self) -> &[Cell<u8>] {
+        let pattern_tables: &Cell<[u8]> = &self.pattern_tables;
+        pattern_tables.as_slice_of_cells()
     }
 
-    fn set_ppumask(&mut self, value: u8) {
-        self.mask = PpuMaskFlags::from_bits_truncate(value);
+    fn nametables(&self) -> &[Cell<u8>] {
+        let nametables: &Cell<[u8]> = &self.nametables;
+        nametables.as_slice_of_cells()
     }
 
-    fn write_addr(&mut self, addr: u16, value: u8) {
+    fn set_ppuctrl(&self, value: u8) {
+        self.ctrl.set(PpuCtrlFlags::from_bits_truncate(value));
+    }
+
+    fn set_ppumask(&self, value: u8) {
+        self.mask.set(PpuMaskFlags::from_bits_truncate(value));
+    }
+
+    fn write_addr(&self, addr: u16, value: u8) {
+        let pattern_tables = self.pattern_tables();
+        let nametables = self.nametables();
+
         match addr {
             0x0000..=0x0FFF => {
-                self.pattern_tables[0][addr as usize] = value;
+                pattern_tables[addr as usize].set(value);
             }
             0x2000..=0x23FF => {
                 let offset = addr as usize - 0x2000;
-                self.nametables[0][offset] = value;
+                nametables[offset].set(value);
             }
             _ => {
                 unimplemented!("Unimplemented write to VRAM address ${:04X}", addr)
@@ -921,56 +955,57 @@ impl Ppu {
         }
     }
 
-    fn write_ppuscroll(&mut self, value: u8) {
-        let latch = self.scroll_addr_latch;
+    fn write_ppuscroll(&self, value: u8) {
+        let latch = self.scroll_addr_latch.get();
 
         if latch {
-            let scroll_lo = self.scroll & 0x00FF;
+            let scroll_lo = self.scroll.get() & 0x00FF;
             let scroll_hi = (value as u16) << 8;
-            self.scroll = scroll_lo | scroll_hi;
+            self.scroll.set(scroll_lo | scroll_hi);
         }
         else {
             let scroll_lo = value as u16;
-            let scroll_hi = self.scroll & 0xFF00;
-            self.scroll = scroll_lo | scroll_hi;
+            let scroll_hi = self.scroll.get() & 0xFF00;
+            self.scroll.set(scroll_lo | scroll_hi);
         }
 
-        self.scroll_addr_latch = !latch;
+        self.scroll_addr_latch.set(!latch);
     }
 
-    fn write_ppuaddr(&mut self, value: u8) {
-        let latch = self.scroll_addr_latch;
+    fn write_ppuaddr(&self, value: u8) {
+        let latch = self.scroll_addr_latch.get();
 
         if latch {
             let addr_lo = value as u16;
-            let addr_hi = self.addr & 0xFF00;
-            self.addr = addr_lo | addr_hi;
+            let addr_hi = self.addr.get() & 0xFF00;
+            self.addr.set(addr_lo | addr_hi);
         }
         else {
-            let addr_lo = self.addr & 0x00FF;
+            let addr_lo = self.addr.get() & 0x00FF;
             let addr_hi = (value as u16) << 8;
-            self.addr = addr_lo | addr_hi;
+            self.addr.set(addr_lo | addr_hi);
         }
 
-        self.scroll_addr_latch = !latch;
+        self.scroll_addr_latch.set(!latch);
     }
 
-    fn write_ppudata(&mut self, value: u8) {
-        let addr = self.addr;
+    fn write_ppudata(&self, value: u8) {
+        let addr = self.addr.get();
+        let ctrl = self.ctrl.get();
         let stride =
             // Add 1 to the PPU address if the I flag is clear, add 32 if
             // it is set
-            match self.ctrl.contains(PpuCtrlFlags::VRAM_ADDR_INCREMENT) {
+            match ctrl.contains(PpuCtrlFlags::VRAM_ADDR_INCREMENT) {
                 false => 1,
                 true => 32
             };
 
         self.write_addr(addr, value);
-        self.addr = addr.wrapping_add(stride);
+        self.addr.update(|addr| addr.wrapping_add(stride));
     }
 
     fn ppustatus(&self) -> u8 {
-        self.status.bits()
+        self.status.get().bits()
     }
 }
 

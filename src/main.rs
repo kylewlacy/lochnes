@@ -1,4 +1,4 @@
-#![feature(futures_api, async_await, await_macro)]
+#![feature(futures_api, async_await, await_macro, as_cell, cell_update)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate bitflags;
@@ -44,7 +44,7 @@ struct Options {
 async fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
-    let mut nes = nes::Nes::new_from_rom(rom);
+    let nes = nes::Nes::new_from_rom(rom);
 
     loop {
         let step = {
@@ -105,7 +105,7 @@ mod tests {
         let mut pool = LocalPool::new();
 
         b.iter(|| {
-            let mut nes = nes::Nes::new_from_rom(rom.clone());
+            let nes = nes::Nes::new_from_rom(rom.clone());
 
             let run_future = async {
                 for _ in 0..steps {
