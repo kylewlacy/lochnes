@@ -6,6 +6,4 @@ edition = "2018"
 [dependencies]
 bitflags = "1.0.4"
 enum-kinds = "0.4.1"
-futures-preview = "0.3.0-alpha.13"
-pin-utils = "0.1.0-alpha.4"
 structopt = "0.2.15"
