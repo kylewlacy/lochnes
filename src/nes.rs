@@ -3,6 +3,8 @@ use std::fmt;
 use std::cell::Cell;
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
+use bitflags::bitflags;
+use enum_kinds::EnumKind;
 use crate::rom::Rom;
 
 #[derive(Clone)]

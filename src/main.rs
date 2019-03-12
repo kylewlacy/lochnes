@@ -4,8 +4,6 @@
 )]
 #![cfg_attr(test, feature(test))]
 
-#[macro_use] extern crate bitflags;
-#[macro_use] extern crate enum_kinds;
 #[cfg(test)] extern crate test;
 
 use std::ops::{Generator, GeneratorState};
