@@ -607,6 +607,7 @@ impl Nes {
                                 status.set(PpuStatusFlags::VBLANK_STARTED, true);
                                 status
                             });
+                            self.cpu.nmi.set(true);
                         }
 
                         yield;
