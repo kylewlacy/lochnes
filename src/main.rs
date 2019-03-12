@@ -1,6 +1,6 @@
 #![feature(
-    futures_api, async_await, await_macro, as_cell, cell_update,
-    generators, generator_trait, never_type, exhaustive_patterns
+    as_cell, cell_update, never_type, exhaustive_patterns,
+    generators, generator_trait
 )]
 #![cfg_attr(test, feature(test))]
 
