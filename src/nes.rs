@@ -578,21 +578,31 @@ impl Nes {
     }
 
     fn run_ppu<'a>(&'a self) -> impl Generator<Yield = (), Return = !> + 'a {
-        move || loop {
-            let cycle = self.ppu.cycle.get();
-            // let frame = cycle / 89_342;
-            let frame_cycle = cycle % 89_342;
-            let scanline = frame_cycle / 341;
-            let scanline_cycle = frame_cycle % 341;
+        move || {
+            for frame in 0_u64.. {
+                let is_even_frame = frame % 2 == 0;
+                for scanline in 0_u16..262 {
+                    let cycles: u16 = match (scanline, is_even_frame) {
+                        // All scanlines render in 341 cycles, except for the
+                        // first scanline during odd frames
+                        (0, false) => 340,
+                        _ => 341,
+                    };
 
-            if scanline == 240 && scanline_cycle == 1 {
-                let _ = self.ppu.status.update(|mut status| {
-                    status.set(PpuStatusFlags::VBLANK_STARTED, true);
-                    status
-                });
+                    for cycle in 0..cycles {
+                        if scanline == 240 && cycle == 1 {
+                            let _ = self.ppu.status.update(|mut status| {
+                                status.set(PpuStatusFlags::VBLANK_STARTED, true);
+                                status
+                            });
+                        }
+
+                        yield;
+                    }
+                }
             }
-            self.ppu.cycle.set(cycle + 1);
-            yield;
+
+            unreachable!();
         }
     }
 
@@ -904,8 +914,6 @@ pub struct CpuStep {
 
 #[derive(Clone)]
 pub struct Ppu {
-    cycle: Cell<u64>,
-
     ctrl: Cell<PpuCtrlFlags>,
     mask: Cell<PpuMaskFlags>,
     status: Cell<PpuStatusFlags>,
@@ -925,7 +933,6 @@ pub struct Ppu {
 impl Ppu {
     fn new() -> Self {
         Ppu {
-            cycle: Cell::new(0),
             ctrl: Cell::new(PpuCtrlFlags::from_bits_truncate(0x00)),
             mask: Cell::new(PpuMaskFlags::from_bits_truncate(0x00)),
             status: Cell::new(PpuStatusFlags::from_bits_truncate(0x00)),
