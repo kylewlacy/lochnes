@@ -149,6 +149,18 @@ impl Nes {
         -> impl Generator<Yield = CpuStep, Return = !> + 'a
     {
         move || loop {
+            let nmi = self.cpu.nmi.get();
+            if nmi {
+                println!("=== NMI ===");
+                self.cpu.nmi.set(false);
+
+                self.push_u16(self.cpu.pc.get());
+                self.push_u8(self.cpu.p.get().bits);
+
+                let nmi_vector = self.read_u16(0xFFFA);
+                self.cpu.pc.set(nmi_vector);
+            }
+
             let pc = self.cpu.pc.get();
             let next_pc;
 
@@ -633,6 +645,7 @@ pub struct Cpu {
     pub y: Cell<u8>,
     pub s: Cell<u8>,
     pub p: Cell<CpuFlags>,
+    pub nmi: Cell<bool>,
 }
 
 impl Cpu {
@@ -644,6 +657,7 @@ impl Cpu {
             y: Cell::new(0),
             s: Cell::new(0xFD),
             p: Cell::new(CpuFlags::from_bits_truncate(0x34)),
+            nmi: Cell::new(false),
         }
     }
 
