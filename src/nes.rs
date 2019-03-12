@@ -1,6 +1,8 @@
 use std::u8;
 use std::fmt;
 use std::cell::Cell;
+use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 use crate::rom::Rom;
 
 #[derive(Clone)]
@@ -141,457 +143,473 @@ impl Nes {
         ((value_hi as u16) << 8) | (value_lo as u16)
     }
 
-    async fn step_cpu(&self) -> CpuStep {
-        let pc = self.cpu.pc.get();
-        let next_pc;
+    fn run_cpu<'a>(&'a self)
+        -> impl Generator<Yield = CpuStep, Return = !> + 'a
+    {
+        move || loop {
+            let pc = self.cpu.pc.get();
+            let next_pc;
 
-        let opcode = self.read_u8(pc);
-        let opcode = Opcode::from_u8(opcode);
+            let opcode = self.read_u8(pc);
+            let opcode = Opcode::from_u8(opcode);
 
-        let op;
-        match opcode {
-            Opcode::AdcZero => {
-                let a = self.cpu.a.get();
-                let p = self.cpu.p.get();
-                let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
+            let op;
+            match opcode {
+                Opcode::AdcZero => {
+                    let a = self.cpu.a.get();
+                    let p = self.cpu.p.get();
+                    let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
 
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
 
-                let result = a as u16 + c as u16 + value as u16;
-                let out = result as u8;
+                    let result = a as u16 + c as u16 + value as u16;
+                    let out = result as u8;
 
-                // TODO: Refactor!
-                let signed_result = result as i8;
-                let signed_out = out as i8;
-                let is_sign_correct =
-                    (signed_result >= 0 && signed_out >= 0)
-                    || (signed_result < 0 && signed_out < 0);
+                    // TODO: Refactor!
+                    let signed_result = result as i8;
+                    let signed_out = out as i8;
+                    let is_sign_correct =
+                        (signed_result >= 0 && signed_out >= 0)
+                        || (signed_result < 0 && signed_out < 0);
 
-                self.cpu.a.set(out);
-                self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
-                self.cpu.set_flags(CpuFlags::Z, result == 0);
-                self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
-                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+                    self.cpu.a.set(out);
+                    self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
+                    self.cpu.set_flags(CpuFlags::Z, result == 0);
+                    self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
+                    self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
 
-                next_pc = pc + 2;
-                op = Op::AdcZero { zero_page };
-            }
-            Opcode::AdcImm => {
-                let a = self.cpu.a.get();
-                let p = self.cpu.p.get();
-                let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
-
-                let value = self.read_u8(pc + 1);
-
-                let result = a as u16 + c as u16 + value as u16;
-                let out = result as u8;
-
-                // TODO: Refactor!
-                let signed_result = result as i8;
-                let signed_out = out as i8;
-                let is_sign_correct =
-                    (signed_result >= 0 && signed_out >= 0)
-                    || (signed_result < 0 && signed_out < 0);
-
-                self.cpu.a.set(out);
-                self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
-                self.cpu.set_flags(CpuFlags::Z, result == 0);
-                self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
-                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
-
-                next_pc = pc + 2;
-                op = Op::AdcImm { value };
-            }
-            Opcode::AndImm => {
-                let a = self.cpu.a.get();
-                let value = self.read_u8(pc + 1);
-                let a = a & value;
-                self.cpu.a.set(a);
-
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
-                next_pc = pc + 2;
-                op = Op::AndImm { value };
-            }
-            Opcode::AndZero => {
-                let a = self.cpu.a.get();
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
-                let a = a & value;
-                self.cpu.a.set(a);
-
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
-                next_pc = pc + 2;
-                op = Op::AndZero { zero_page };
-            }
-            Opcode::Beq => {
-                let addr_offset = self.read_i8(pc + 1);
-
-                let pc_after = pc + 2;
-                if self.cpu.contains_flags(CpuFlags::Z) {
-                    // TODO: Handle offset past page! With that, `i8` shouldn't
-                    // be necessary
-                    next_pc = (pc_after as i16 + addr_offset as i16) as u16;
+                    next_pc = pc + 2;
+                    op = Op::AdcZero { zero_page };
                 }
-                else {
-                    next_pc = pc_after;
+                Opcode::AdcImm => {
+                    let a = self.cpu.a.get();
+                    let p = self.cpu.p.get();
+                    let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
+
+                    let value = self.read_u8(pc + 1);
+
+                    let result = a as u16 + c as u16 + value as u16;
+                    let out = result as u8;
+
+                    // TODO: Refactor!
+                    let signed_result = result as i8;
+                    let signed_out = out as i8;
+                    let is_sign_correct =
+                        (signed_result >= 0 && signed_out >= 0)
+                        || (signed_result < 0 && signed_out < 0);
+
+                    self.cpu.a.set(out);
+                    self.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
+                    self.cpu.set_flags(CpuFlags::Z, result == 0);
+                    self.cpu.set_flags(CpuFlags::V, !is_sign_correct);
+                    self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+
+                    next_pc = pc + 2;
+                    op = Op::AdcImm { value };
                 }
-                op = Op::Beq { addr_offset };
-            }
-            Opcode::Bne => {
-                let addr_offset = self.read_i8(pc + 1);
+                Opcode::AndImm => {
+                    let a = self.cpu.a.get();
+                    let value = self.read_u8(pc + 1);
+                    let a = a & value;
+                    self.cpu.a.set(a);
 
-                let pc_after = pc + 2;
-                if self.cpu.contains_flags(CpuFlags::Z) {
-                    next_pc = pc_after;
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                    next_pc = pc + 2;
+                    op = Op::AndImm { value };
                 }
-                else {
-                    // TODO: Handle offset past page! With that, `i8` shouldn't
-                    // be necessary
-                    next_pc = (pc_after as i16 + addr_offset as i16) as u16;
+                Opcode::AndZero => {
+                    let a = self.cpu.a.get();
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
+                    let a = a & value;
+                    self.cpu.a.set(a);
+
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                    next_pc = pc + 2;
+                    op = Op::AndZero { zero_page };
                 }
-                op = Op::Bne { addr_offset };
-            }
-            Opcode::Bpl => {
-                let addr_offset = self.read_i8(pc + 1);
+                Opcode::Beq => {
+                    let addr_offset = self.read_i8(pc + 1);
 
-                let pc_after = pc + 2;
-                if self.cpu.contains_flags(CpuFlags::N) {
-                    next_pc = pc_after;
+                    let pc_after = pc + 2;
+                    if self.cpu.contains_flags(CpuFlags::Z) {
+                        // TODO: Handle offset past page! With that, `i8` shouldn't
+                        // be necessary
+                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
+                    }
+                    else {
+                        next_pc = pc_after;
+                    }
+                    op = Op::Beq { addr_offset };
                 }
-                else {
-                    // TODO: Handle offset past page! With that, `i8` shouldn't
-                    // be necessary
-                    next_pc = (pc_after as i16 + addr_offset as i16) as u16;
+                Opcode::Bne => {
+                    let addr_offset = self.read_i8(pc + 1);
+
+                    let pc_after = pc + 2;
+                    if self.cpu.contains_flags(CpuFlags::Z) {
+                        next_pc = pc_after;
+                    }
+                    else {
+                        // TODO: Handle offset past page! With that, `i8` shouldn't
+                        // be necessary
+                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
+                    }
+                    op = Op::Bne { addr_offset };
                 }
-                op = Op::Bpl { addr_offset };
-            }
-            Opcode::Clc => {
-                self.cpu.set_flags(CpuFlags::C, false);
+                Opcode::Bpl => {
+                    let addr_offset = self.read_i8(pc + 1);
 
-                next_pc = pc + 1;
-                op = Op::Clc;
-            }
-            Opcode::Cld => {
-                self.cpu.set_flags(CpuFlags::D, false);
-                next_pc = pc + 1;
-                op = Op::Cld;
-            }
-            Opcode::CmpImm => {
-                let value = self.read_u8(pc + 1);
-                let a = self.cpu.a.get();
-                let result = a.wrapping_sub(value);
+                    let pc_after = pc + 2;
+                    if self.cpu.contains_flags(CpuFlags::N) {
+                        next_pc = pc_after;
+                    }
+                    else {
+                        // TODO: Handle offset past page! With that, `i8` shouldn't
+                        // be necessary
+                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
+                    }
+                    op = Op::Bpl { addr_offset };
+                }
+                Opcode::Clc => {
+                    self.cpu.set_flags(CpuFlags::C, false);
 
-                self.cpu.set_flags(CpuFlags::C, a >= value);
-                self.cpu.set_flags(CpuFlags::Z, a == value);
-                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+                    next_pc = pc + 1;
+                    op = Op::Clc;
+                }
+                Opcode::Cld => {
+                    self.cpu.set_flags(CpuFlags::D, false);
+                    next_pc = pc + 1;
+                    op = Op::Cld;
+                }
+                Opcode::CmpImm => {
+                    let value = self.read_u8(pc + 1);
+                    let a = self.cpu.a.get();
+                    let result = a.wrapping_sub(value);
 
-                next_pc = pc + 2;
-                op = Op::CmpImm { value };
-            }
-            Opcode::DecZero => {
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
-                let value = value.wrapping_sub(1);
-                self.write_u8(addr, value);
+                    self.cpu.set_flags(CpuFlags::C, a >= value);
+                    self.cpu.set_flags(CpuFlags::Z, a == value);
+                    self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
 
-                self.cpu.set_flags(CpuFlags::Z, value == 0);
-                self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+                    next_pc = pc + 2;
+                    op = Op::CmpImm { value };
+                }
+                Opcode::DecZero => {
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
+                    let value = value.wrapping_sub(1);
+                    self.write_u8(addr, value);
 
-                next_pc = pc + 2;
-                op = Op::DecZero { zero_page };
-            }
-            Opcode::Dex => {
-                let x = self.cpu.x.get().wrapping_sub(1);
-                self.cpu.set_flags(CpuFlags::Z, x == 0);
-                self.cpu.set_flags(CpuFlags::N, (x & 0b_1000_0000) != 0);
-                self.cpu.x.set(x);
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
 
-                next_pc = pc + 1;
-                op = Op::Dex;
-            }
-            Opcode::Dey => {
-                let y = self.cpu.y.get().wrapping_sub(1);
-                self.cpu.set_flags(CpuFlags::Z, y == 0);
-                self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
-                self.cpu.y.set(y);
+                    next_pc = pc + 2;
+                    op = Op::DecZero { zero_page };
+                }
+                Opcode::Dex => {
+                    let x = self.cpu.x.get().wrapping_sub(1);
+                    self.cpu.set_flags(CpuFlags::Z, x == 0);
+                    self.cpu.set_flags(CpuFlags::N, (x & 0b_1000_0000) != 0);
+                    self.cpu.x.set(x);
 
-                next_pc = pc + 1;
-                op = Op::Dey;
-            }
-            Opcode::EorImm => {
-                let value = self.read_u8(pc + 1);
-                let a = self.cpu.a.get() ^ value;
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                self.cpu.a.set(a);
+                    next_pc = pc + 1;
+                    op = Op::Dex;
+                }
+                Opcode::Dey => {
+                    let y = self.cpu.y.get().wrapping_sub(1);
+                    self.cpu.set_flags(CpuFlags::Z, y == 0);
+                    self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
+                    self.cpu.y.set(y);
 
-                next_pc = pc + 2;
-                op = Op::EorImm { value };
-            }
-            Opcode::EorZero => {
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
-                let a = self.cpu.a.get() ^ value;
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                self.cpu.a.set(a);
+                    next_pc = pc + 1;
+                    op = Op::Dey;
+                }
+                Opcode::EorImm => {
+                    let value = self.read_u8(pc + 1);
+                    let a = self.cpu.a.get() ^ value;
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                    self.cpu.a.set(a);
 
-                next_pc = pc + 2;
-                op = Op::EorZero { zero_page };
-            }
-            Opcode::Iny => {
-                let y = self.cpu.y.get().wrapping_add(1);
-                self.cpu.set_flags(CpuFlags::Z, y == 0);
-                self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
-                self.cpu.y.set(y);
+                    next_pc = pc + 2;
+                    op = Op::EorImm { value };
+                }
+                Opcode::EorZero => {
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
+                    let a = self.cpu.a.get() ^ value;
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                    self.cpu.a.set(a);
 
-                next_pc = pc + 1;
-                op = Op::Iny;
-            }
-            Opcode::JmpAbs => {
-                let addr = self.read_u16(pc + 1);
+                    next_pc = pc + 2;
+                    op = Op::EorZero { zero_page };
+                }
+                Opcode::Iny => {
+                    let y = self.cpu.y.get().wrapping_add(1);
+                    self.cpu.set_flags(CpuFlags::Z, y == 0);
+                    self.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
+                    self.cpu.y.set(y);
 
-                next_pc = addr;
-                op = Op::JmpAbs { addr };
-            }
-            Opcode::Jsr => {
-                let addr = self.read_u16(pc + 1);
-                let ret_pc = pc.wrapping_add(3);
-                let push_pc = ret_pc.wrapping_sub(1);
+                    next_pc = pc + 1;
+                    op = Op::Iny;
+                }
+                Opcode::JmpAbs => {
+                    let addr = self.read_u16(pc + 1);
 
-                self.push_u16(push_pc);
+                    next_pc = addr;
+                    op = Op::JmpAbs { addr };
+                }
+                Opcode::Jsr => {
+                    let addr = self.read_u16(pc + 1);
+                    let ret_pc = pc.wrapping_add(3);
+                    let push_pc = ret_pc.wrapping_sub(1);
 
-                next_pc = addr;
-                op = Op::Jsr { addr };
-            }
-            Opcode::LdaAbs => {
-                // TODO: Flags!
-                let addr = self.read_u16(pc + 1);
-                let value = self.read_u8(addr);
-                self.cpu.a.set(value);
-                next_pc = pc + 3;
-                op = Op::LdaAbs { addr };
-            }
-            Opcode::LdaImm => {
-                let value = self.read_u8(pc + 1);
-                self.cpu.a.set(value);
-                next_pc = pc + 2;
-                op = Op::LdaImm { value };
-            }
-            Opcode::LdaIndY => {
-                let y = self.cpu.y.get();
-                let target_addr_base = self.read_u8(pc + 1);
+                    self.push_u16(push_pc);
 
-                // TODO: Is this right? Does the target address
-                // wrap around the zero page?
-                let addr_base = self.read_u16(target_addr_base as u16);
-                let addr = addr_base.wrapping_add(y as u16);
-                let value = self.read_u8(addr);
+                    next_pc = addr;
+                    op = Op::Jsr { addr };
+                }
+                Opcode::LdaAbs => {
+                    // TODO: Flags!
+                    let addr = self.read_u16(pc + 1);
+                    let value = self.read_u8(addr);
+                    self.cpu.a.set(value);
+                    next_pc = pc + 3;
+                    op = Op::LdaAbs { addr };
+                }
+                Opcode::LdaImm => {
+                    let value = self.read_u8(pc + 1);
+                    self.cpu.a.set(value);
+                    next_pc = pc + 2;
+                    op = Op::LdaImm { value };
+                }
+                Opcode::LdaIndY => {
+                    let y = self.cpu.y.get();
+                    let target_addr_base = self.read_u8(pc + 1);
 
-                self.cpu.a.set(value);
+                    // TODO: Is this right? Does the target address
+                    // wrap around the zero page?
+                    let addr_base = self.read_u16(target_addr_base as u16);
+                    let addr = addr_base.wrapping_add(y as u16);
+                    let value = self.read_u8(addr);
 
-                next_pc = pc + 2;
-                op = Op::LdaIndY { target_addr_base };
-            }
-            Opcode::LdaZero => {
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
-                self.cpu.a.set(value);
-                next_pc = pc + 2;
-                op = Op::LdaZero { zero_page };
-            }
-            Opcode::LdxImm => {
-                let value = self.read_u8(pc + 1);
-                self.cpu.x.set(value);
-                next_pc = pc + 2;
-                op = Op::LdxImm { value };
-            }
-            Opcode::LdxZero => {
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
-                self.cpu.x.set(value);
-                next_pc = pc + 2;
-                op = Op::LdxZero { zero_page };
-            }
-            Opcode::LdyImm => {
-                let value = self.read_u8(pc + 1);
-                self.cpu.y.set(value);
-                next_pc = pc + 2;
-                op = Op::LdyImm { value };
-            }
-            Opcode::LsrA => {
-                let a = self.cpu.a.get();
-                let carry = (a & 0b_0000_0001) != 0;
+                    self.cpu.a.set(value);
 
-                let result = a >> 1;
-                self.cpu.a.set(result);
-                self.cpu.set_flags(CpuFlags::C, carry);
-                self.cpu.set_flags(CpuFlags::Z, result == 0);
-                self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+                    next_pc = pc + 2;
+                    op = Op::LdaIndY { target_addr_base };
+                }
+                Opcode::LdaZero => {
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
+                    self.cpu.a.set(value);
+                    next_pc = pc + 2;
+                    op = Op::LdaZero { zero_page };
+                }
+                Opcode::LdxImm => {
+                    let value = self.read_u8(pc + 1);
+                    self.cpu.x.set(value);
+                    next_pc = pc + 2;
+                    op = Op::LdxImm { value };
+                }
+                Opcode::LdxZero => {
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
+                    self.cpu.x.set(value);
+                    next_pc = pc + 2;
+                    op = Op::LdxZero { zero_page };
+                }
+                Opcode::LdyImm => {
+                    let value = self.read_u8(pc + 1);
+                    self.cpu.y.set(value);
+                    next_pc = pc + 2;
+                    op = Op::LdyImm { value };
+                }
+                Opcode::LsrA => {
+                    let a = self.cpu.a.get();
+                    let carry = (a & 0b_0000_0001) != 0;
 
-                next_pc = pc + 1;
-                op = Op::LsrA;
-            }
-            Opcode::Pha => {
-                let a = self.cpu.a.get();
-                self.push_u8(a);
-                next_pc = pc + 1;
-                op = Op::Pha;
-            }
-            Opcode::Pla => {
-                let a = self.pull_u8();
-                self.cpu.a.set(a);
+                    let result = a >> 1;
+                    self.cpu.a.set(result);
+                    self.cpu.set_flags(CpuFlags::C, carry);
+                    self.cpu.set_flags(CpuFlags::Z, result == 0);
+                    self.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
 
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                    next_pc = pc + 1;
+                    op = Op::LsrA;
+                }
+                Opcode::Pha => {
+                    let a = self.cpu.a.get();
+                    self.push_u8(a);
+                    next_pc = pc + 1;
+                    op = Op::Pha;
+                }
+                Opcode::Pla => {
+                    let a = self.pull_u8();
+                    self.cpu.a.set(a);
 
-                next_pc = pc + 1;
-                op = Op::Pla;
-            }
-            Opcode::RorZero => {
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                let value = self.read_u8(addr);
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
 
-                let c = (value & 0b_0000_0001) != 0;
-                let new_value = value >> 1;
-                self.write_u8(addr, new_value);
+                    next_pc = pc + 1;
+                    op = Op::Pla;
+                }
+                Opcode::RorZero => {
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    let value = self.read_u8(addr);
 
-                self.cpu.set_flags(CpuFlags::C, c);
-                self.cpu.set_flags(CpuFlags::Z, value == 0);
-                self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+                    let c = (value & 0b_0000_0001) != 0;
+                    let new_value = value >> 1;
+                    self.write_u8(addr, new_value);
 
-                next_pc = pc + 2;
-                op = Op::RorZero { zero_page };
-            }
-            Opcode::Rts => {
-                let push_pc = self.pull_u16();
-                let ret_pc = push_pc.wrapping_add(1);
+                    self.cpu.set_flags(CpuFlags::C, c);
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
 
-                next_pc = ret_pc;
-                op = Op::Rts;
-            }
-            Opcode::Sei => {
-                self.cpu.set_flags(CpuFlags::I, true);
-                next_pc = pc + 1;
-                op = Op::Sei;
-            }
-            Opcode::StaAbs => {
-                let a = self.cpu.a.get();
-                let addr = self.read_u16(pc + 1);
-                self.write_u8(addr, a);
-                next_pc = pc + 3;
-                op = Op::StaAbs { addr };
-            }
-            Opcode::StaZero => {
-                let a = self.cpu.a.get();
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                self.write_u8(addr, a);
-                next_pc = pc + 2;
-                op = Op::StaZero { zero_page };
-            }
-            Opcode::StaIndY => {
-                let a = self.cpu.a.get();
-                let y = self.cpu.y.get();
-                let target_addr_base = self.read_u8(pc + 1);
+                    next_pc = pc + 2;
+                    op = Op::RorZero { zero_page };
+                }
+                Opcode::Rts => {
+                    let push_pc = self.pull_u16();
+                    let ret_pc = push_pc.wrapping_add(1);
 
-                // TODO: Is this right? Does the target address
-                // wrap around the zero page?
-                let addr_base = self.read_u16(target_addr_base as u16);
-                let addr = addr_base.wrapping_add(y as u16);
-                self.write_u8(addr, a);
+                    next_pc = ret_pc;
+                    op = Op::Rts;
+                }
+                Opcode::Sei => {
+                    self.cpu.set_flags(CpuFlags::I, true);
+                    next_pc = pc + 1;
+                    op = Op::Sei;
+                }
+                Opcode::StaAbs => {
+                    let a = self.cpu.a.get();
+                    let addr = self.read_u16(pc + 1);
+                    self.write_u8(addr, a);
+                    next_pc = pc + 3;
+                    op = Op::StaAbs { addr };
+                }
+                Opcode::StaZero => {
+                    let a = self.cpu.a.get();
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    self.write_u8(addr, a);
+                    next_pc = pc + 2;
+                    op = Op::StaZero { zero_page };
+                }
+                Opcode::StaIndY => {
+                    let a = self.cpu.a.get();
+                    let y = self.cpu.y.get();
+                    let target_addr_base = self.read_u8(pc + 1);
 
-                next_pc = pc + 2;
-                op = Op::StaIndY { target_addr_base };
-            }
-            Opcode::StyZero => {
-                let y = self.cpu.y.get();
-                let zero_page = self.read_u8(pc + 1);
-                let addr = zero_page as u16;
-                self.write_u8(addr, y);
-                next_pc = pc + 2;
-                op = Op::StyZero { zero_page };
-            }
-            Opcode::Tax => {
-                let a = self.cpu.a.get();
-                self.cpu.x.set(a);
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                    // TODO: Is this right? Does the target address
+                    // wrap around the zero page?
+                    let addr_base = self.read_u16(target_addr_base as u16);
+                    let addr = addr_base.wrapping_add(y as u16);
+                    self.write_u8(addr, a);
 
-                next_pc = pc + 1;
-                op = Op::Tax;
-            }
-            Opcode::Tay => {
-                let a = self.cpu.a.get();
-                self.cpu.y.set(a);
-                self.cpu.set_flags(CpuFlags::Z, a == 0);
-                self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+                    next_pc = pc + 2;
+                    op = Op::StaIndY { target_addr_base };
+                }
+                Opcode::StyZero => {
+                    let y = self.cpu.y.get();
+                    let zero_page = self.read_u8(pc + 1);
+                    let addr = zero_page as u16;
+                    self.write_u8(addr, y);
+                    next_pc = pc + 2;
+                    op = Op::StyZero { zero_page };
+                }
+                Opcode::Tax => {
+                    let a = self.cpu.a.get();
+                    self.cpu.x.set(a);
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
 
-                next_pc = pc + 1;
-                op = Op::Tay;
+                    next_pc = pc + 1;
+                    op = Op::Tax;
+                }
+                Opcode::Tay => {
+                    let a = self.cpu.a.get();
+                    self.cpu.y.set(a);
+                    self.cpu.set_flags(CpuFlags::Z, a == 0);
+                    self.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
+
+                    next_pc = pc + 1;
+                    op = Op::Tay;
+                }
+                Opcode::Txa => {
+                    let x = self.cpu.x.get();
+                    self.cpu.a.set(x);
+                    next_pc = pc + 1;
+                    op = Op::Txa;
+                }
+                Opcode::Txs => {
+                    let x = self.cpu.x.get();
+                    self.cpu.s.set(x);
+                    next_pc = pc + 1;
+                    op = Op::Txs;
+                }
+                Opcode::Tya => {
+                    let y = self.cpu.y.get();
+                    self.cpu.a.set(y);
+                    next_pc = pc + 1;
+                    op = Op::Tya;
+                }
             }
-            Opcode::Txa => {
-                let x = self.cpu.x.get();
-                self.cpu.a.set(x);
-                next_pc = pc + 1;
-                op = Op::Txa;
-            }
-            Opcode::Txs => {
-                let x = self.cpu.x.get();
-                self.cpu.s.set(x);
-                next_pc = pc + 1;
-                op = Op::Txs;
-            }
-            Opcode::Tya => {
-                let y = self.cpu.y.get();
-                self.cpu.a.set(y);
-                next_pc = pc + 1;
-                op = Op::Tya;
-            }
+
+            self.cpu.pc.set(next_pc);
+
+            debug_assert_eq!(Opcode::from(&op), opcode);
+
+            yield CpuStep { pc, op };
         }
-
-        self.cpu.pc.set(next_pc);
-
-        debug_assert_eq!(Opcode::from(&op), opcode);
-
-        CpuStep { pc, op }
     }
 
-    async fn step_ppu(&self) {
-        let cycle = self.ppu.cycle.get();
-        // let frame = cycle / 89_342;
-        let frame_cycle = cycle % 89_342;
-        let scanline = frame_cycle / 341;
-        let scanline_cycle = frame_cycle % 341;
+    fn run_ppu<'a>(&'a self) -> impl Generator<Yield = (), Return = !> + 'a {
+        move || loop {
+            let cycle = self.ppu.cycle.get();
+            // let frame = cycle / 89_342;
+            let frame_cycle = cycle % 89_342;
+            let scanline = frame_cycle / 341;
+            let scanline_cycle = frame_cycle % 341;
 
-        if scanline == 240 && scanline_cycle == 1 {
-            let _ = self.ppu.status.update(|mut status| {
-                status.set(PpuStatusFlags::VBLANK_STARTED, true);
-                status
-            });
+            if scanline == 240 && scanline_cycle == 1 {
+                let _ = self.ppu.status.update(|mut status| {
+                    status.set(PpuStatusFlags::VBLANK_STARTED, true);
+                    status
+                });
+            }
+            self.ppu.cycle.set(cycle + 1);
+            yield;
         }
-        self.ppu.cycle.set(cycle + 1);
     }
 
-    pub async fn step(&self) -> CpuStep {
-        let cpu_step = await!(self.step_cpu());
-        await!(self.step_ppu());
-        await!(self.step_ppu());
-        await!(self.step_ppu());
+    pub fn run<'a>(&'a self)
+        -> impl Generator<Yield = CpuStep, Return = !> + 'a
+    {
+        let mut run_cpu = self.run_cpu();
 
-        cpu_step
+        let mut run_ppu = self.run_ppu();
+
+        move || loop {
+            // TODO: Clean this up
+            let GeneratorState::Yielded(cpu_step) = Pin::new(&mut run_cpu).resume();
+            let GeneratorState::Yielded(()) = Pin::new(&mut run_ppu).resume();
+            let GeneratorState::Yielded(()) = Pin::new(&mut run_ppu).resume();
+            let GeneratorState::Yielded(()) = Pin::new(&mut run_ppu).resume();
+
+            yield cpu_step;
+        }
     }
 }
 

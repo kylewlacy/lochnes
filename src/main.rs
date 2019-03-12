@@ -1,29 +1,27 @@
-#![feature(futures_api, async_await, await_macro, as_cell, cell_update)]
+#![feature(
+    futures_api, async_await, await_macro, as_cell, cell_update,
+    generators, generator_trait, never_type, exhaustive_patterns
+)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate bitflags;
 #[macro_use] extern crate enum_kinds;
 #[cfg(test)] extern crate test;
 
+use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
 use std::path::PathBuf;
 use std::process;
 use std::io;
 use std::fs;
 use structopt::StructOpt;
-use pin_utils::pin_mut;
-use futures::executor::LocalPool;
-use futures::task::Poll;
-use futures::poll;
 
 mod rom;
 mod nes;
 
 fn main() {
-    let mut pool = LocalPool::new();
-
     let opts = Options::from_args();
-    let run_future = run(opts);
-    let run_result = pool.run_until(run_future);
+    let run_result = run(opts);
 
     match run_result {
         Ok(_) => { }
@@ -41,23 +39,14 @@ struct Options {
     rom: PathBuf,
 }
 
-async fn run(opts: Options) -> Result<(), LochnesError> {
+fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let nes = nes::Nes::new_from_rom(rom);
+    let mut run_nes = nes.run();
 
     loop {
-        let step = {
-            let step = nes.step();
-            pin_mut!(step);
-
-            loop {
-                match poll!(&mut step) {
-                    Poll::Pending => { }
-                    Poll::Ready(step) => { break step; }
-                }
-            }
-        };
+        let GeneratorState::Yielded(step) = Pin::new(&mut run_nes).resume();
 
         println!("{:X?}", nes.cpu);
         println!("${:04X}: {}", step.pc, step.op);
@@ -101,19 +90,13 @@ mod tests {
         let steps = env::var("BENCH_STEPS").expect("BENCH_STEPS env var must be set for benchmarking");
         let steps: u64 = steps.parse().unwrap();
 
-
-        let mut pool = LocalPool::new();
-
         b.iter(|| {
             let nes = nes::Nes::new_from_rom(rom.clone());
+            let mut run_nes = nes.run();
 
-            let run_future = async {
-                for _ in 0..steps {
-                    await!(nes.step());
-                }
-            };
-
-            pool.run_until(run_future)
+            for _ in 0..steps {
+                let GeneratorState::Yielded(_) = Pin::new(&mut run_nes).resume();
+            }
         });
     }
 }
