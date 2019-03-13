@@ -95,6 +95,9 @@ impl Nes {
             0x2001 => {
                 self.ppu.set_ppumask(value);
             }
+            0x2003 => {
+                self.ppu.write_oamaddr(value);
+            }
             0x2005 => {
                 self.ppu.write_ppuscroll(value);
             }
@@ -995,6 +998,10 @@ impl Ppu {
                 unimplemented!("Unimplemented write to VRAM address ${:04X}", addr)
             }
         }
+    }
+
+    fn write_oamaddr(&self, value: u8) {
+        self.oam_addr.set(value);
     }
 
     fn write_ppuscroll(&self, value: u8) {
