@@ -449,6 +449,13 @@ impl Nes {
                     next_pc = pc + 2;
                     op = Op::LdaZero { zero_page };
                 }
+                Opcode::LdxAbs => {
+                    let addr = self.read_u16(pc + 1);
+                    let value = self.read_u8(addr);
+                    self.cpu.x.set(value);
+                    next_pc = pc + 3;
+                    op = Op::LdxAbs { addr };
+                }
                 Opcode::LdxImm => {
                     let value = self.read_u8(pc + 1);
                     self.cpu.x.set(value);
@@ -760,6 +767,7 @@ pub enum Op {
     LdaImm { value: u8 },
     LdaZero { zero_page: u8 },
     LdaIndY { target_addr_base: u8 },
+    LdxAbs { addr: u16 },
     LdxImm { value: u8 },
     LdxZero { zero_page: u8 },
     LdyImm { value: u8 },
@@ -815,6 +823,7 @@ impl Opcode {
             0xA9 => Opcode::LdaImm,
             0xAA => Opcode::Tax,
             0xAD => Opcode::LdaAbs,
+            0xAE => Opcode::LdxAbs,
             0xB1 => Opcode::LdaIndY,
             0xC6 => Opcode::DecZero,
             0xC8 => Opcode::Iny,
@@ -852,7 +861,9 @@ impl fmt::Display for Opcode {
             | Opcode::LdaImm
             | Opcode::LdaIndY
             | Opcode::LdaZero => "LDA",
-            Opcode::LdxImm | Opcode::LdxZero => "LDX",
+            Opcode::LdxAbs
+            | Opcode::LdxImm
+            | Opcode::LdxZero => "LDX",
             Opcode::LdyImm => "LDY",
             Opcode::LsrA => "LSR",
             Opcode::Pha => "PHA",
@@ -897,6 +908,7 @@ impl fmt::Display for Op {
                 write!(f, "{} A", opcode)?;
             }
             Op::LdaAbs { addr }
+            | Op::LdxAbs { addr }
             | Op::StaAbs { addr }
             | Op::JmpAbs { addr }
             | Op::Jsr { addr } => {
