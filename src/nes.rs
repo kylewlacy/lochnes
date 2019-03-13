@@ -107,6 +107,9 @@ impl Nes {
             0x2007 => {
                 self.ppu.write_ppudata(value);
             }
+            0x4014 => {
+                self.copy_oam_dma(value);
+            }
             _ => {
                 unimplemented!("Unhandled write to address: 0x{:X}", addr);
             }
@@ -146,6 +149,20 @@ impl Nes {
         let value_hi = self.pull_u8();
 
         ((value_hi as u16) << 8) | (value_lo as u16)
+    }
+
+    fn copy_oam_dma(&self, page: u8) {
+        let target_addr_start = self.ppu.oam_addr.get() as u16;
+        let mut oam = self.ppu.oam.get();
+        for index in 0x00..=0xFF {
+            let source_addr = ((page as u16) << 8) | index;
+            let byte = self.read_u8(source_addr);
+
+            let target_addr = (target_addr_start + index) as usize % oam.len();
+            oam[target_addr] = byte;
+        }
+
+        self.ppu.oam.set(oam);
     }
 
     fn run_cpu<'a>(&'a self)
