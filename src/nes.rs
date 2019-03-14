@@ -530,8 +530,14 @@ impl Nes {
                     let addr = zero_page as u16;
                     let value = self.read_u8(addr);
 
+                    let prev_c = self.cpu.contains_flags(CpuFlags::C);
+                    let carry_mask = match prev_c {
+                        true  => 0b_1000_0000,
+                        false => 0b_0000_0000,
+                    };
+
                     let c = (value & 0b_0000_0001) != 0;
-                    let new_value = value >> 1;
+                    let new_value = (value >> 1) | carry_mask;
                     self.write_u8(addr, new_value);
 
                     self.cpu.set_flags(CpuFlags::C, c);
