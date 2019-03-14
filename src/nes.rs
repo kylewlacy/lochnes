@@ -110,6 +110,9 @@ impl Nes {
             0x4014 => {
                 self.copy_oam_dma(value);
             }
+            0x4017 => {
+                // TODO: Implement APU frame counter
+            }
             _ => {
                 unimplemented!("Unhandled write to address: 0x{:X}", addr);
             }
