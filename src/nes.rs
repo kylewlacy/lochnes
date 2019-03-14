@@ -1568,6 +1568,9 @@ impl Ppu {
                 let offset = addr as usize - 0x2000;
                 nametables[offset].set(value);
             }
+            0x3F00..=0x3FFF => {
+                // TODO: Implement palette RAM
+            }
             _ => {
                 unimplemented!("Unimplemented write to VRAM address ${:04X}", addr)
             }
