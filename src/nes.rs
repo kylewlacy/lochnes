@@ -426,6 +426,16 @@ impl Nes {
                     next_pc = pc + 3;
                     op = Op::LdaAbs { addr };
                 }
+                Opcode::LdaAbsX => {
+                    // TODO: Flags!
+                    let x = self.cpu.x.get();
+                    let addr_base = self.read_u16(pc + 1);
+                    let addr = addr_base.wrapping_add(x as u16);
+                    let value = self.read_u8(addr);
+                    self.cpu.a.set(value);
+                    next_pc = pc + 3;
+                    op = Op::LdaAbsX { addr_base };
+                }
                 Opcode::LdaImm => {
                     let value = self.read_u8(pc + 1);
                     self.cpu.a.set(value);
@@ -770,6 +780,7 @@ pub enum Op {
     JmpAbs { addr: u16 },
     Jsr { addr: u16 },
     LdaAbs { addr: u16 },
+    LdaAbsX { addr_base: u16 },
     LdaImm { value: u8 },
     LdaZero { zero_page: u8 },
     LdaIndY { target_addr_base: u8 },
@@ -831,6 +842,7 @@ impl Opcode {
             0xAD => Opcode::LdaAbs,
             0xAE => Opcode::LdxAbs,
             0xB1 => Opcode::LdaIndY,
+            0xBD => Opcode::LdaAbsX,
             0xC6 => Opcode::DecZero,
             0xC8 => Opcode::Iny,
             0xC9 => Opcode::CmpImm,
@@ -864,6 +876,7 @@ impl fmt::Display for Opcode {
             Opcode::JmpAbs => "JMP",
             Opcode::Jsr => "JSR",
             Opcode::LdaAbs
+            | Opcode::LdaAbsX
             | Opcode::LdaImm
             | Opcode::LdaIndY
             | Opcode::LdaZero => "LDA",
@@ -919,6 +932,9 @@ impl fmt::Display for Op {
             | Op::JmpAbs { addr }
             | Op::Jsr { addr } => {
                 write!(f, "{} ${:04X}", opcode, addr)?;
+            }
+            Op::LdaAbsX { addr_base } => {
+                write!(f, "{} ${:04X},X", opcode, addr_base)?;
             }
             Op::AdcZero { zero_page }
             | Op::AndZero { zero_page }
