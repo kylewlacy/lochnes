@@ -55,6 +55,10 @@ impl Nes {
             0x2002 => {
                 self.ppu.ppustatus()
             }
+            0x4016 => {
+                // TODO: Return joystick state
+                0x40
+            }
             0x8000..=0xFFFF => {
                 let rom_offset = addr - 0x8000;
                 let mapped_addr = rom_offset as usize % self.rom.prg_rom.len();
