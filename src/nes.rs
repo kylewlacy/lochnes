@@ -118,6 +118,9 @@ impl Nes {
             0x4014 => {
                 self.copy_oam_dma(value);
             }
+            0x4015 => {
+                // TODO: APU sound channel control
+            }
             0x4016 => {
                 // TODO: Joystick strobe
             }
