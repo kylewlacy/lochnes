@@ -110,6 +110,9 @@ impl Nes {
             0x4014 => {
                 self.copy_oam_dma(value);
             }
+            0x4016 => {
+                // TODO: Joystick strobe
+            }
             0x4017 => {
                 // TODO: Implement APU frame counter
             }
