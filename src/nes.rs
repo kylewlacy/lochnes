@@ -115,6 +115,12 @@ impl Nes {
             0x2007 => {
                 self.ppu.write_ppudata(value);
             }
+            0x4000..=0x4007 => {
+                // TODO: APU pulse
+            }
+            0x4008..=0x400B => {
+                // TODO: APU triangle
+            }
             0x4014 => {
                 self.copy_oam_dma(value);
             }
