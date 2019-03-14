@@ -902,6 +902,12 @@ impl Nes {
                             });
                             self.cpu.nmi.set(true);
                         }
+                        else if scanline == 0 && cycle == 1 {
+                            let _ = self.ppu.status.update(|mut status| {
+                                status.set(PpuStatusFlags::VBLANK_STARTED, false);
+                                status
+                            });
+                        }
 
                         yield;
                     }
