@@ -540,26 +540,36 @@ impl Nes {
                     op = Op::Jsr { addr };
                 }
                 Opcode::LdaAbs => {
-                    // TODO: Flags!
                     let addr = self.read_u16(pc + 1);
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.a.set(value);
+
                     next_pc = pc + 3;
                     op = Op::LdaAbs { addr };
                 }
                 Opcode::LdaAbsX => {
-                    // TODO: Flags!
                     let x = self.cpu.x.get();
                     let addr_base = self.read_u16(pc + 1);
                     let addr = addr_base.wrapping_add(x as u16);
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.a.set(value);
+
                     next_pc = pc + 3;
                     op = Op::LdaAbsX { addr_base };
                 }
                 Opcode::LdaImm => {
                     let value = self.read_u8(pc + 1);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.a.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdaImm { value };
                 }
@@ -573,6 +583,8 @@ impl Nes {
                     let addr = addr_base.wrapping_add(y as u16);
                     let value = self.read_u8(addr);
 
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.a.set(value);
 
                     next_pc = pc + 2;
@@ -582,7 +594,11 @@ impl Nes {
                     let zero_page = self.read_u8(pc + 1);
                     let addr = zero_page as u16;
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.a.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdaZero { zero_page };
                 }
@@ -591,20 +607,32 @@ impl Nes {
                     let zero_page_base = self.read_u8(pc + 1);
                     let addr = (zero_page_base as u16).wrapping_add(x as u16);
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.a.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdaZeroX { zero_page_base };
                 }
                 Opcode::LdxAbs => {
                     let addr = self.read_u16(pc + 1);
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.x.set(value);
+
                     next_pc = pc + 3;
                     op = Op::LdxAbs { addr };
                 }
                 Opcode::LdxImm => {
                     let value = self.read_u8(pc + 1);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.x.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdxImm { value };
                 }
@@ -612,13 +640,21 @@ impl Nes {
                     let zero_page = self.read_u8(pc + 1);
                     let addr = zero_page as u16;
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.x.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdxZero { zero_page };
                 }
                 Opcode::LdyImm => {
                     let value = self.read_u8(pc + 1);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.y.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdyImm { value };
                 }
@@ -626,7 +662,11 @@ impl Nes {
                     let zero_page = self.read_u8(pc + 1);
                     let addr = zero_page as u16;
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.y.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdyZero { zero_page };
                 }
@@ -636,7 +676,11 @@ impl Nes {
                     let zero_page_base = self.read_u8(pc + 1);
                     let addr = (zero_page_base as u16).wrapping_add(x as u16);
                     let value = self.read_u8(addr);
+
+                    self.cpu.set_flags(CpuFlags::Z, value == 0);
+                    self.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
                     self.cpu.y.set(value);
+
                     next_pc = pc + 2;
                     op = Op::LdyZeroX { zero_page_base };
                 }
