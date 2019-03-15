@@ -13,6 +13,8 @@ use std::process;
 use std::io;
 use std::fs;
 use structopt::StructOpt;
+use sdl2::event::Event as SdlEvent;
+use sdl2::keyboard::Keycode as SdlKeycode;
 
 mod rom;
 mod nes;
@@ -42,22 +44,45 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let nes = nes::Nes::new_from_rom(rom);
-    let mut video = video::NullVideo;
+
+    let sdl = sdl2::init().map_err(LochnesError::Sdl2Error)?;
+    let sdl_video = sdl.video().map_err(LochnesError::Sdl2Error)?;
+    let sdl_window = sdl_video.window("Lochnes", 256, 240)
+        .opengl()
+        .build()?;
+    let sdl_canvas = sdl_window.into_canvas()
+        .build()?;
+    let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
+
+    let mut video = video::CanvasVideo(sdl_canvas);
     let mut run_nes = nes.run(&mut video);
 
-    loop {
-        let GeneratorState::Yielded(step) = Pin::new(&mut run_nes).resume();
+    'running: loop {
+        for event in sdl_event_pump.poll_iter() {
+            match event {
+                SdlEvent::Quit { .. }
+                | SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Escape), ..
+                } => {
+                    break 'running;
+                }
+                _ => { }
+            }
+        }
 
-        println!("{:X?}", nes.cpu);
-        println!("${:04X}: {}", step.pc, step.op);
-        println!();
+        for _ in 0..2978 {
+            let GeneratorState::Yielded(_) = Pin::new(&mut run_nes).resume();
+        }
     }
+
+    Ok(())
 }
 
 #[derive(Debug)]
 enum LochnesError {
     IoError(io::Error),
     RomError(rom::RomError),
+    Sdl2Error(String),
 }
 
 impl From<io::Error> for LochnesError {
@@ -69,6 +94,18 @@ impl From<io::Error> for LochnesError {
 impl From<rom::RomError> for LochnesError {
     fn from(err: rom::RomError) -> Self {
         LochnesError::RomError(err)
+    }
+}
+
+impl From<sdl2::video::WindowBuildError> for LochnesError {
+    fn from(err: sdl2::video::WindowBuildError) -> Self {
+        LochnesError::Sdl2Error(err.to_string())
+    }
+}
+
+impl From<sdl2::IntegerOrSdlError> for LochnesError {
+    fn from(err: sdl2::IntegerOrSdlError) -> Self {
+        LochnesError::Sdl2Error(err.to_string())
     }
 }
 
