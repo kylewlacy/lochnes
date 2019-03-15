@@ -16,6 +16,7 @@ use structopt::StructOpt;
 
 mod rom;
 mod nes;
+mod video;
 
 fn main() {
     let opts = Options::from_args();
