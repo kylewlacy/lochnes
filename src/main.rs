@@ -42,7 +42,8 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let nes = nes::Nes::new_from_rom(rom);
-    let mut run_nes = nes.run();
+    let mut video = video::NullVideo;
+    let mut run_nes = nes.run(&mut video);
 
     loop {
         let GeneratorState::Yielded(step) = Pin::new(&mut run_nes).resume();
@@ -91,7 +92,8 @@ mod tests {
 
         b.iter(|| {
             let nes = nes::Nes::new_from_rom(rom.clone());
-            let mut run_nes = nes.run();
+            let mut video = video::NullVideo;
+            let mut run_nes = nes.run(&mut video);
 
             for _ in 0..steps {
                 let GeneratorState::Yielded(_) = Pin::new(&mut run_nes).resume();

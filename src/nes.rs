@@ -6,6 +6,7 @@ use std::pin::Pin;
 use bitflags::bitflags;
 use enum_kinds::EnumKind;
 use crate::rom::Rom;
+use crate::video::{Video, Point, Color};
 
 #[derive(Clone)]
 pub struct Nes {
@@ -1033,7 +1034,9 @@ impl Nes {
         }
     }
 
-    fn run_ppu<'a>(&'a self) -> impl Generator<Yield = (), Return = !> + 'a {
+    fn run_ppu<'a, 'b>(&'a self, video: &'a mut impl Video)
+        -> impl Generator<Yield = (), Return = !> + 'a
+    {
         move || {
             for frame in 0_u64.. {
                 let is_even_frame = frame % 2 == 0;
@@ -1052,12 +1055,30 @@ impl Nes {
                                 status
                             });
                             self.cpu.nmi.set(true);
+                            video.present();
                         }
                         else if scanline == 0 && cycle == 1 {
                             let _ = self.ppu.status.update(|mut status| {
                                 status.set(PpuStatusFlags::VBLANK_STARTED, false);
                                 status
                             });
+                            video.clear();
+                        }
+
+                        if 0 < scanline && scanline <= 240 {
+                            let x = cycle;
+                            let y = scanline - 1;
+
+                            let tile_x = x / 8;
+                            let tile_y = y / 8;
+
+                            let nametables = self.ppu.nametables();
+                            let nametable = &nametables[0x000..0x400];
+                            let tile_index = (tile_y * 32 + tile_x) as usize;
+                            let tile = nametable[tile_index].get();
+                            let point = Point { x, y };
+                            let color = Color { r: tile, g: tile, b: tile };
+                            video.draw_point(point, color);
                         }
 
                         yield;
@@ -1069,12 +1090,12 @@ impl Nes {
         }
     }
 
-    pub fn run<'a>(&'a self)
+    pub fn run<'a>(&'a self, video: &'a mut impl Video)
         -> impl Generator<Yield = CpuStep, Return = !> + 'a
     {
         let mut run_cpu = self.run_cpu();
 
-        let mut run_ppu = self.run_ppu();
+        let mut run_ppu = self.run_ppu(video);
 
         move || loop {
             // TODO: Clean this up
