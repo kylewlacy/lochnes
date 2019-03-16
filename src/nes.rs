@@ -189,125 +189,12 @@ impl Nes {
         self.ppu.oam.set(oam);
     }
 
-    fn run_ppu<'a, 'b>(&'a self, video: &'a mut impl Video)
-        -> impl Generator<Yield = (), Return = !> + 'a
-    {
-        move || {
-            for frame in 0_u64.. {
-                let is_even_frame = frame % 2 == 0;
-                for scanline in 0_u16..262 {
-                    let cycles: u16 = match (scanline, is_even_frame) {
-                        // All scanlines render in 341 cycles, except for the
-                        // first scanline during odd frames
-                        (0, false) => 340,
-                        _ => 341,
-                    };
-
-                    for cycle in 0..cycles {
-                        if scanline == 240 && cycle == 1 {
-                            let _ = self.ppu.status.update(|mut status| {
-                                status.set(PpuStatusFlags::VBLANK_STARTED, true);
-                                status
-                            });
-                            self.cpu.nmi.set(true);
-                            video.present();
-                        }
-                        else if scanline == 0 && cycle == 1 {
-                            let _ = self.ppu.status.update(|mut status| {
-                                status.set(PpuStatusFlags::VBLANK_STARTED, false);
-                                status
-                            });
-                            video.clear();
-                        }
-
-                        if 0 < scanline && scanline < 240 && 0 < cycle && cycle < 256 {
-                            let x = cycle;
-                            let y = scanline - 1;
-
-                            let tile_x = x / 8;
-                            let tile_y = y / 8;
-
-                            let tile_x_pixel = x % 8;
-                            let tile_y_pixel = y % 8;
-
-                            let attr_x = x / 32;
-                            let attr_y = y / 32;
-                            let attr_is_left = (tile_x % 2) == 0;
-                            let attr_is_top = (tile_y % 2) == 0;
-
-                            let nametables = self.ppu.nametables();
-                            let nametable = &nametables[0x000..0x400];
-                            let tile_index = (tile_y * 32 + tile_x) as usize;
-                            let tile = nametable[tile_index].get();
-
-                            let palette_ram = self.ppu.palette_ram();
-                            let attr_index = (attr_y * 8  + attr_x) as usize;
-                            let attr = nametable[0x3C0 + attr_index].get();
-                            let palette_index = match (attr_is_top, attr_is_left) {
-                                (true, true)   =>  attr & 0b_0000_0011,
-                                (true, false)  => (attr & 0b_0000_1100) >> 2,
-                                (false, true)  => (attr & 0b_0011_0000) >> 4,
-                                (false, false) => (attr & 0b_1100_0000) >> 6
-                            };
-                            let palette_ram_indices = match palette_index {
-                                0 => [0x00, 0x01, 0x02, 0x03],
-                                1 => [0x00, 0x05, 0x06, 0x07],
-                                2 => [0x00, 0x09, 0x0A, 0x0B],
-                                3 => [0x00, 0x0D, 0x0E, 0x0F],
-                                _ => { unreachable!(); }
-                            };
-                            let palette = [
-                                palette_ram[palette_ram_indices[0]].get(),
-                                palette_ram[palette_ram_indices[1]].get(),
-                                palette_ram[palette_ram_indices[2]].get(),
-                                palette_ram[palette_ram_indices[3]].get(),
-                            ];
-
-
-                            let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
-                            let pattern_tables = &self.rom.chr_rom;
-
-                            let ppu_ctrl = self.ppu.ctrl.get();
-                            let pattern_table_offset =
-                                if ppu_ctrl.contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
-                                    0x1000
-                                }
-                                else {
-                                    0x0000
-                                };
-                            let pattern_offset = pattern_table_offset + tile as usize * 16;
-                            let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
-                            let pattern_lo_byte = pattern[tile_y_pixel as usize];
-                            let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
-                            let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
-                            let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
-
-                            let color_code = match (pattern_lo_bit, pattern_hi_bit) {
-                                (false, false) => palette[0],
-                                (false, true) => palette[1],
-                                (true, false) => palette[2],
-                                (true, true) => palette[3],
-                            };
-                            let color = nes_color_code_to_rgb(color_code);
-                            let point = Point { x, y };
-                            video.draw_point(point, color);
-                        }
-
-                        yield;
-                    }
-                }
-            }
-
-            unreachable!();
-        }
-    }
-
     pub fn run<'a>(&'a self, video: &'a mut impl Video)
         -> impl Generator<Yield = CpuStep, Return = !> + 'a
     {
         let mut run_cpu = Cpu::run(&self);
 
-        let mut run_ppu = self.run_ppu(video);
+        let mut run_ppu = Ppu::run(&self, video);
 
         move || loop {
             // TODO: Clean this up
@@ -1784,6 +1671,119 @@ impl Ppu {
 
     fn ppustatus(&self) -> u8 {
         self.status.get().bits()
+    }
+
+    pub fn run<'a, 'b>(nes: &'a Nes, video: &'a mut impl Video)
+        -> impl Generator<Yield = (), Return = !> + 'a
+    {
+        move || {
+            for frame in 0_u64.. {
+                let is_even_frame = frame % 2 == 0;
+                for scanline in 0_u16..262 {
+                    let cycles: u16 = match (scanline, is_even_frame) {
+                        // All scanlines render in 341 cycles, except for the
+                        // first scanline during odd frames
+                        (0, false) => 340,
+                        _ => 341,
+                    };
+
+                    for cycle in 0..cycles {
+                        if scanline == 240 && cycle == 1 {
+                            let _ = nes.ppu.status.update(|mut status| {
+                                status.set(PpuStatusFlags::VBLANK_STARTED, true);
+                                status
+                            });
+                            nes.cpu.nmi.set(true);
+                            video.present();
+                        }
+                        else if scanline == 0 && cycle == 1 {
+                            let _ = nes.ppu.status.update(|mut status| {
+                                status.set(PpuStatusFlags::VBLANK_STARTED, false);
+                                status
+                            });
+                            video.clear();
+                        }
+
+                        if 0 < scanline && scanline < 240 && 0 < cycle && cycle < 256 {
+                            let x = cycle;
+                            let y = scanline - 1;
+
+                            let tile_x = x / 8;
+                            let tile_y = y / 8;
+
+                            let tile_x_pixel = x % 8;
+                            let tile_y_pixel = y % 8;
+
+                            let attr_x = x / 32;
+                            let attr_y = y / 32;
+                            let attr_is_left = (tile_x % 2) == 0;
+                            let attr_is_top = (tile_y % 2) == 0;
+
+                            let nametables = nes.ppu.nametables();
+                            let nametable = &nametables[0x000..0x400];
+                            let tile_index = (tile_y * 32 + tile_x) as usize;
+                            let tile = nametable[tile_index].get();
+
+                            let palette_ram = nes.ppu.palette_ram();
+                            let attr_index = (attr_y * 8  + attr_x) as usize;
+                            let attr = nametable[0x3C0 + attr_index].get();
+                            let palette_index = match (attr_is_top, attr_is_left) {
+                                (true, true)   =>  attr & 0b_0000_0011,
+                                (true, false)  => (attr & 0b_0000_1100) >> 2,
+                                (false, true)  => (attr & 0b_0011_0000) >> 4,
+                                (false, false) => (attr & 0b_1100_0000) >> 6
+                            };
+                            let palette_ram_indices = match palette_index {
+                                0 => [0x00, 0x01, 0x02, 0x03],
+                                1 => [0x00, 0x05, 0x06, 0x07],
+                                2 => [0x00, 0x09, 0x0A, 0x0B],
+                                3 => [0x00, 0x0D, 0x0E, 0x0F],
+                                _ => { unreachable!(); }
+                            };
+                            let palette = [
+                                palette_ram[palette_ram_indices[0]].get(),
+                                palette_ram[palette_ram_indices[1]].get(),
+                                palette_ram[palette_ram_indices[2]].get(),
+                                palette_ram[palette_ram_indices[3]].get(),
+                            ];
+
+
+                            let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
+                            let pattern_tables = &nes.rom.chr_rom;
+
+                            let ppu_ctrl = nes.ppu.ctrl.get();
+                            let pattern_table_offset =
+                                if ppu_ctrl.contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
+                                    0x1000
+                                }
+                                else {
+                                    0x0000
+                                };
+                            let pattern_offset = pattern_table_offset + tile as usize * 16;
+                            let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
+                            let pattern_lo_byte = pattern[tile_y_pixel as usize];
+                            let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
+                            let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
+                            let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
+
+                            let color_code = match (pattern_lo_bit, pattern_hi_bit) {
+                                (false, false) => palette[0],
+                                (false, true) => palette[1],
+                                (true, false) => palette[2],
+                                (true, true) => palette[3],
+                            };
+                            let color = nes_color_code_to_rgb(color_code);
+                            let point = Point { x, y };
+                            video.draw_point(point, color);
+                        }
+
+                        yield;
+                    }
+                }
+            }
+
+            unreachable!();
+        }
     }
 }
 
