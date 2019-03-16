@@ -1082,7 +1082,16 @@ impl Nes {
 
                             let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
                             let pattern_tables = &self.rom.chr_rom;
-                            let pattern_offset = 0x1000 + tile as usize * 16;
+
+                            let ppu_ctrl = self.ppu.ctrl.get();
+                            let pattern_table_offset =
+                                if ppu_ctrl.contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
+                                    0x1000
+                                }
+                                else {
+                                    0x0000
+                                };
+                            let pattern_offset = pattern_table_offset + tile as usize * 16;
                             let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
                             let pattern_lo_byte = pattern[tile_y_pixel as usize];
                             let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
