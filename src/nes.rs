@@ -1065,7 +1065,7 @@ impl Nes {
                             video.clear();
                         }
 
-                        if 0 < scanline && scanline <= 240 {
+                        if 0 < scanline && scanline < 240 && 0 < cycle && cycle < 256 {
                             let x = cycle;
                             let y = scanline - 1;
 
