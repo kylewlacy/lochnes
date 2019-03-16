@@ -1538,7 +1538,6 @@ pub struct Ppu {
     // to each, used to determine if the high bit or low bit is being written).
     scroll_addr_latch: Cell<bool>,
 
-    pattern_tables: Cell<[u8; 2 * 0x1000]>,
     nametables: Cell<[u8; 4 * 0x0400]>,
     oam: Cell<[u8; 0x0100]>,
 }
@@ -1553,15 +1552,9 @@ impl Ppu {
             scroll: Cell::new(0x0000),
             addr: Cell::new(0x0000),
             scroll_addr_latch: Cell::new(false),
-            pattern_tables: Cell::new([0; 2 * 0x1000]),
             nametables: Cell::new([0; 4 * 0x0400]),
             oam: Cell::new([0; 0x0100]),
         }
-    }
-
-    fn pattern_tables(&self) -> &[Cell<u8>] {
-        let pattern_tables: &Cell<[u8]> = &self.pattern_tables;
-        pattern_tables.as_slice_of_cells()
     }
 
     fn nametables(&self) -> &[Cell<u8>] {
@@ -1578,12 +1571,11 @@ impl Ppu {
     }
 
     fn write_addr(&self, addr: u16, value: u8) {
-        let pattern_tables = self.pattern_tables();
         let nametables = self.nametables();
 
         match addr {
             0x0000..=0x0FFF => {
-                pattern_tables[addr as usize].set(value);
+                unimplemented!();
             }
             0x2000..=0x23FF => {
                 let offset = addr as usize - 0x2000;
