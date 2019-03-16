@@ -1569,6 +1569,7 @@ pub struct Ppu {
 
     nametables: Cell<[u8; 4 * 0x0400]>,
     oam: Cell<[u8; 0x0100]>,
+    palette_ram: Cell<[u8; 0x20]>,
 }
 
 impl Ppu {
@@ -1583,12 +1584,18 @@ impl Ppu {
             scroll_addr_latch: Cell::new(false),
             nametables: Cell::new([0; 4 * 0x0400]),
             oam: Cell::new([0; 0x0100]),
+            palette_ram: Cell::new([0; 0x20]),
         }
     }
 
     fn nametables(&self) -> &[Cell<u8>] {
         let nametables: &Cell<[u8]> = &self.nametables;
         nametables.as_slice_of_cells()
+    }
+
+    fn palette_ram(&self) -> &[Cell<u8>] {
+        let palette_ram: &Cell<[u8]> = &self.palette_ram;
+        palette_ram.as_slice_of_cells()
     }
 
     fn set_ppuctrl(&self, value: u8) {
@@ -1601,6 +1608,7 @@ impl Ppu {
 
     fn write_addr(&self, addr: u16, value: u8) {
         let nametables = self.nametables();
+        let palette_ram = self.palette_ram();
 
         match addr {
             0x0000..=0x0FFF => {
@@ -1610,8 +1618,9 @@ impl Ppu {
                 let offset = addr as usize - 0x2000;
                 nametables[offset].set(value);
             }
-            0x3F00..=0x3FFF => {
-                // TODO: Implement palette RAM
+            0x3F00..=0x3F1F => {
+                let offset = addr as usize - 0x3F00;
+                palette_ram[offset].set(value);
             }
             _ => {
                 unimplemented!("Unimplemented write to VRAM address ${:04X}", addr)
