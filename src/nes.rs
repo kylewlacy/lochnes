@@ -1072,13 +1072,42 @@ impl Nes {
                             let tile_x = x / 8;
                             let tile_y = y / 8;
 
+                            let tile_x_pixel = x % 8;
+                            let tile_y_pixel = y % 8;
+
+                            let attr_x = x / 32;
+                            let attr_y = y / 32;
+                            let attr_is_left = (tile_x % 2) == 0;
+                            let attr_is_top = (tile_y % 2) == 0;
+
                             let nametables = self.ppu.nametables();
                             let nametable = &nametables[0x000..0x400];
                             let tile_index = (tile_y * 32 + tile_x) as usize;
                             let tile = nametable[tile_index].get();
 
-                            let tile_x_pixel = x % 8;
-                            let tile_y_pixel = y % 8;
+                            let palette_ram = self.ppu.palette_ram();
+                            let attr_index = (attr_y * 8  + attr_x) as usize;
+                            let attr = nametable[0x3C0 + attr_index].get();
+                            let palette_index = match (attr_is_top, attr_is_left) {
+                                (true, true)   =>  attr & 0b_0000_0011,
+                                (true, false)  => (attr & 0b_0000_1100) >> 2,
+                                (false, true)  => (attr & 0b_0011_0000) >> 4,
+                                (false, false) => (attr & 0b_1100_0000) >> 6
+                            };
+                            let palette_ram_indices = match palette_index {
+                                0 => [0x00, 0x01, 0x02, 0x03],
+                                1 => [0x00, 0x05, 0x06, 0x07],
+                                2 => [0x00, 0x09, 0x0A, 0x0B],
+                                3 => [0x00, 0x0D, 0x0E, 0x0F],
+                                _ => { unreachable!(); }
+                            };
+                            let palette = [
+                                palette_ram[palette_ram_indices[0]].get(),
+                                palette_ram[palette_ram_indices[1]].get(),
+                                palette_ram[palette_ram_indices[2]].get(),
+                                palette_ram[palette_ram_indices[3]].get(),
+                            ];
+
 
                             let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
                             let pattern_tables = &self.rom.chr_rom;
@@ -1098,15 +1127,14 @@ impl Nes {
                             let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
                             let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
 
-                            let color = match (pattern_lo_bit, pattern_hi_bit) {
-                                (false, false) => 0x00,
-                                (false, true) => 0x55,
-                                (true, false) => 0x99,
-                                (true, true) => 0xFF,
+                            let color_code = match (pattern_lo_bit, pattern_hi_bit) {
+                                (false, false) => palette[0],
+                                (false, true) => palette[1],
+                                (true, false) => palette[2],
+                                (true, true) => palette[3],
                             };
-
+                            let color = nes_color_code_to_rgb(color_code);
                             let point = Point { x, y };
-                            let color = Color { r: color, g: color, b: color };
                             video.draw_point(point, color);
                         }
 
@@ -1135,6 +1163,79 @@ impl Nes {
 
             yield cpu_step;
         }
+    }
+}
+
+fn nes_color_code_to_rgb(color_code: u8) -> Color {
+    // Based on the palette provided on the NesDev wiki:
+    // - https://wiki.nesdev.com/w/index.php/PPU_palettes
+    // - https://wiki.nesdev.com/w/index.php/File:Savtool-swatches.png
+    match color_code & 0x3F {
+        0x00 => Color { r: 0x54, g: 0x54, b: 0x54 },
+        0x01 => Color { r: 0x00, g: 0x1E, b: 0x74 },
+        0x02 => Color { r: 0x08, g: 0x10, b: 0x90 },
+        0x03 => Color { r: 0x30, g: 0x00, b: 0x88 },
+        0x04 => Color { r: 0x44, g: 0x00, b: 0x64 },
+        0x05 => Color { r: 0x5C, g: 0x00, b: 0x30 },
+        0x06 => Color { r: 0x54, g: 0x04, b: 0x00 },
+        0x07 => Color { r: 0x3C, g: 0x18, b: 0x00 },
+        0x08 => Color { r: 0x20, g: 0x2A, b: 0x00 },
+        0x09 => Color { r: 0x08, g: 0x3A, b: 0x00 },
+        0x0A => Color { r: 0x00, g: 0x40, b: 0x00 },
+        0x0B => Color { r: 0x00, g: 0x3C, b: 0x00 },
+        0x0C => Color { r: 0x00, g: 0x32, b: 0x3C },
+        0x0D => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x0E => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x0F => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x10 => Color { r: 0x98, g: 0x96, b: 0x98 },
+        0x11 => Color { r: 0x08, g: 0x4C, b: 0xC4 },
+        0x12 => Color { r: 0x30, g: 0x32, b: 0xEC },
+        0x13 => Color { r: 0x5C, g: 0x1E, b: 0xE4 },
+        0x14 => Color { r: 0x88, g: 0x14, b: 0xB0 },
+        0x15 => Color { r: 0xA0, g: 0x14, b: 0x64 },
+        0x16 => Color { r: 0x98, g: 0x22, b: 0x20 },
+        0x17 => Color { r: 0x78, g: 0x3C, b: 0x00 },
+        0x18 => Color { r: 0x54, g: 0x5A, b: 0x00 },
+        0x19 => Color { r: 0x28, g: 0x72, b: 0x00 },
+        0x1A => Color { r: 0x08, g: 0x7C, b: 0x00 },
+        0x1B => Color { r: 0x00, g: 0x76, b: 0x28 },
+        0x1C => Color { r: 0x00, g: 0x66, b: 0x78 },
+        0x1D => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x1E => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x1F => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x20 => Color { r: 0xEC, g: 0xEE, b: 0xEC },
+        0x21 => Color { r: 0x4C, g: 0x9A, b: 0xEC },
+        0x22 => Color { r: 0x78, g: 0x7C, b: 0xEC },
+        0x23 => Color { r: 0xB0, g: 0x62, b: 0xEC },
+        0x24 => Color { r: 0xE4, g: 0x54, b: 0xEC },
+        0x25 => Color { r: 0xEC, g: 0x58, b: 0xB4 },
+        0x26 => Color { r: 0xEC, g: 0x6A, b: 0x64 },
+        0x27 => Color { r: 0xD4, g: 0x88, b: 0x20 },
+        0x28 => Color { r: 0xA0, g: 0xAA, b: 0x00 },
+        0x29 => Color { r: 0x74, g: 0xC4, b: 0x00 },
+        0x2A => Color { r: 0x4C, g: 0xD0, b: 0x20 },
+        0x2B => Color { r: 0x38, g: 0xCC, b: 0x6C },
+        0x2C => Color { r: 0x38, g: 0xB4, b: 0xCC },
+        0x2D => Color { r: 0x3C, g: 0x3C, b: 0x3C },
+        0x2E => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x2F => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x30 => Color { r: 0xEC, g: 0xEE, b: 0xEC },
+        0x31 => Color { r: 0xA8, g: 0xCC, b: 0xEC },
+        0x32 => Color { r: 0xBC, g: 0xBC, b: 0xEC },
+        0x33 => Color { r: 0xD4, g: 0xB2, b: 0xEC },
+        0x34 => Color { r: 0xEC, g: 0xAE, b: 0xEC },
+        0x35 => Color { r: 0xEC, g: 0xAE, b: 0xD4 },
+        0x36 => Color { r: 0xEC, g: 0xB4, b: 0xB0 },
+        0x37 => Color { r: 0xE4, g: 0xC4, b: 0x90 },
+        0x38 => Color { r: 0xCC, g: 0xD2, b: 0x78 },
+        0x39 => Color { r: 0xB4, g: 0xDE, b: 0x78 },
+        0x3A => Color { r: 0xA8, g: 0xE2, b: 0x90 },
+        0x3B => Color { r: 0x98, g: 0xE2, b: 0xB4 },
+        0x3C => Color { r: 0xA0, g: 0xD6, b: 0xE4 },
+        0x3D => Color { r: 0xA0, g: 0xA2, b: 0xA0 },
+        0x3E => Color { r: 0x00, g: 0x00, b: 0x00 },
+        0x3F => Color { r: 0x00, g: 0x00, b: 0x00 },
+        _ => { unreachable!(); },
     }
 }
 
