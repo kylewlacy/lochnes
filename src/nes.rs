@@ -1076,8 +1076,28 @@ impl Nes {
                             let nametable = &nametables[0x000..0x400];
                             let tile_index = (tile_y * 32 + tile_x) as usize;
                             let tile = nametable[tile_index].get();
+
+                            let tile_x_pixel = x % 8;
+                            let tile_y_pixel = y % 8;
+
+                            let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
+                            let pattern_tables = &self.rom.chr_rom;
+                            let pattern_offset = 0x1000 + tile as usize * 16;
+                            let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
+                            let pattern_lo_byte = pattern[tile_y_pixel as usize];
+                            let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
+                            let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
+                            let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
+
+                            let color = match (pattern_lo_bit, pattern_hi_bit) {
+                                (false, false) => 0x00,
+                                (false, true) => 0x55,
+                                (true, false) => 0x99,
+                                (true, true) => 0xFF,
+                            };
+
                             let point = Point { x, y };
-                            let color = Color { r: tile, g: tile, b: tile };
+                            let color = Color { r: color, g: color, b: color };
                             video.draw_point(point, color);
                         }
 
