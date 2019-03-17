@@ -201,9 +201,9 @@ impl Nes {
         move || loop {
             // TODO: Clean this up
             let GeneratorState::Yielded(cpu_step) = Pin::new(&mut run_cpu).resume();
-            let GeneratorState::Yielded(()) = Pin::new(&mut run_ppu).resume();
-            let GeneratorState::Yielded(()) = Pin::new(&mut run_ppu).resume();
-            let GeneratorState::Yielded(()) = Pin::new(&mut run_ppu).resume();
+            let GeneratorState::Yielded(_) = Pin::new(&mut run_ppu).resume();
+            let GeneratorState::Yielded(_) = Pin::new(&mut run_ppu).resume();
+            let GeneratorState::Yielded(_) = Pin::new(&mut run_ppu).resume();
 
             yield cpu_step;
         }

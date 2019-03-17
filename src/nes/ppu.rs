@@ -137,7 +137,7 @@ impl Ppu {
     }
 
     pub fn run<'a, 'b>(nes: &'a Nes, video: &'a mut impl Video)
-        -> impl Generator<Yield = (), Return = !> + 'a
+        -> impl Generator<Yield = PpuStep, Return = !> + 'a
     {
         move || {
             for frame in 0_u64.. {
@@ -158,6 +158,7 @@ impl Ppu {
                             });
                             nes.cpu.nmi.set(true);
                             video.present();
+                            yield PpuStep::Vblank;
                         }
                         else if scanline == 0 && cycle == 1 {
                             let _ = nes.ppu.status.update(|mut status| {
@@ -240,7 +241,7 @@ impl Ppu {
                             video.draw_point(point, color);
                         }
 
-                        yield;
+                        yield PpuStep::Cycle;
                     }
                 }
             }
@@ -248,6 +249,11 @@ impl Ppu {
             unreachable!();
         }
     }
+}
+
+pub enum PpuStep {
+    Cycle,
+    Vblank,
 }
 
 fn nes_color_code_to_rgb(color_code: u8) -> Color {
