@@ -48,7 +48,6 @@ impl Cpu {
         move || loop {
             let nmi = nes.cpu.nmi.get();
             if nmi {
-                println!("=== NMI ===");
                 nes.cpu.nmi.set(false);
 
                 nes.push_u16(nes.cpu.pc.get());
