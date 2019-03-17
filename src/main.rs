@@ -8,10 +8,12 @@
 
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
+use std::time::{Duration, Instant};
 use std::path::PathBuf;
 use std::process;
 use std::io;
 use std::fs;
+use std::thread;
 use structopt::StructOpt;
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::Keycode as SdlKeycode;
@@ -21,6 +23,9 @@ use nes::ppu::PpuStep;
 mod rom;
 mod nes;
 mod video;
+
+
+const NES_REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000_u64 / 60);
 
 fn main() {
     let opts = Options::from_args();
@@ -60,6 +65,7 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let mut run_nes = nes.run(&mut video);
 
     'running: loop {
+        let frame_start = Instant::now();
         for event in sdl_event_pump.poll_iter() {
             match event {
                 SdlEvent::Quit { .. }
@@ -80,6 +86,14 @@ fn run(opts: Options) -> Result<(), LochnesError> {
                 GeneratorState::Yielded(_) => { }
             }
         }
+
+        let elapsed = frame_start.elapsed();
+        println!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
+        let duration_until_refresh = NES_REFRESH_RATE.checked_sub(elapsed);
+        let sleep_duration = duration_until_refresh.unwrap_or_else(|| {
+            Duration::from_secs(0)
+        });
+        thread::sleep(sleep_duration);
     }
 
     Ok(())
