@@ -145,16 +145,21 @@ mod tests {
         let rom_bytes = fs::read(rom_path).expect("Failed to open BENCH_ROM");
         let rom = rom::Rom::from_bytes(rom_bytes.into_iter()).expect("Failed to parse BENCH_ROM into a valid ROM");
 
-        let steps = env::var("BENCH_STEPS").expect("BENCH_STEPS env var must be set for benchmarking");
-        let steps: u64 = steps.parse().unwrap();
+        let cycles = env::var("BENCH_CYCLES").expect("BENCH_CYCLES env var must be set for benchmarking");
+        let cycles: u64 = cycles.parse().unwrap();
 
         b.iter(|| {
             let nes = nes::Nes::new_from_rom(rom.clone());
             let mut video = video::NullVideo;
             let mut run_nes = nes.run(&mut video);
 
-            for _ in 0..steps {
-                let GeneratorState::Yielded(_) = Pin::new(&mut run_nes).resume();
+            for _ in 0..cycles {
+                loop {
+                    match Pin::new(&mut run_nes).resume() {
+                        GeneratorState::Yielded(NesStep::Cpu(_)) => { break; }
+                        GeneratorState::Yielded(_) => { }
+                    }
+                }
             }
         });
     }
