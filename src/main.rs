@@ -15,6 +15,8 @@ use std::fs;
 use structopt::StructOpt;
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::Keycode as SdlKeycode;
+use nes::NesStep;
+use nes::ppu::PpuStep;
 
 mod rom;
 mod nes;
@@ -70,8 +72,13 @@ fn run(opts: Options) -> Result<(), LochnesError> {
             }
         }
 
-        for _ in 0..2978 {
-            let GeneratorState::Yielded(_) = Pin::new(&mut run_nes).resume();
+        loop {
+            match Pin::new(&mut run_nes).resume() {
+                GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
+                    break;
+                }
+                GeneratorState::Yielded(_) => { }
+            }
         }
     }
 
