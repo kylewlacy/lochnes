@@ -5,10 +5,10 @@ use std::pin::Pin;
 use crate::rom::Rom;
 use crate::video::Video;
 use cpu::{Cpu, CpuStep};
-use ppu::Ppu;
+use ppu::{Ppu, PpuStep};
 
-mod cpu;
-mod ppu;
+pub mod cpu;
+pub mod ppu;
 
 #[derive(Clone)]
 pub struct Nes {
@@ -192,7 +192,7 @@ impl Nes {
     }
 
     pub fn run<'a>(&'a self, video: &'a mut impl Video)
-        -> impl Generator<Yield = CpuStep, Return = !> + 'a
+        -> impl Generator<Yield = NesStep, Return = !> + 'a
     {
         let mut run_cpu = Cpu::run(&self);
 
@@ -201,11 +201,26 @@ impl Nes {
         move || loop {
             // TODO: Clean this up
             let GeneratorState::Yielded(cpu_step) = Pin::new(&mut run_cpu).resume();
-            let GeneratorState::Yielded(_) = Pin::new(&mut run_ppu).resume();
-            let GeneratorState::Yielded(_) = Pin::new(&mut run_ppu).resume();
-            let GeneratorState::Yielded(_) = Pin::new(&mut run_ppu).resume();
+            yield NesStep::Cpu(cpu_step);
 
-            yield cpu_step;
+            for _ in 0u8..3 {
+                loop {
+                    match Pin::new(&mut run_ppu).resume() {
+                        GeneratorState::Yielded(ppu_step @ PpuStep::Cycle) => {
+                            yield NesStep::Ppu(ppu_step);
+                            break;
+                        }
+                        GeneratorState::Yielded(ppu_step) => {
+                            yield NesStep::Ppu(ppu_step);
+                        }
+                    }
+                }
+            }
         }
     }
+}
+
+pub enum NesStep {
+    Cpu(CpuStep),
+    Ppu(PpuStep),
 }
