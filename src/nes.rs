@@ -58,6 +58,14 @@ impl Nes {
             0x2002 => {
                 self.ppu.ppustatus()
             }
+            0x4000..=0x4007 => {
+                // TODO: Return APU pulse
+                0x00
+            }
+            0x4008..=0x400B => {
+                // TODO: Return APU triangle
+                0x00
+            }
             0x4016 => {
                 // TODO: Return joystick state
                 0x40
