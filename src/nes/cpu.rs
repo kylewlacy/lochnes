@@ -42,10 +42,41 @@ impl Cpu {
         self.p.set(p);
     }
 
+    fn pc_inc(&self) -> u16 {
+        let pc = self.pc.get();
+
+        // TODO: Should this be using `wrapping_add`?
+        self.pc.set(pc.wrapping_add(1));
+        pc
+    }
+
+    fn pc_fetch(nes: &Nes) -> u8 {
+        let pc = nes.cpu.pc.get();
+        nes.read_u8(pc)
+    }
+
+    fn pc_fetch_inc(nes: &Nes) -> u8 {
+        let pc = nes.cpu.pc_inc();
+        nes.read_u8(pc)
+    }
+
+    fn stack_addr(&self) -> u16 {
+        0x0100 | self.s.get() as u16
+    }
+
+    fn inc_s(&self) {
+        self.s.update(|s| s.wrapping_add(1));
+    }
+
+    fn dec_s(&self) {
+        self.s.update(|s| s.wrapping_sub(1));
+    }
+
     pub fn run<'a>(nes: &'a Nes)
         -> impl Generator<Yield = CpuStep, Return = !> + 'a
     {
         move || loop {
+            // TODO: Does this properly account for CPU cycles for handling NMI?
             let nmi = nes.cpu.nmi.get();
             if nmi {
                 nes.cpu.nmi.set(false);
@@ -66,813 +97,477 @@ impl Cpu {
             let op;
             match opcode {
                 Opcode::AdcAbs => {
-                    let a = nes.cpu.a.get();
-                    let p = nes.cpu.p.get();
-                    let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
-
-                    let addr = nes.read_u16(pc + 1);
-                    let value = nes.read_u8(addr);
-
-                    let result = a as u16 + c as u16 + value as u16;
-                    let out = result as u8;
-
-                    // TODO: Refactor!
-                    let signed_result = result as i8;
-                    let signed_out = out as i8;
-                    let is_sign_correct =
-                        (signed_result >= 0 && signed_out >= 0)
-                        || (signed_result < 0 && signed_out < 0);
-
-                    nes.cpu.a.set(out);
-                    nes.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
-                    nes.cpu.set_flags(CpuFlags::Z, result == 0);
-                    nes.cpu.set_flags(CpuFlags::V, !is_sign_correct);
-                    nes.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
-
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_read(nes, AdcOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::AdcAbs { addr };
                 }
                 Opcode::AdcImm => {
-                    let a = nes.cpu.a.get();
-                    let p = nes.cpu.p.get();
-                    let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
-
-                    let value = nes.read_u8(pc + 1);
-
-                    let result = a as u16 + c as u16 + value as u16;
-                    let out = result as u8;
-
-                    // TODO: Refactor!
-                    let signed_result = result as i8;
-                    let signed_out = out as i8;
-                    let is_sign_correct =
-                        (signed_result >= 0 && signed_out >= 0)
-                        || (signed_result < 0 && signed_out < 0);
-
-                    nes.cpu.a.set(out);
-                    nes.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
-                    nes.cpu.set_flags(CpuFlags::Z, result == 0);
-                    nes.cpu.set_flags(CpuFlags::V, !is_sign_correct);
-                    nes.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, AdcOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::AdcImm { value };
                 }
                 Opcode::AdcZero => {
-                    let a = nes.cpu.a.get();
-                    let p = nes.cpu.p.get();
-                    let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
-
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    let result = a as u16 + c as u16 + value as u16;
-                    let out = result as u8;
-
-                    // TODO: Refactor!
-                    let signed_result = result as i8;
-                    let signed_out = out as i8;
-                    let is_sign_correct =
-                        (signed_result >= 0 && signed_out >= 0)
-                        || (signed_result < 0 && signed_out < 0);
-
-                    nes.cpu.a.set(out);
-                    nes.cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
-                    nes.cpu.set_flags(CpuFlags::Z, result == 0);
-                    nes.cpu.set_flags(CpuFlags::V, !is_sign_correct);
-                    nes.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, AdcOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::AdcZero { zero_page };
                 }
                 Opcode::AndImm => {
-                    let a = nes.cpu.a.get();
-                    let value = nes.read_u8(pc + 1);
-                    let a = a & value;
-                    nes.cpu.a.set(a);
-
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, AndOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::AndImm { value };
                 }
                 Opcode::AndZero => {
-                    let a = nes.cpu.a.get();
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-                    let a = a & value;
-                    nes.cpu.a.set(a);
-
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, AndOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::AndZero { zero_page };
                 }
                 Opcode::AndZeroX => {
-                    let a = nes.cpu.a.get();
-                    let x = nes.cpu.x.get();
-                    let zero_page_base = nes.read_u8(pc + 1);
-                    let addr = (zero_page_base as u16).wrapping_add(x as u16);
-                    let value = nes.read_u8(addr);
-                    let a = a & value;
-                    nes.cpu.a.set(a);
-
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                        zero_page_x_read(nes, AndOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::AndZeroX { zero_page_base };
                 }
                 Opcode::AslA => {
-                    let a = nes.cpu.a.get();
-
-                    let c = (a & 0b_1000_0000) != 0;
-                    let a = a << 1;
-                    nes.cpu.a.set(a);
-
-                    nes.cpu.set_flags(CpuFlags::C, c);
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let () = yield_all! {
+                        accum_read_modify_write(nes, AslOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::AslA;
                 }
                 Opcode::AslZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    let c = (value & 0b_1000_0000) != 0;
-                    let new_value = value << 1;
-                    nes.write_u8(addr, new_value);
-
-                    nes.cpu.set_flags(CpuFlags::C, c);
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read_modify_write(nes, AslOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::AslZero { zero_page };
                 }
                 Opcode::Bcc => {
-                    let addr_offset = nes.read_i8(pc + 1);
-
-                    let pc_after = pc + 2;
-                    if nes.cpu.contains_flags(CpuFlags::C) {
-                        next_pc = pc_after;
-                    }
-                    else {
-                        // TODO: Handle offset past page! With that, `i8` shouldn't
-                        // be necessary
-                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
-                    }
+                    let BranchArg { addr_offset } = yield_all! {
+                        branch(&nes, BccOperation)
+                    };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Bcc { addr_offset };
                 }
                 Opcode::Bcs => {
-                    let addr_offset = nes.read_i8(pc + 1);
-
-                    let pc_after = pc + 2;
-                    if !nes.cpu.contains_flags(CpuFlags::C) {
-                        next_pc = pc_after;
-                    }
-                    else {
-                        // TODO: Handle offset past page! With that, `i8` shouldn't
-                        // be necessary
-                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
-                    }
+                    let BranchArg { addr_offset } = yield_all! {
+                        branch(&nes, BcsOperation)
+                    };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Bcs { addr_offset };
                 }
                 Opcode::Beq => {
-                    let addr_offset = nes.read_i8(pc + 1);
-
-                    let pc_after = pc + 2;
-                    if nes.cpu.contains_flags(CpuFlags::Z) {
-                        // TODO: Handle offset past page! With that, `i8` shouldn't
-                        // be necessary
-                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
-                    }
-                    else {
-                        next_pc = pc_after;
-                    }
+                    let BranchArg { addr_offset } = yield_all! {
+                        branch(&nes, BeqOperation)
+                    };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Beq { addr_offset };
                 }
                 Opcode::Bmi => {
-                    let addr_offset = nes.read_i8(pc + 1);
-
-                    let pc_after = pc + 2;
-                    if !nes.cpu.contains_flags(CpuFlags::N) {
-                        next_pc = pc_after;
-                    }
-                    else {
-                        // TODO: Handle offset past page! With that, `i8` shouldn't
-                        // be necessary
-                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
-                    }
+                    let BranchArg { addr_offset } = yield_all! {
+                        branch(&nes, BmiOperation)
+                    };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Bmi { addr_offset };
                 }
                 Opcode::Bne => {
-                    let addr_offset = nes.read_i8(pc + 1);
-
-                    let pc_after = pc + 2;
-                    if nes.cpu.contains_flags(CpuFlags::Z) {
-                        next_pc = pc_after;
-                    }
-                    else {
-                        // TODO: Handle offset past page! With that, `i8` shouldn't
-                        // be necessary
-                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
-                    }
+                    let BranchArg { addr_offset } = yield_all! {
+                        branch(&nes, BneOperation)
+                    };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Bne { addr_offset };
                 }
                 Opcode::Bpl => {
-                    let addr_offset = nes.read_i8(pc + 1);
-
-                    let pc_after = pc + 2;
-                    if nes.cpu.contains_flags(CpuFlags::N) {
-                        next_pc = pc_after;
-                    }
-                    else {
-                        // TODO: Handle offset past page! With that, `i8` shouldn't
-                        // be necessary
-                        next_pc = (pc_after as i16 + addr_offset as i16) as u16;
-                    }
+                    let BranchArg { addr_offset } = yield_all! {
+                        branch(&nes, BplOperation)
+                    };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Bpl { addr_offset };
                 }
                 Opcode::Clc => {
-                    nes.cpu.set_flags(CpuFlags::C, false);
-
+                    let () = yield_all! {
+                        implied(nes, ClcOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Clc;
                 }
                 Opcode::Cld => {
-                    nes.cpu.set_flags(CpuFlags::D, false);
+                    let () = yield_all! {
+                        implied(nes, CldOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Cld;
                 }
                 Opcode::CmpImm => {
-                    let value = nes.read_u8(pc + 1);
-                    let a = nes.cpu.a.get();
-                    let result = a.wrapping_sub(value);
-
-                    nes.cpu.set_flags(CpuFlags::C, a >= value);
-                    nes.cpu.set_flags(CpuFlags::Z, a == value);
-                    nes.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, CmpOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::CmpImm { value };
                 }
                 Opcode::DecAbs => {
-                    let addr = nes.read_u16(pc + 1);
-                    let value = nes.read_u8(addr);
-                    let value = value.wrapping_sub(1);
-                    nes.write_u8(addr, value);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_read_modify_write(nes, DecOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::DecAbs { addr };
                 }
                 Opcode::DecZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-                    let value = value.wrapping_sub(1);
-                    nes.write_u8(addr, value);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read_modify_write(nes, DecOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::DecZero { zero_page };
                 }
                 Opcode::DecZeroX => {
-                    let x = nes.cpu.x.get();
-                    let zero_page_base = nes.read_u8(pc + 1);
-                    let addr = (zero_page_base as u16).wrapping_add(x as u16);
-                    let value = nes.read_u8(addr);
-                    let value = value.wrapping_sub(1);
-                    nes.write_u8(addr, value);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
+                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                        zero_page_x_read_modify_write(nes, DecOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::DecZeroX { zero_page_base };
                 }
                 Opcode::Dex => {
-                    let x = nes.cpu.x.get().wrapping_sub(1);
-                    nes.cpu.set_flags(CpuFlags::Z, x == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (x & 0b_1000_0000) != 0);
-                    nes.cpu.x.set(x);
-
+                    let () = yield_all! {
+                        implied(nes, DexOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Dex;
                 }
                 Opcode::Dey => {
-                    let y = nes.cpu.y.get().wrapping_sub(1);
-                    nes.cpu.set_flags(CpuFlags::Z, y == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
-                    nes.cpu.y.set(y);
-
+                    let () = yield_all! {
+                        implied(nes, DeyOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Dey;
                 }
                 Opcode::EorImm => {
-                    let value = nes.read_u8(pc + 1);
-                    let a = nes.cpu.a.get() ^ value;
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(a);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, EorOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::EorImm { value };
                 }
                 Opcode::EorZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-                    let a = nes.cpu.a.get() ^ value;
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(a);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, EorOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::EorZero { zero_page };
                 }
                 Opcode::IncZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-                    let value = value.wrapping_add(1);
-                    nes.write_u8(addr, value);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read_modify_write(nes, IncOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::IncZero { zero_page };
                 }
                 Opcode::Inx => {
-                    let x = nes.cpu.x.get().wrapping_add(1);
-                    nes.cpu.set_flags(CpuFlags::Z, x == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (x & 0b_1000_0000) != 0);
-                    nes.cpu.x.set(x);
-
+                    let () = yield_all! {
+                        implied(nes, InxOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Inx;
                 }
                 Opcode::Iny => {
-                    let y = nes.cpu.y.get().wrapping_add(1);
-                    nes.cpu.set_flags(CpuFlags::Z, y == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (y & 0b_1000_0000) != 0);
-                    nes.cpu.y.set(y);
-
+                    let () = yield_all! {
+                        implied(nes, InyOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Iny;
                 }
                 Opcode::JmpAbs => {
-                    let addr = nes.read_u16(pc + 1);
-
+                    let AbsoluteArg { addr } = yield_all! { absolute_jmp(nes) };
                     next_pc = addr;
                     op = Op::JmpAbs { addr };
                 }
                 Opcode::Jsr => {
-                    let addr = nes.read_u16(pc + 1);
-                    let ret_pc = pc.wrapping_add(3);
-                    let push_pc = ret_pc.wrapping_sub(1);
-
-                    nes.push_u16(push_pc);
-
+                    let JsrArg { addr } = yield_all! { jsr(nes) };
                     next_pc = addr;
                     op = Op::Jsr { addr };
                 }
                 Opcode::LdaAbs => {
-                    let addr = nes.read_u16(pc + 1);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::LdaAbs { addr };
                 }
                 Opcode::LdaAbsX => {
-                    let x = nes.cpu.x.get();
-                    let addr_base = nes.read_u16(pc + 1);
-                    let addr = addr_base.wrapping_add(x as u16);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let AbsoluteXArg { addr_base } = yield_all! {
+                        absolute_x_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::LdaAbsX { addr_base };
                 }
                 Opcode::LdaAbsY => {
-                    let y = nes.cpu.y.get();
-                    let addr_base = nes.read_u16(pc + 1);
-                    let addr = addr_base.wrapping_add(y as u16);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let AbsoluteYArg { addr_base } = yield_all! {
+                        absolute_y_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::LdaAbsY { addr_base };
                 }
                 Opcode::LdaImm => {
-                    let value = nes.read_u8(pc + 1);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdaImm { value };
                 }
                 Opcode::LdaIndY => {
-                    let y = nes.cpu.y.get();
-                    let target_addr_base = nes.read_u8(pc + 1);
-
-                    // TODO: Is this right? Does the target address
-                    // wrap around the zero page?
-                    let addr_base = nes.read_u16(target_addr_base as u16);
-                    let addr = addr_base.wrapping_add(y as u16);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let IndirectYArg { target_addr_base } = yield_all! {
+                        indirect_y_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdaIndY { target_addr_base };
                 }
                 Opcode::LdaZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdaZero { zero_page };
                 }
                 Opcode::LdaZeroX => {
-                    let x = nes.cpu.x.get();
-                    let zero_page_base = nes.read_u8(pc + 1);
-                    let addr = (zero_page_base as u16).wrapping_add(x as u16);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(value);
-
+                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                        zero_page_x_read(nes, LdaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdaZeroX { zero_page_base };
                 }
                 Opcode::LdxAbs => {
-                    let addr = nes.read_u16(pc + 1);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.x.set(value);
-
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_read(nes, LdxOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::LdxAbs { addr };
                 }
                 Opcode::LdxImm => {
-                    let value = nes.read_u8(pc + 1);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.x.set(value);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, LdxOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdxImm { value };
                 }
                 Opcode::LdxZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.x.set(value);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, LdxOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdxZero { zero_page };
                 }
                 Opcode::LdyImm => {
-                    let value = nes.read_u8(pc + 1);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.y.set(value);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, LdyOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdyImm { value };
                 }
                 Opcode::LdyZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.y.set(value);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, LdyOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdyZero { zero_page };
                 }
                 Opcode::LdyZeroX => {
-                    let x = nes.cpu.x.get();
-
-                    let zero_page_base = nes.read_u8(pc + 1);
-                    let addr = (zero_page_base as u16).wrapping_add(x as u16);
-                    let value = nes.read_u8(addr);
-
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-                    nes.cpu.y.set(value);
-
+                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                        zero_page_x_read(nes, LdyOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LdyZeroX { zero_page_base };
                 }
                 Opcode::LsrA => {
-                    let a = nes.cpu.a.get();
-                    let carry = (a & 0b_0000_0001) != 0;
-
-                    let result = a >> 1;
-                    nes.cpu.a.set(result);
-                    nes.cpu.set_flags(CpuFlags::C, carry);
-                    nes.cpu.set_flags(CpuFlags::Z, result == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
-
+                    let () = yield_all! {
+                        accum_read_modify_write(nes, LsrOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::LsrA;
                 }
                 Opcode::LsrZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    let c = (value & 0b_1000_0000) != 0;
-                    let new_value = value >> 1;
-                    nes.write_u8(addr, new_value);
-
-                    nes.cpu.set_flags(CpuFlags::C, c);
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read_modify_write(nes, LsrOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::LsrZero { zero_page };
                 }
                 Opcode::OraImm => {
-                    let value = nes.read_u8(pc + 1);
-                    let a = nes.cpu.a.get() | value;
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(a);
-
+                    let ImmArg { value } = yield_all! {
+                        imm_read(nes, OraOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::OraImm { value };
                 }
                 Opcode::OraZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-                    let a = nes.cpu.a.get() | value;
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-                    nes.cpu.a.set(a);
-
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read(nes, OraOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::OraZero { zero_page };
                 }
                 Opcode::Pha => {
-                    let a = nes.cpu.a.get();
-                    nes.push_u8(a);
+                    let () = yield_all! {
+                        stack_push(nes, PhaOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Pha;
                 }
                 Opcode::Pla => {
-                    let a = nes.pull_u8();
-                    nes.cpu.a.set(a);
-
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let () = yield_all! {
+                        stack_pull(nes, PlaOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Pla;
                 }
                 Opcode::RolA => {
-                    let value = nes.cpu.a.get();
-
-                    let prev_c = nes.cpu.contains_flags(CpuFlags::C);
-                    let carry_mask = match prev_c {
-                        true  => 0b_0000_0001,
-                        false => 0b_0000_0000,
+                    let () = yield_all! {
+                        accum_read_modify_write(nes, RolOperation)
                     };
-
-                    let c = (value & 0b_1000_0000) != 0;
-                    let new_value = (value << 1) | carry_mask;
-                    nes.cpu.a.set(new_value);
-
-                    nes.cpu.set_flags(CpuFlags::C, c);
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
                     next_pc = pc + 1;
                     op = Op::RolA;
                 }
                 Opcode::RorA => {
-                    let value = nes.cpu.a.get();
-
-                    let prev_c = nes.cpu.contains_flags(CpuFlags::C);
-                    let carry_mask = match prev_c {
-                        true  => 0b_1000_0000,
-                        false => 0b_0000_0000,
+                    let () = yield_all! {
+                        accum_read_modify_write(nes, RorOperation)
                     };
-
-                    let c = (value & 0b_0000_0001) != 0;
-                    let new_value = (value >> 1) | carry_mask;
-                    nes.cpu.a.set(new_value);
-
-                    nes.cpu.set_flags(CpuFlags::C, c);
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
                     next_pc = pc + 1;
                     op = Op::RorA;
                 }
                 Opcode::RorZero => {
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    let value = nes.read_u8(addr);
-
-                    let prev_c = nes.cpu.contains_flags(CpuFlags::C);
-                    let carry_mask = match prev_c {
-                        true  => 0b_1000_0000,
-                        false => 0b_0000_0000,
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_read_modify_write(nes, RorOperation)
                     };
-
-                    let c = (value & 0b_0000_0001) != 0;
-                    let new_value = (value >> 1) | carry_mask;
-                    nes.write_u8(addr, new_value);
-
-                    nes.cpu.set_flags(CpuFlags::C, c);
-                    nes.cpu.set_flags(CpuFlags::Z, value == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
-
                     next_pc = pc + 2;
                     op = Op::RorZero { zero_page };
                 }
                 Opcode::Rti => {
-                    let ret_p = nes.pull_u8();
-                    let ret_pc = nes.pull_u16();
-
-                    nes.cpu.p.set(CpuFlags::from_bits_truncate(ret_p));
-
-                    next_pc = ret_pc;
+                    let () = yield_all! { rti(nes) };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Rti;
                 }
                 Opcode::Rts => {
-                    let push_pc = nes.pull_u16();
-                    let ret_pc = push_pc.wrapping_add(1);
-
-                    next_pc = ret_pc;
+                    let () = yield_all! { rts(nes) };
+                    next_pc = nes.cpu.pc.get();
                     op = Op::Rts;
                 }
                 Opcode::Sec => {
-                    nes.cpu.set_flags(CpuFlags::C, true);
+                    let () = yield_all! {
+                        implied(nes, SecOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Sec;
                 }
                 Opcode::Sei => {
-                    nes.cpu.set_flags(CpuFlags::I, true);
+                    let () = yield_all! {
+                        implied(nes, SeiOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Sei;
                 }
                 Opcode::StaAbs => {
-                    let a = nes.cpu.a.get();
-                    let addr = nes.read_u16(pc + 1);
-                    nes.write_u8(addr, a);
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_write(nes, StaOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::StaAbs { addr };
                 }
                 Opcode::StaAbsX => {
-                    let a = nes.cpu.a.get();
-                    let x = nes.cpu.x.get();
-                    let addr_base = nes.read_u16(pc + 1);
-                    let addr = addr_base.wrapping_add(x as u16);
-                    nes.write_u8(addr, a);
+                    let AbsoluteXArg { addr_base } = yield_all! {
+                        absolute_x_write(nes, StaOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::StaAbsX { addr_base };
                 }
                 Opcode::StaIndY => {
-                    let a = nes.cpu.a.get();
-                    let y = nes.cpu.y.get();
-                    let target_addr_base = nes.read_u8(pc + 1);
-
-                    // TODO: Is this right? Does the target address
-                    // wrap around the zero page?
-                    let addr_base = nes.read_u16(target_addr_base as u16);
-                    let addr = addr_base.wrapping_add(y as u16);
-                    nes.write_u8(addr, a);
-
+                    let IndirectYArg { target_addr_base } = yield_all! {
+                        indirect_y_write(nes, StaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::StaIndY { target_addr_base };
                 }
                 Opcode::StaZero => {
-                    let a = nes.cpu.a.get();
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    nes.write_u8(addr, a);
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_write(nes, StaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::StaZero { zero_page };
                 }
                 Opcode::StaZeroX => {
-                    let a = nes.cpu.a.get();
-                    let x = nes.cpu.x.get();
-                    let zero_page_base = nes.read_u8(pc + 1);
-                    let addr = (zero_page_base as u16).wrapping_add(x as u16);
-                    nes.write_u8(addr, a);
+                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                        zero_page_x_write(nes, StaOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::StaZeroX { zero_page_base };
                 }
                 Opcode::StxAbs => {
-                    let x = nes.cpu.x.get();
-                    let addr = nes.read_u16(pc + 1);
-                    nes.write_u8(addr, x);
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_write(nes, StxOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::StxAbs { addr };
                 }
                 Opcode::StxZero => {
-                    let x = nes.cpu.x.get();
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    nes.write_u8(addr, x);
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_write(nes, StxOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::StxZero { zero_page };
                 }
                 Opcode::StyAbs => {
-                    let y = nes.cpu.y.get();
-                    let addr = nes.read_u16(pc + 1);
-                    nes.write_u8(addr, y);
+                    let AbsoluteArg { addr } = yield_all! {
+                        absolute_write(nes, StyOperation)
+                    };
                     next_pc = pc + 3;
                     op = Op::StyAbs { addr };
                 }
                 Opcode::StyZero => {
-                    let y = nes.cpu.y.get();
-                    let zero_page = nes.read_u8(pc + 1);
-                    let addr = zero_page as u16;
-                    nes.write_u8(addr, y);
+                    let ZeroPageArg { zero_page } = yield_all! {
+                        zero_page_write(nes, StyOperation)
+                    };
                     next_pc = pc + 2;
                     op = Op::StyZero { zero_page };
                 }
                 Opcode::Tax => {
-                    let a = nes.cpu.a.get();
-                    nes.cpu.x.set(a);
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let () = yield_all! {
+                        implied(nes, TaxOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Tax;
                 }
                 Opcode::Tay => {
-                    let a = nes.cpu.a.get();
-                    nes.cpu.y.set(a);
-                    nes.cpu.set_flags(CpuFlags::Z, a == 0);
-                    nes.cpu.set_flags(CpuFlags::N, (a & 0b_1000_0000) != 0);
-
+                    let () = yield_all! {
+                        implied(nes, TayOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Tay;
                 }
                 Opcode::Txa => {
-                    let x = nes.cpu.x.get();
-                    nes.cpu.a.set(x);
+                    let () = yield_all! {
+                        implied(nes, TxaOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Txa;
                 }
                 Opcode::Txs => {
-                    let x = nes.cpu.x.get();
-                    nes.cpu.s.set(x);
+                    let () = yield_all! {
+                        implied(nes, TxsOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Txs;
                 }
                 Opcode::Tya => {
-                    let y = nes.cpu.y.get();
-                    nes.cpu.a.set(y);
+                    let () = yield_all! {
+                        implied(nes, TyaOperation)
+                    };
                     next_pc = pc + 1;
                     op = Op::Tya;
                 }
@@ -882,7 +577,6 @@ impl Cpu {
 
             debug_assert_eq!(Opcode::from(&op), opcode);
 
-            yield CpuStep::Cycle;
             yield CpuStep::Op(CpuStepOp { pc, op });
         }
     }
@@ -1270,4 +964,1076 @@ pub enum CpuStep {
 pub struct CpuStepOp {
     pub pc: u16,
     pub op: Op,
+}
+
+
+
+trait ImpliedOperation {
+    fn operate(&self, cpu: &Cpu);
+}
+
+trait ReadOperation {
+    fn read(&self, cpu: &Cpu, value: u8);
+}
+
+trait ReadModifyWriteOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8;
+}
+
+trait WriteOperation {
+    fn write(&self, cpu: &Cpu) -> u8;
+}
+
+trait BranchOperation {
+    fn branch(&self, cpu: &Cpu) -> bool;
+}
+
+trait StackPushOperation {
+    fn push(&self, cpu: &Cpu) -> u8;
+}
+
+trait StackPullOperation {
+    fn pull(&self, cpu: &Cpu, value: u8);
+}
+
+fn implied<'a>(
+    nes: &'a Nes,
+    op: impl ImpliedOperation + 'a
+)
+    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch(nes);
+        op.operate(&nes.cpu);
+        yield CpuStep::Cycle;
+    }
+}
+
+fn accum_read_modify_write<'a>(
+    nes: &'a Nes,
+    op: impl ReadModifyWriteOperation + 'a
+)
+    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch(nes);
+
+        let value = nes.cpu.a.get();
+        let new_value = op.modify(&nes.cpu, value);
+        nes.cpu.a.set(new_value);
+        yield CpuStep::Cycle;
+    }
+}
+
+struct ImmArg {
+    value: u8
+}
+
+fn imm_read<'a>(
+    nes: &'a Nes,
+    op: impl ReadOperation + 'a
+)
+    -> impl Generator<Yield = CpuStep, Return = ImmArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let value = Cpu::pc_fetch_inc(nes);
+        op.read(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        ImmArg { value }
+    }
+}
+
+struct ZeroPageArg { zero_page: u8 }
+
+fn zero_page_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = ZeroPageArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let zero_page = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr = zero_page as u16;
+        let value = nes.read_u8(addr);
+
+        op.read(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        ZeroPageArg { zero_page }
+    }
+}
+
+fn zero_page_read_modify_write<'a>(
+    nes: &'a Nes,
+    op: impl ReadModifyWriteOperation + 'a
+)
+    -> impl Generator<Yield = CpuStep, Return = ZeroPageArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let zero_page = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr = zero_page as u16;
+        let value = nes.read_u8(addr);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, value);
+        let new_value = op.modify(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, new_value);
+        yield CpuStep::Cycle;
+
+        ZeroPageArg { zero_page }
+    }
+}
+
+fn zero_page_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = ZeroPageArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let zero_page = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr = zero_page as u16;
+
+        let value = op.write(&nes.cpu);
+        nes.write_u8(addr, value);
+        yield CpuStep::Cycle;
+
+        ZeroPageArg { zero_page }
+    }
+}
+
+struct ZeroPageXArg { zero_page_base: u8 }
+
+fn zero_page_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = ZeroPageXArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let zero_page_base = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = nes.read_u8(zero_page_base as u16);
+        let addr = zero_page_base.wrapping_add(nes.cpu.x.get()) as u16;
+        yield CpuStep::Cycle;
+
+        let value = nes.read_u8(addr);
+        op.read(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        ZeroPageXArg { zero_page_base }
+    }
+}
+
+fn zero_page_x_read_modify_write<'a>(
+    nes: &'a Nes,
+    op: impl ReadModifyWriteOperation + 'a
+)
+    -> impl Generator<Yield = CpuStep, Return = ZeroPageXArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let zero_page_base = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = nes.read_u8(zero_page_base as u16);
+        let addr = zero_page_base.wrapping_add(nes.cpu.x.get()) as u16;
+        yield CpuStep::Cycle;
+
+        let value = nes.read_u8(addr);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, value);
+        let new_value = op.modify(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, new_value);
+        yield CpuStep::Cycle;
+
+        ZeroPageXArg { zero_page_base }
+    }
+}
+
+fn zero_page_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = ZeroPageXArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let zero_page_base = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = nes.read_u8(zero_page_base as u16);
+        let addr = zero_page_base.wrapping_add(nes.cpu.x.get()) as u16;
+        yield CpuStep::Cycle;
+
+        let value = op.write(&nes.cpu);
+        nes.write_u8(addr, value);
+        yield CpuStep::Cycle;
+
+        ZeroPageXArg { zero_page_base }
+    }
+}
+
+struct AbsoluteArg { addr: u16 }
+
+fn absolute_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr = u16_from(addr_lo, addr_hi);
+        let value = nes.read_u8(addr);
+
+        op.read(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        AbsoluteArg { addr }
+    }
+}
+
+fn absolute_read_modify_write<'a>(
+    nes: &'a Nes,
+    op: impl ReadModifyWriteOperation + 'a
+)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr = u16_from(addr_lo, addr_hi);
+        let value = nes.read_u8(addr);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, value);
+        let new_value = op.modify(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, new_value);
+
+        AbsoluteArg { addr }
+    }
+}
+
+fn absolute_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr = u16_from(addr_lo, addr_hi);
+        let value = op.write(&nes.cpu);
+
+        nes.write_u8(addr, value);
+        yield CpuStep::Cycle;
+
+        AbsoluteArg { addr }
+    }
+}
+
+fn absolute_jmp<'a>(nes: &'a Nes)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let pc_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let pc_hi = Cpu::pc_fetch(nes);
+        let addr = u16_from(pc_lo, pc_hi);
+        nes.cpu.pc.set(addr);
+        yield CpuStep::Cycle;
+
+        AbsoluteArg { addr }
+    }
+}
+
+struct AbsoluteXArg { addr_base: u16 }
+
+fn absolute_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteXArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        let addr_base = u16_from(addr_lo, addr_hi);
+        let x = nes.cpu.x.get();
+        let addr_lo_x = addr_lo.wrapping_add(x);
+        yield CpuStep::Cycle;
+
+        let addr_unfixed = u16_from(addr_lo_x, addr_hi);
+        let value_unfixed = nes.read_u8(addr_unfixed);
+
+        // Speculatively execute the operation based on the
+        // incomplete address calculation
+        op.read(&nes.cpu, value_unfixed);
+        yield CpuStep::Cycle;
+
+        // Calculate the actual address to use
+        let addr = addr_base.wrapping_add(x as u16);
+        if addr != addr_unfixed {
+            // Re-run the operation if the original calculation
+            // was incorrect (i.e. a page boundary was crossed)
+            let value = nes.read_u8(addr);
+            op.read(&nes.cpu, value);
+            yield CpuStep::Cycle;
+        }
+
+        AbsoluteXArg { addr_base }
+    }
+}
+
+fn absolute_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteXArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        let addr_base = u16_from(addr_lo, addr_hi);
+        let x = nes.cpu.x.get();
+        let addr_lo_x = addr_lo.wrapping_add(x);
+        yield CpuStep::Cycle;
+
+        let addr_unfixed = u16_from(addr_lo_x, addr_hi);
+        let _garbage = nes.read_u8(addr_unfixed);
+        yield CpuStep::Cycle;
+
+        let addr = addr_base.wrapping_add(x as u16);
+        let new_value = op.write(&nes.cpu);
+        nes.write_u8(addr, new_value);
+        yield CpuStep::Cycle;
+
+        AbsoluteXArg { addr_base }
+    }
+}
+
+struct AbsoluteYArg { addr_base: u16 }
+
+fn absolute_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = AbsoluteYArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        let addr_base = u16_from(addr_lo, addr_hi);
+        let y = nes.cpu.y.get();
+        let addr_lo_y = addr_lo.wrapping_add(y);
+        yield CpuStep::Cycle;
+
+        let addr_unfixed = u16_from(addr_lo_y, addr_hi);
+        let value_unfixed = nes.read_u8(addr_unfixed);
+
+        // Speculatively execute the operation based on the
+        // incomplete address calculation
+        op.read(&nes.cpu, value_unfixed);
+        yield CpuStep::Cycle;
+
+        // Calculate the actual address to use
+        let addr = addr_base.wrapping_add(y as u16);
+        if addr != addr_unfixed {
+            // Re-run the operation if the original calculation
+            // was incorrect (i.e. a page boundary was crossed)
+            let value = nes.read_u8(addr);
+            op.read(&nes.cpu, value);
+            yield CpuStep::Cycle;
+        }
+
+        AbsoluteYArg { addr_base }
+    }
+}
+
+struct IndirectYArg { target_addr_base: u8 }
+
+fn indirect_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = IndirectYArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(&nes);
+        yield CpuStep::Cycle;
+
+        let target_addr_base = Cpu::pc_fetch_inc(&nes);
+        let target_addr_base_lo = target_addr_base as u16;
+        let target_addr_base_hi = target_addr_base_lo.wrapping_add(1);
+        yield CpuStep::Cycle;
+
+        let addr_base_lo = nes.read_u8(target_addr_base_lo);
+        yield CpuStep::Cycle;
+
+        let addr_base_hi = nes.read_u8(target_addr_base_hi);
+        let y = nes.cpu.y.get();
+
+        let addr_unfixed = u16_from(addr_base_lo.wrapping_add(y), addr_base_hi);
+        yield CpuStep::Cycle;
+
+        // Speculatively execute the operation based on the
+        // incomplete address calculation
+        let value_unfixed = nes.read_u8(addr_unfixed);
+        op.read(&nes.cpu, value_unfixed);
+        yield CpuStep::Cycle;
+
+        let addr_base = u16_from(addr_base_lo, addr_base_hi);
+        let addr = addr_base.wrapping_add(y as u16);
+        if addr != addr_unfixed {
+            // Re-run the operation if the original calculation
+            // was incorrect (i.e. a page boundary was crossed)
+            let value = nes.read_u8(addr);
+            op.read(&nes.cpu, value);
+            yield CpuStep::Cycle;
+        }
+
+        IndirectYArg { target_addr_base }
+    }
+}
+
+fn indirect_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = IndirectYArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(&nes);
+        yield CpuStep::Cycle;
+
+        let target_addr_base = Cpu::pc_fetch_inc(&nes);
+        let target_addr_base_lo = target_addr_base as u16;
+        let target_addr_base_hi = target_addr_base_lo.wrapping_add(1);
+        yield CpuStep::Cycle;
+
+        let addr_base_lo = nes.read_u8(target_addr_base_lo);
+        yield CpuStep::Cycle;
+
+        let addr_base_hi = nes.read_u8(target_addr_base_hi);
+        let y = nes.cpu.y.get();
+
+        let addr_unfixed = u16_from(addr_base_lo.wrapping_add(y), addr_base_hi);
+        yield CpuStep::Cycle;
+
+        let _garbage = nes.read_u8(addr_unfixed);
+        yield CpuStep::Cycle;
+
+        let addr_base = u16_from(addr_base_lo, addr_base_hi);
+        let addr = addr_base.wrapping_add(y as u16);
+
+        let value = op.write(&nes.cpu);
+
+        nes.write_u8(addr, value);
+        yield CpuStep::Cycle;
+
+        return IndirectYArg { target_addr_base };
+    }
+}
+
+struct BranchArg { addr_offset: i8 }
+
+fn branch<'a>(nes: &'a Nes, op: impl BranchOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = BranchArg> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(&nes);
+        yield CpuStep::Cycle;
+
+        let addr_offset = Cpu::pc_fetch_inc(&nes) as i8;
+        yield CpuStep::Cycle;
+
+        if op.branch(&nes.cpu) {
+            let pc = nes.cpu.pc.get();
+            let pc_hi = (pc >> 8) as u8;
+            let pc_lo = (pc & 0x00FF) as u8;
+
+            let pc_lo_offset = pc_lo.wrapping_add(addr_offset as u8);
+            let unfixed_addr = u16_from(pc_hi, pc_lo_offset);
+
+            let addr = pc.wrapping_add(addr_offset as u16);
+            nes.cpu.pc.set(addr);
+
+            if addr != unfixed_addr {
+                // yield CpuStep::Cycle;
+            }
+
+            yield CpuStep::Cycle;
+        }
+
+        BranchArg { addr_offset }
+    }
+}
+
+fn stack_push<'a>(
+    nes: &'a Nes,
+    op: impl StackPushOperation + 'a,
+)
+    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch(nes);
+        yield CpuStep::Cycle;
+
+        let value = op.push(&nes.cpu);
+        nes.write_u8(nes.cpu.stack_addr(), value);
+        nes.cpu.dec_s();
+        yield CpuStep::Cycle;
+    }
+}
+
+fn stack_pull<'a>(
+    nes: &'a Nes,
+    op: impl StackPullOperation + 'a,
+)
+    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch(nes);
+        yield CpuStep::Cycle;
+
+        nes.cpu.inc_s();
+        yield CpuStep::Cycle;
+
+        let value = nes.read_u8(nes.cpu.stack_addr());
+        op.pull(&nes.cpu, value);
+        yield CpuStep::Cycle;
+    }
+}
+
+struct JsrArg { addr: u16 }
+
+fn jsr<'a>(nes: &'a Nes)
+    -> impl Generator<Yield = CpuStep, Return = JsrArg> + 'a
+{
+    move || {
+        let ret_pc = nes.cpu.pc.get().wrapping_add(3);
+        let push_pc = ret_pc.wrapping_sub(1);
+        let push_pc_hi = (push_pc >> 8) as u8;
+        let push_pc_lo = (push_pc & 0x00FF) as u8;
+
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        // No-op
+        yield CpuStep::Cycle;
+
+        nes.write_u8(nes.cpu.stack_addr(), push_pc_hi);
+        nes.cpu.dec_s();
+        yield CpuStep::Cycle;
+
+
+        nes.write_u8(nes.cpu.stack_addr(), push_pc_lo);
+        nes.cpu.dec_s();
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch(nes);
+        let addr = u16_from(addr_lo, addr_hi);
+        nes.cpu.pc.set(addr);
+        yield CpuStep::Cycle;
+
+        JsrArg { addr }
+    }
+}
+
+fn rti<'a>(nes: &'a Nes)
+    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch(nes);
+        yield CpuStep::Cycle;
+
+        nes.cpu.inc_s();
+        yield CpuStep::Cycle;
+
+        let p = nes.read_u8(nes.cpu.stack_addr());
+        nes.cpu.p.set(CpuFlags::from_bits_truncate(p));
+        nes.cpu.inc_s();
+        yield CpuStep::Cycle;
+
+        let pc_lo = nes.read_u8(nes.cpu.stack_addr());
+        nes.cpu.inc_s();
+        yield CpuStep::Cycle;
+
+        let pc_hi = nes.read_u8(nes.cpu.stack_addr());
+        nes.cpu.pc.set(u16_from(pc_lo, pc_hi));
+        yield CpuStep::Cycle;
+    }
+}
+
+fn rts<'a>(nes: &'a Nes)
+    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch(nes);
+        yield CpuStep::Cycle;
+
+        nes.cpu.inc_s();
+        yield CpuStep::Cycle;
+
+        let pull_pc_lo = nes.read_u8(nes.cpu.stack_addr());
+        nes.cpu.inc_s();
+        yield CpuStep::Cycle;
+
+        let pull_pc_hi = nes.read_u8(nes.cpu.stack_addr());
+        nes.cpu.pc.set(u16_from(pull_pc_lo, pull_pc_hi));
+        yield CpuStep::Cycle;
+
+        nes.cpu.pc_inc();
+        yield CpuStep::Cycle;
+    }
+}
+
+
+
+struct AdcOperation;
+impl ReadOperation for AdcOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let a = cpu.a.get();
+        let p = cpu.p.get();
+        let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
+
+        let result = a as u16 + c as u16 + value as u16;
+        let out = result as u8;
+
+        // TODO: Refactor!
+        let signed_result = result as i8;
+        let signed_out = out as i8;
+        let is_sign_correct =
+            (signed_result >= 0 && signed_out >= 0)
+            || (signed_result < 0 && signed_out < 0);
+
+        cpu.a.set(out);
+        cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
+        cpu.set_flags(CpuFlags::Z, result == 0);
+        cpu.set_flags(CpuFlags::V, !is_sign_correct);
+        cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+    }
+}
+
+struct AndOperation;
+impl ReadOperation for AndOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let new_a = cpu.a.get() & value;
+
+        cpu.a.set(new_a);
+        cpu.set_flags(CpuFlags::Z, new_a == 0);
+        cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
+    }
+}
+
+struct AslOperation;
+impl ReadModifyWriteOperation for AslOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
+        let c = (value & 0b_1000_0000) != 0;
+        let new_value = value << 1;
+
+        cpu.set_flags(CpuFlags::C, c);
+        cpu.set_flags(CpuFlags::Z, new_value == 0);
+        cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
+
+        new_value
+    }
+}
+
+struct BccOperation;
+impl BranchOperation for BccOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        !cpu.contains_flags(CpuFlags::C)
+    }
+}
+
+struct BcsOperation;
+impl BranchOperation for BcsOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        cpu.contains_flags(CpuFlags::C)
+    }
+}
+
+struct BeqOperation;
+impl BranchOperation for BeqOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        cpu.contains_flags(CpuFlags::Z)
+    }
+}
+
+struct BmiOperation;
+impl BranchOperation for BmiOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        cpu.contains_flags(CpuFlags::N)
+    }
+}
+
+struct BneOperation;
+impl BranchOperation for BneOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        !cpu.contains_flags(CpuFlags::Z)
+    }
+}
+
+struct BplOperation;
+impl BranchOperation for BplOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        !cpu.contains_flags(CpuFlags::N)
+    }
+}
+
+struct ClcOperation;
+impl ImpliedOperation for ClcOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::C, false);
+    }
+}
+
+struct CldOperation;
+impl ImpliedOperation for CldOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::D, false);
+    }
+}
+
+struct CmpOperation;
+impl ReadOperation for CmpOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let a = cpu.a.get();
+        let result = a.wrapping_sub(value);
+
+        cpu.set_flags(CpuFlags::C, a >= value);
+        cpu.set_flags(CpuFlags::Z, a == value);
+        cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+    }
+}
+
+struct DecOperation;
+impl ReadModifyWriteOperation for DecOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
+        let new_value = value.wrapping_sub(1);
+
+        cpu.set_flags(CpuFlags::Z, new_value == 0);
+        cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
+
+        new_value
+    }
+}
+
+struct DexOperation;
+impl ImpliedOperation for DexOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let new_x = cpu.x.get().wrapping_sub(1);
+        cpu.set_flags(CpuFlags::Z, new_x == 0);
+        cpu.set_flags(CpuFlags::N, (new_x & 0b_1000_0000) != 0);
+        cpu.x.set(new_x);
+    }
+}
+
+struct DeyOperation;
+impl ImpliedOperation for DeyOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let new_y = cpu.y.get().wrapping_sub(1);
+        cpu.set_flags(CpuFlags::Z, new_y == 0);
+        cpu.set_flags(CpuFlags::N, (new_y & 0b_1000_0000) != 0);
+        cpu.y.set(new_y);
+    }
+}
+
+struct EorOperation;
+impl ReadOperation for EorOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let new_a = cpu.a.get() ^ value;
+
+        cpu.a.set(new_a);
+        cpu.set_flags(CpuFlags::Z, new_a == 0);
+        cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
+    }
+}
+
+struct IncOperation;
+impl ReadModifyWriteOperation for IncOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
+        let new_value = value.wrapping_add(1);
+
+        cpu.set_flags(CpuFlags::Z, new_value == 0);
+        cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
+
+        new_value
+    }
+}
+
+struct InxOperation;
+impl ImpliedOperation for InxOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let new_x = cpu.x.get().wrapping_add(1);
+        cpu.set_flags(CpuFlags::Z, new_x == 0);
+        cpu.set_flags(CpuFlags::N, (new_x & 0b_1000_0000) != 0);
+        cpu.x.set(new_x);
+    }
+}
+
+struct InyOperation;
+impl ImpliedOperation for InyOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let new_y = cpu.y.get().wrapping_add(1);
+        cpu.set_flags(CpuFlags::Z, new_y == 0);
+        cpu.set_flags(CpuFlags::N, (new_y & 0b_1000_0000) != 0);
+        cpu.y.set(new_y);
+    }
+}
+
+struct LdaOperation;
+impl ReadOperation for LdaOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        cpu.a.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+struct LdxOperation;
+impl ReadOperation for LdxOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        cpu.x.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+struct LdyOperation;
+impl ReadOperation for LdyOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        cpu.y.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+struct LsrOperation;
+impl ReadModifyWriteOperation for LsrOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
+        let new_value = value >> 1;
+        cpu.set_flags(CpuFlags::C, (value & 0b_0000_0001) != 0);
+        cpu.set_flags(CpuFlags::Z, new_value == 0);
+        cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
+
+        new_value
+    }
+}
+
+struct OraOperation;
+impl ReadOperation for OraOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let new_a = cpu.a.get() | value;
+
+        cpu.a.set(new_a);
+        cpu.set_flags(CpuFlags::Z, new_a == 0);
+        cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
+    }
+}
+
+struct PhaOperation;
+impl StackPushOperation for PhaOperation {
+    fn push(&self, cpu: &Cpu) -> u8 {
+        cpu.a.get()
+    }
+}
+
+struct PlaOperation;
+impl StackPullOperation for PlaOperation {
+    fn pull(&self, cpu: &Cpu, value: u8) {
+        cpu.a.set(value);
+    }
+}
+
+struct RolOperation;
+impl ReadModifyWriteOperation for RolOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
+        let prev_c = cpu.contains_flags(CpuFlags::C);
+        let carry_mask = match prev_c {
+            true  => 0b_0000_0001,
+            false => 0b_0000_0000,
+        };
+
+        let new_value = (value << 1) | carry_mask;
+
+        cpu.set_flags(CpuFlags::C, (value & 0b_1000_0000) != 0);
+        cpu.set_flags(CpuFlags::Z, new_value == 0);
+        cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
+
+        new_value
+    }
+}
+
+struct RorOperation;
+impl ReadModifyWriteOperation for RorOperation {
+    fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
+        let prev_c = cpu.contains_flags(CpuFlags::C);
+        let carry_mask = match prev_c {
+            true  => 0b_1000_0000,
+            false => 0b_0000_0000,
+        };
+
+        let new_value = (value >> 1) | carry_mask;
+
+        cpu.a.set(new_value);
+        cpu.set_flags(CpuFlags::C, (value & 0b_0000_0001) != 0);
+        cpu.set_flags(CpuFlags::Z, new_value == 0);
+        cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
+
+        new_value
+    }
+}
+
+struct SecOperation;
+impl ImpliedOperation for SecOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::C, true);
+    }
+}
+
+struct SeiOperation;
+impl ImpliedOperation for SeiOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::I, true);
+    }
+}
+
+struct StaOperation;
+impl WriteOperation for StaOperation {
+    fn write(&self, cpu: &Cpu) -> u8 {
+        cpu.a.get()
+    }
+}
+
+struct StxOperation;
+impl WriteOperation for StxOperation {
+    fn write(&self, cpu: &Cpu) -> u8 {
+        cpu.x.get()
+    }
+}
+
+struct StyOperation;
+impl WriteOperation for StyOperation {
+    fn write(&self, cpu: &Cpu) -> u8 {
+        cpu.y.get()
+    }
+}
+
+struct TaxOperation;
+impl ImpliedOperation for TaxOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let value = cpu.a.get();
+        cpu.x.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+struct TayOperation;
+impl ImpliedOperation for TayOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let value = cpu.a.get();
+        cpu.y.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+struct TxaOperation;
+impl ImpliedOperation for TxaOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let value = cpu.x.get();
+        cpu.a.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+struct TxsOperation;
+impl ImpliedOperation for TxsOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let value = cpu.x.get();
+        cpu.s.set(value);
+    }
+}
+
+struct TyaOperation;
+impl ImpliedOperation for TyaOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let value = cpu.y.get();
+        cpu.a.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+}
+
+fn u16_from(lo: u8, hi: u8) -> u16 {
+    ((hi as u16) << 8) | (lo as u16)
 }

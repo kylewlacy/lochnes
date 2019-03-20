@@ -136,6 +136,7 @@ impl From<sdl2::IntegerOrSdlError> for LochnesError {
 mod tests {
     use std::{env, fs};
     use test::Bencher;
+    use nes::cpu::CpuStep;
     use super::*;
 
     #[bench]
@@ -156,7 +157,7 @@ mod tests {
             for _ in 0..cycles {
                 loop {
                     match Pin::new(&mut run_nes).resume() {
-                        GeneratorState::Yielded(NesStep::Cpu(_)) => { break; }
+                        GeneratorState::Yielded(NesStep::Cpu(CpuStep::Cycle)) => { break; }
                         GeneratorState::Yielded(_) => { }
                     }
                 }

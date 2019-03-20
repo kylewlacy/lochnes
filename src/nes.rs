@@ -85,13 +85,9 @@ impl Nes {
         }
     }
 
-    pub fn read_i8(&self, addr: u16) -> i8 {
-        self.read_u8(addr) as i8
-    }
-
     pub fn read_u16(&self, addr: u16) -> u16 {
         let lo = self.read_u8(addr);
-        let hi = self.read_u8(addr + 1);
+        let hi = self.read_u8(addr.wrapping_add(1));
 
         lo as u16 | ((hi as u16) << 8)
     }
@@ -165,24 +161,6 @@ impl Nes {
 
         self.push_u8(value_hi);
         self.push_u8(value_lo);
-    }
-
-    fn pull_u8(&self) -> u8 {
-        let s = self.cpu.s.get().wrapping_add(1);
-        self.cpu.s.set(s);
-
-        let stack_addr = 0x0100 | s as u16;
-
-        let value = self.read_u8(stack_addr);
-
-        value
-    }
-
-    fn pull_u16(&self) -> u16 {
-        let value_lo = self.pull_u8();
-        let value_hi = self.pull_u8();
-
-        ((value_hi as u16) << 8) | (value_lo as u16)
     }
 
     fn copy_oam_dma(&self, page: u8) {
