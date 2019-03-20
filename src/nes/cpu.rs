@@ -96,7 +96,7 @@ impl Cpu {
             let op = match opcode {
                 Opcode::AdcAbs => {
                     yield_all! {
-                        absolute_read(nes, AdcOperation)
+                        abs_read(nes, AdcOperation)
                     }
                 }
                 Opcode::AdcImm => {
@@ -106,7 +106,7 @@ impl Cpu {
                 }
                 Opcode::AdcZero => {
                     yield_all! {
-                        zero_page_read(nes, AdcOperation)
+                        zero_read(nes, AdcOperation)
                     }
                 }
                 Opcode::AndImm => {
@@ -116,22 +116,22 @@ impl Cpu {
                 }
                 Opcode::AndZero => {
                     yield_all! {
-                        zero_page_read(nes, AndOperation)
+                        zero_read(nes, AndOperation)
                     }
                 }
                 Opcode::AndZeroX => {
                     yield_all! {
-                        zero_page_x_read(nes, AndOperation)
+                        zero_x_read(nes, AndOperation)
                     }
                 }
                 Opcode::AslA => {
                     yield_all! {
-                        accum_read_modify_write(nes, AslOperation)
+                        accum_modify(nes, AslOperation)
                     }
                 }
                 Opcode::AslZero => {
                     yield_all! {
-                        zero_page_read_modify_write(nes, AslOperation)
+                        zero_modify(nes, AslOperation)
                     }
                 }
                 Opcode::Bcc => {
@@ -181,17 +181,17 @@ impl Cpu {
                 }
                 Opcode::DecAbs => {
                     yield_all! {
-                        absolute_read_modify_write(nes, DecOperation)
+                        abs_modify(nes, DecOperation)
                     }
                 }
                 Opcode::DecZero => {
                     yield_all! {
-                        zero_page_read_modify_write(nes, DecOperation)
+                        zero_modify(nes, DecOperation)
                     }
                 }
                 Opcode::DecZeroX => {
                     yield_all! {
-                        zero_page_x_read_modify_write(nes, DecOperation)
+                        zero_x_modify(nes, DecOperation)
                     }
                 }
                 Opcode::Dex => {
@@ -211,12 +211,12 @@ impl Cpu {
                 }
                 Opcode::EorZero => {
                     yield_all! {
-                        zero_page_read(nes, EorOperation)
+                        zero_read(nes, EorOperation)
                     }
                 }
                 Opcode::IncZero => {
                     yield_all! {
-                        zero_page_read_modify_write(nes, IncOperation)
+                        zero_modify(nes, IncOperation)
                     }
                 }
                 Opcode::Inx => {
@@ -230,24 +230,24 @@ impl Cpu {
                     }
                 }
                 Opcode::JmpAbs => {
-                    yield_all! { absolute_jmp(nes) }
+                    yield_all! { abs_jmp(nes) }
                 }
                 Opcode::Jsr => {
                     yield_all! { jsr(nes) }
                 }
                 Opcode::LdaAbs => {
                     yield_all! {
-                        absolute_read(nes, LdaOperation)
+                        abs_read(nes, LdaOperation)
                     }
                 }
                 Opcode::LdaAbsX => {
                     yield_all! {
-                        absolute_x_read(nes, LdaOperation)
+                        abs_x_read(nes, LdaOperation)
                     }
                 }
                 Opcode::LdaAbsY => {
                     yield_all! {
-                        absolute_y_read(nes, LdaOperation)
+                        abs_y_read(nes, LdaOperation)
                     }
                 }
                 Opcode::LdaImm => {
@@ -257,22 +257,22 @@ impl Cpu {
                 }
                 Opcode::LdaIndY => {
                     yield_all! {
-                        indirect_y_read(nes, LdaOperation)
+                        ind_y_read(nes, LdaOperation)
                     }
                 }
                 Opcode::LdaZero => {
                     yield_all! {
-                        zero_page_read(nes, LdaOperation)
+                        zero_read(nes, LdaOperation)
                     }
                 }
                 Opcode::LdaZeroX => {
                     yield_all! {
-                        zero_page_x_read(nes, LdaOperation)
+                        zero_x_read(nes, LdaOperation)
                     }
                 }
                 Opcode::LdxAbs => {
                     yield_all! {
-                        absolute_read(nes, LdxOperation)
+                        abs_read(nes, LdxOperation)
                     }
                 }
                 Opcode::LdxImm => {
@@ -282,7 +282,7 @@ impl Cpu {
                 }
                 Opcode::LdxZero => {
                     yield_all! {
-                        zero_page_read(nes, LdxOperation)
+                        zero_read(nes, LdxOperation)
                     }
                 }
                 Opcode::LdyImm => {
@@ -292,22 +292,22 @@ impl Cpu {
                 }
                 Opcode::LdyZero => {
                     yield_all! {
-                        zero_page_read(nes, LdyOperation)
+                        zero_read(nes, LdyOperation)
                     }
                 }
                 Opcode::LdyZeroX => {
                     yield_all! {
-                        zero_page_x_read(nes, LdyOperation)
+                        zero_x_read(nes, LdyOperation)
                     }
                 }
                 Opcode::LsrA => {
                     yield_all! {
-                        accum_read_modify_write(nes, LsrOperation)
+                        accum_modify(nes, LsrOperation)
                     }
                 }
                 Opcode::LsrZero => {
                     yield_all! {
-                        zero_page_read_modify_write(nes, LsrOperation)
+                        zero_modify(nes, LsrOperation)
                     }
                 }
                 Opcode::OraImm => {
@@ -317,7 +317,7 @@ impl Cpu {
                 }
                 Opcode::OraZero => {
                     yield_all! {
-                        zero_page_read(nes, OraOperation)
+                        zero_read(nes, OraOperation)
                     }
                 }
                 Opcode::Pha => {
@@ -332,17 +332,17 @@ impl Cpu {
                 }
                 Opcode::RolA => {
                     yield_all! {
-                        accum_read_modify_write(nes, RolOperation)
+                        accum_modify(nes, RolOperation)
                     }
                 }
                 Opcode::RorA => {
                     yield_all! {
-                        accum_read_modify_write(nes, RorOperation)
+                        accum_modify(nes, RorOperation)
                     }
                 }
                 Opcode::RorZero => {
                     yield_all! {
-                        zero_page_read_modify_write(nes, RorOperation)
+                        zero_modify(nes, RorOperation)
                     }
                 }
                 Opcode::Rti => {
@@ -363,47 +363,47 @@ impl Cpu {
                 }
                 Opcode::StaAbs => {
                     yield_all! {
-                        absolute_write(nes, StaOperation)
+                        abs_write(nes, StaOperation)
                     }
                 }
                 Opcode::StaAbsX => {
                     yield_all! {
-                        absolute_x_write(nes, StaOperation)
+                        abs_x_write(nes, StaOperation)
                     }
                 }
                 Opcode::StaIndY => {
                     yield_all! {
-                        indirect_y_write(nes, StaOperation)
+                        ind_y_write(nes, StaOperation)
                     }
                 }
                 Opcode::StaZero => {
                     yield_all! {
-                        zero_page_write(nes, StaOperation)
+                        zero_write(nes, StaOperation)
                     }
                 }
                 Opcode::StaZeroX => {
                     yield_all! {
-                        zero_page_x_write(nes, StaOperation)
+                        zero_x_write(nes, StaOperation)
                     }
                 }
                 Opcode::StxAbs => {
                     yield_all! {
-                        absolute_write(nes, StxOperation)
+                        abs_write(nes, StxOperation)
                     }
                 }
                 Opcode::StxZero => {
                     yield_all! {
-                        zero_page_write(nes, StxOperation)
+                        zero_write(nes, StxOperation)
                     }
                 }
                 Opcode::StyAbs => {
                     yield_all! {
-                        absolute_write(nes, StyOperation)
+                        abs_write(nes, StyOperation)
                     }
                 }
                 Opcode::StyZero => {
                     yield_all! {
-                        zero_page_write(nes, StyOperation)
+                        zero_write(nes, StyOperation)
                     }
                 }
                 Opcode::Tax => {
@@ -850,7 +850,7 @@ trait ReadOperation {
     fn operation(&self, arg: OpArg) -> Op;
 }
 
-trait ReadModifyWriteOperation {
+trait ModifyOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8;
     fn operation(&self, arg: OpArg) -> Op;
 }
@@ -893,9 +893,9 @@ fn implied<'a>(
     }
 }
 
-fn accum_read_modify_write<'a>(
+fn accum_modify<'a>(
     nes: &'a Nes,
-    op: impl ReadModifyWriteOperation + 'a
+    op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
@@ -932,7 +932,7 @@ fn imm_read<'a>(
     }
 }
 
-fn zero_page_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn zero_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -952,9 +952,9 @@ fn zero_page_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn zero_page_read_modify_write<'a>(
+fn zero_modify<'a>(
     nes: &'a Nes,
-    op: impl ReadModifyWriteOperation + 'a
+    op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
@@ -980,7 +980,7 @@ fn zero_page_read_modify_write<'a>(
     }
 }
 
-fn zero_page_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn zero_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1000,7 +1000,7 @@ fn zero_page_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn zero_page_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn zero_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1022,9 +1022,9 @@ fn zero_page_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn zero_page_x_read_modify_write<'a>(
+fn zero_x_modify<'a>(
     nes: &'a Nes,
-    op: impl ReadModifyWriteOperation + 'a
+    op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
@@ -1053,7 +1053,7 @@ fn zero_page_x_read_modify_write<'a>(
     }
 }
 
-fn zero_page_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn zero_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1075,7 +1075,7 @@ fn zero_page_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn absolute_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn abs_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1098,9 +1098,9 @@ fn absolute_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn absolute_read_modify_write<'a>(
+fn abs_modify<'a>(
     nes: &'a Nes,
-    op: impl ReadModifyWriteOperation + 'a
+    op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
@@ -1128,7 +1128,7 @@ fn absolute_read_modify_write<'a>(
     }
 }
 
-fn absolute_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn abs_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1151,7 +1151,7 @@ fn absolute_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn absolute_jmp<'a>(nes: &'a Nes)
+fn abs_jmp<'a>(nes: &'a Nes)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1170,7 +1170,7 @@ fn absolute_jmp<'a>(nes: &'a Nes)
     }
 }
 
-fn absolute_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn abs_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1208,7 +1208,7 @@ fn absolute_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn absolute_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn abs_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1237,7 +1237,7 @@ fn absolute_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn absolute_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn abs_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1275,7 +1275,7 @@ fn absolute_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn indirect_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1316,7 +1316,7 @@ fn indirect_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn indirect_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn ind_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1580,7 +1580,7 @@ impl ReadOperation for AndOperation {
 }
 
 struct AslOperation;
-impl ReadModifyWriteOperation for AslOperation {
+impl ModifyOperation for AslOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let c = (value & 0b_1000_0000) != 0;
         let new_value = value << 1;
@@ -1715,7 +1715,7 @@ impl ReadOperation for CmpOperation {
 }
 
 struct DecOperation;
-impl ReadModifyWriteOperation for DecOperation {
+impl ModifyOperation for DecOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let new_value = value.wrapping_sub(1);
 
@@ -1783,7 +1783,7 @@ impl ReadOperation for EorOperation {
 }
 
 struct IncOperation;
-impl ReadModifyWriteOperation for IncOperation {
+impl ModifyOperation for IncOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let new_value = value.wrapping_add(1);
 
@@ -1888,7 +1888,7 @@ impl ReadOperation for LdyOperation {
 }
 
 struct LsrOperation;
-impl ReadModifyWriteOperation for LsrOperation {
+impl ModifyOperation for LsrOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let new_value = value >> 1;
         cpu.set_flags(CpuFlags::C, (value & 0b_0000_0001) != 0);
@@ -1949,7 +1949,7 @@ impl StackPullOperation for PlaOperation {
 }
 
 struct RolOperation;
-impl ReadModifyWriteOperation for RolOperation {
+impl ModifyOperation for RolOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let prev_c = cpu.contains_flags(CpuFlags::C);
         let carry_mask = match prev_c {
@@ -1975,7 +1975,7 @@ impl ReadModifyWriteOperation for RolOperation {
 }
 
 struct RorOperation;
-impl ReadModifyWriteOperation for RorOperation {
+impl ModifyOperation for RorOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let prev_c = cpu.contains_flags(CpuFlags::C);
         let carry_mask = match prev_c {
