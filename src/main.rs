@@ -20,10 +20,10 @@ use sdl2::keyboard::Keycode as SdlKeycode;
 use nes::NesStep;
 use nes::ppu::PpuStep;
 
+#[macro_use] mod gen_utils;
 mod rom;
 mod nes;
 mod video;
-
 
 const NES_REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000_u64 / 60);
 
