@@ -93,415 +93,345 @@ impl Cpu {
             let opcode = nes.read_u8(pc);
             let opcode = Opcode::from_u8(opcode);
 
-            let op;
-            match opcode {
+            let op = match opcode {
                 Opcode::AdcAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_read(nes, AdcOperation)
-                    };
-                    op = Op::AdcAbs { addr };
+                    }
                 }
                 Opcode::AdcImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, AdcOperation)
-                    };
-                    op = Op::AdcImm { value };
+                    }
                 }
                 Opcode::AdcZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, AdcOperation)
-                    };
-                    op = Op::AdcZero { zero_page };
+                    }
                 }
                 Opcode::AndImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, AndOperation)
-                    };
-                    op = Op::AndImm { value };
+                    }
                 }
                 Opcode::AndZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, AndOperation)
-                    };
-                    op = Op::AndZero { zero_page };
+                    }
                 }
                 Opcode::AndZeroX => {
-                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                    yield_all! {
                         zero_page_x_read(nes, AndOperation)
-                    };
-                    op = Op::AndZeroX { zero_page_base };
+                    }
                 }
                 Opcode::AslA => {
-                    let () = yield_all! {
+                    yield_all! {
                         accum_read_modify_write(nes, AslOperation)
-                    };
-                    op = Op::AslA;
+                    }
                 }
                 Opcode::AslZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read_modify_write(nes, AslOperation)
-                    };
-                    op = Op::AslZero { zero_page };
+                    }
                 }
                 Opcode::Bcc => {
-                    let BranchArg { addr_offset } = yield_all! {
+                    yield_all! {
                         branch(&nes, BccOperation)
-                    };
-                    op = Op::Bcc { addr_offset };
+                    }
                 }
                 Opcode::Bcs => {
-                    let BranchArg { addr_offset } = yield_all! {
+                    yield_all! {
                         branch(&nes, BcsOperation)
-                    };
-                    op = Op::Bcs { addr_offset };
+                    }
                 }
                 Opcode::Beq => {
-                    let BranchArg { addr_offset } = yield_all! {
+                    yield_all! {
                         branch(&nes, BeqOperation)
-                    };
-                    op = Op::Beq { addr_offset };
+                    }
                 }
                 Opcode::Bmi => {
-                    let BranchArg { addr_offset } = yield_all! {
+                    yield_all! {
                         branch(&nes, BmiOperation)
-                    };
-                    op = Op::Bmi { addr_offset };
+                    }
                 }
                 Opcode::Bne => {
-                    let BranchArg { addr_offset } = yield_all! {
+                    yield_all! {
                         branch(&nes, BneOperation)
-                    };
-                    op = Op::Bne { addr_offset };
+                    }
                 }
                 Opcode::Bpl => {
-                    let BranchArg { addr_offset } = yield_all! {
+                    yield_all! {
                         branch(&nes, BplOperation)
-                    };
-                    op = Op::Bpl { addr_offset };
+                    }
                 }
                 Opcode::Clc => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, ClcOperation)
-                    };
-                    op = Op::Clc;
+                    }
                 }
                 Opcode::Cld => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, CldOperation)
-                    };
-                    op = Op::Cld;
+                    }
                 }
                 Opcode::CmpImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, CmpOperation)
-                    };
-                    op = Op::CmpImm { value };
+                    }
                 }
                 Opcode::DecAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_read_modify_write(nes, DecOperation)
-                    };
-                    op = Op::DecAbs { addr };
+                    }
                 }
                 Opcode::DecZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read_modify_write(nes, DecOperation)
-                    };
-                    op = Op::DecZero { zero_page };
+                    }
                 }
                 Opcode::DecZeroX => {
-                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                    yield_all! {
                         zero_page_x_read_modify_write(nes, DecOperation)
-                    };
-                    op = Op::DecZeroX { zero_page_base };
+                    }
                 }
                 Opcode::Dex => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, DexOperation)
-                    };
-                    op = Op::Dex;
+                    }
                 }
                 Opcode::Dey => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, DeyOperation)
-                    };
-                    op = Op::Dey;
+                    }
                 }
                 Opcode::EorImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, EorOperation)
-                    };
-                    op = Op::EorImm { value };
+                    }
                 }
                 Opcode::EorZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, EorOperation)
-                    };
-                    op = Op::EorZero { zero_page };
+                    }
                 }
                 Opcode::IncZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read_modify_write(nes, IncOperation)
-                    };
-                    op = Op::IncZero { zero_page };
+                    }
                 }
                 Opcode::Inx => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, InxOperation)
-                    };
-                    op = Op::Inx;
+                    }
                 }
                 Opcode::Iny => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, InyOperation)
-                    };
-                    op = Op::Iny;
+                    }
                 }
                 Opcode::JmpAbs => {
-                    let AbsoluteArg { addr } = yield_all! { absolute_jmp(nes) };
-                    op = Op::JmpAbs { addr };
+                    yield_all! { absolute_jmp(nes) }
                 }
                 Opcode::Jsr => {
-                    let JsrArg { addr } = yield_all! { jsr(nes) };
-                    op = Op::Jsr { addr };
+                    yield_all! { jsr(nes) }
                 }
                 Opcode::LdaAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaAbs { addr };
+                    }
                 }
                 Opcode::LdaAbsX => {
-                    let AbsoluteXArg { addr_base } = yield_all! {
+                    yield_all! {
                         absolute_x_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaAbsX { addr_base };
+                    }
                 }
                 Opcode::LdaAbsY => {
-                    let AbsoluteYArg { addr_base } = yield_all! {
+                    yield_all! {
                         absolute_y_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaAbsY { addr_base };
+                    }
                 }
                 Opcode::LdaImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaImm { value };
+                    }
                 }
                 Opcode::LdaIndY => {
-                    let IndirectYArg { target_addr_base } = yield_all! {
+                    yield_all! {
                         indirect_y_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaIndY { target_addr_base };
+                    }
                 }
                 Opcode::LdaZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaZero { zero_page };
+                    }
                 }
                 Opcode::LdaZeroX => {
-                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                    yield_all! {
                         zero_page_x_read(nes, LdaOperation)
-                    };
-                    op = Op::LdaZeroX { zero_page_base };
+                    }
                 }
                 Opcode::LdxAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_read(nes, LdxOperation)
-                    };
-                    op = Op::LdxAbs { addr };
+                    }
                 }
                 Opcode::LdxImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, LdxOperation)
-                    };
-                    op = Op::LdxImm { value };
+                    }
                 }
                 Opcode::LdxZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, LdxOperation)
-                    };
-                    op = Op::LdxZero { zero_page };
+                    }
                 }
                 Opcode::LdyImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, LdyOperation)
-                    };
-                    op = Op::LdyImm { value };
+                    }
                 }
                 Opcode::LdyZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, LdyOperation)
-                    };
-                    op = Op::LdyZero { zero_page };
+                    }
                 }
                 Opcode::LdyZeroX => {
-                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                    yield_all! {
                         zero_page_x_read(nes, LdyOperation)
-                    };
-                    op = Op::LdyZeroX { zero_page_base };
+                    }
                 }
                 Opcode::LsrA => {
-                    let () = yield_all! {
+                    yield_all! {
                         accum_read_modify_write(nes, LsrOperation)
-                    };
-                    op = Op::LsrA;
+                    }
                 }
                 Opcode::LsrZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read_modify_write(nes, LsrOperation)
-                    };
-                    op = Op::LsrZero { zero_page };
+                    }
                 }
                 Opcode::OraImm => {
-                    let ImmArg { value } = yield_all! {
+                    yield_all! {
                         imm_read(nes, OraOperation)
-                    };
-                    op = Op::OraImm { value };
+                    }
                 }
                 Opcode::OraZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read(nes, OraOperation)
-                    };
-                    op = Op::OraZero { zero_page };
+                    }
                 }
                 Opcode::Pha => {
-                    let () = yield_all! {
+                    yield_all! {
                         stack_push(nes, PhaOperation)
-                    };
-                    op = Op::Pha;
+                    }
                 }
                 Opcode::Pla => {
-                    let () = yield_all! {
+                    yield_all! {
                         stack_pull(nes, PlaOperation)
-                    };
-                    op = Op::Pla;
+                    }
                 }
                 Opcode::RolA => {
-                    let () = yield_all! {
+                    yield_all! {
                         accum_read_modify_write(nes, RolOperation)
-                    };
-                    op = Op::RolA;
+                    }
                 }
                 Opcode::RorA => {
-                    let () = yield_all! {
+                    yield_all! {
                         accum_read_modify_write(nes, RorOperation)
-                    };
-                    op = Op::RorA;
+                    }
                 }
                 Opcode::RorZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_read_modify_write(nes, RorOperation)
-                    };
-                    op = Op::RorZero { zero_page };
+                    }
                 }
                 Opcode::Rti => {
-                    let () = yield_all! { rti(nes) };
-                    op = Op::Rti;
+                    yield_all! { rti(nes) }
                 }
                 Opcode::Rts => {
-                    let () = yield_all! { rts(nes) };
-                    op = Op::Rts;
+                    yield_all! { rts(nes) }
                 }
                 Opcode::Sec => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, SecOperation)
-                    };
-                    op = Op::Sec;
+                    }
                 }
                 Opcode::Sei => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, SeiOperation)
-                    };
-                    op = Op::Sei;
+                    }
                 }
                 Opcode::StaAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_write(nes, StaOperation)
-                    };
-                    op = Op::StaAbs { addr };
+                    }
                 }
                 Opcode::StaAbsX => {
-                    let AbsoluteXArg { addr_base } = yield_all! {
+                    yield_all! {
                         absolute_x_write(nes, StaOperation)
-                    };
-                    op = Op::StaAbsX { addr_base };
+                    }
                 }
                 Opcode::StaIndY => {
-                    let IndirectYArg { target_addr_base } = yield_all! {
+                    yield_all! {
                         indirect_y_write(nes, StaOperation)
-                    };
-                    op = Op::StaIndY { target_addr_base };
+                    }
                 }
                 Opcode::StaZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_write(nes, StaOperation)
-                    };
-                    op = Op::StaZero { zero_page };
+                    }
                 }
                 Opcode::StaZeroX => {
-                    let ZeroPageXArg { zero_page_base } = yield_all! {
+                    yield_all! {
                         zero_page_x_write(nes, StaOperation)
-                    };
-                    op = Op::StaZeroX { zero_page_base };
+                    }
                 }
                 Opcode::StxAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_write(nes, StxOperation)
-                    };
-                    op = Op::StxAbs { addr };
+                    }
                 }
                 Opcode::StxZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_write(nes, StxOperation)
-                    };
-                    op = Op::StxZero { zero_page };
+                    }
                 }
                 Opcode::StyAbs => {
-                    let AbsoluteArg { addr } = yield_all! {
+                    yield_all! {
                         absolute_write(nes, StyOperation)
-                    };
-                    op = Op::StyAbs { addr };
+                    }
                 }
                 Opcode::StyZero => {
-                    let ZeroPageArg { zero_page } = yield_all! {
+                    yield_all! {
                         zero_page_write(nes, StyOperation)
-                    };
-                    op = Op::StyZero { zero_page };
+                    }
                 }
                 Opcode::Tax => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, TaxOperation)
-                    };
-                    op = Op::Tax;
+                    }
                 }
                 Opcode::Tay => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, TayOperation)
-                    };
-                    op = Op::Tay;
+                    }
                 }
                 Opcode::Txa => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, TxaOperation)
-                    };
-                    op = Op::Txa;
+                    }
                 }
                 Opcode::Txs => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, TxsOperation)
-                    };
-                    op = Op::Txs;
+                    }
                 }
                 Opcode::Tya => {
-                    let () = yield_all! {
+                    yield_all! {
                         implied(nes, TyaOperation)
-                    };
-                    op = Op::Tya;
+                    }
                 }
-            }
+            };
 
             debug_assert_eq!(Opcode::from(&op), opcode);
 
@@ -553,9 +483,9 @@ bitflags! {
 #[derive(Debug, EnumKind)]
 #[enum_kind(Opcode)]
 pub enum Op {
+    AdcAbs { addr: u16 },
     AdcImm { value: u8 },
     AdcZero { zero_page: u8 },
-    AdcAbs { addr: u16 },
     AndImm { value: u8 },
     AndZero { zero_page: u8 },
     AndZeroX { zero_page_base: u8 },
@@ -897,39 +827,59 @@ pub struct CpuStepOp {
 
 
 
+enum OpArg {
+    Implied,
+    Imm { value: u8 },
+    Zero { zero_page: u8 },
+    ZeroX { zero_page_base: u8 },
+    Abs { addr: u16 },
+    AbsX { addr_base: u16 },
+    AbsY { addr_base: u16 },
+    IndY { target_addr_base: u8 },
+}
+
+struct OpBranchArg { addr_offset: i8 }
+
 trait ImpliedOperation {
     fn operate(&self, cpu: &Cpu);
+    fn operation(&self) -> Op;
 }
 
 trait ReadOperation {
     fn read(&self, cpu: &Cpu, value: u8);
+    fn operation(&self, arg: OpArg) -> Op;
 }
 
 trait ReadModifyWriteOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8;
+    fn operation(&self, arg: OpArg) -> Op;
 }
 
 trait WriteOperation {
     fn write(&self, cpu: &Cpu) -> u8;
+    fn operation(&self, arg: OpArg) -> Op;
 }
 
 trait BranchOperation {
     fn branch(&self, cpu: &Cpu) -> bool;
+    fn operation(&self, arg: OpBranchArg) -> Op;
 }
 
 trait StackPushOperation {
     fn push(&self, cpu: &Cpu) -> u8;
+    fn operation(&self) -> Op;
 }
 
 trait StackPullOperation {
     fn pull(&self, cpu: &Cpu, value: u8);
+    fn operation(&self) -> Op;
 }
 
 fn implied<'a>(
     nes: &'a Nes,
     op: impl ImpliedOperation + 'a
 )
-    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -938,6 +888,8 @@ fn implied<'a>(
         let _garbage = Cpu::pc_fetch(nes);
         op.operate(&nes.cpu);
         yield CpuStep::Cycle;
+
+        op.operation()
     }
 }
 
@@ -945,7 +897,7 @@ fn accum_read_modify_write<'a>(
     nes: &'a Nes,
     op: impl ReadModifyWriteOperation + 'a
 )
-    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -957,18 +909,16 @@ fn accum_read_modify_write<'a>(
         let new_value = op.modify(&nes.cpu, value);
         nes.cpu.a.set(new_value);
         yield CpuStep::Cycle;
-    }
-}
 
-struct ImmArg {
-    value: u8
+        op.operation(OpArg::Implied)
+    }
 }
 
 fn imm_read<'a>(
     nes: &'a Nes,
     op: impl ReadOperation + 'a
 )
-    -> impl Generator<Yield = CpuStep, Return = ImmArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -978,14 +928,12 @@ fn imm_read<'a>(
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        ImmArg { value }
+        op.operation(OpArg::Imm { value })
     }
 }
 
-struct ZeroPageArg { zero_page: u8 }
-
 fn zero_page_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = ZeroPageArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1000,7 +948,7 @@ fn zero_page_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        ZeroPageArg { zero_page }
+        op.operation(OpArg::Zero { zero_page })
     }
 }
 
@@ -1008,7 +956,7 @@ fn zero_page_read_modify_write<'a>(
     nes: &'a Nes,
     op: impl ReadModifyWriteOperation + 'a
 )
-    -> impl Generator<Yield = CpuStep, Return = ZeroPageArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1028,12 +976,12 @@ fn zero_page_read_modify_write<'a>(
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        ZeroPageArg { zero_page }
+        op.operation(OpArg::Zero { zero_page })
     }
 }
 
 fn zero_page_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = ZeroPageArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1048,14 +996,12 @@ fn zero_page_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        ZeroPageArg { zero_page }
+        op.operation(OpArg::Zero { zero_page })
     }
 }
 
-struct ZeroPageXArg { zero_page_base: u8 }
-
 fn zero_page_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = ZeroPageXArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1072,7 +1018,7 @@ fn zero_page_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        ZeroPageXArg { zero_page_base }
+        op.operation(OpArg::ZeroX { zero_page_base })
     }
 }
 
@@ -1080,7 +1026,7 @@ fn zero_page_x_read_modify_write<'a>(
     nes: &'a Nes,
     op: impl ReadModifyWriteOperation + 'a
 )
-    -> impl Generator<Yield = CpuStep, Return = ZeroPageXArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1103,12 +1049,12 @@ fn zero_page_x_read_modify_write<'a>(
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        ZeroPageXArg { zero_page_base }
+        op.operation(OpArg::ZeroX { zero_page_base })
     }
 }
 
 fn zero_page_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = ZeroPageXArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1125,14 +1071,12 @@ fn zero_page_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        ZeroPageXArg { zero_page_base }
+        op.operation(OpArg::ZeroX { zero_page_base })
     }
 }
 
-struct AbsoluteArg { addr: u16 }
-
 fn absolute_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1150,7 +1094,7 @@ fn absolute_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        AbsoluteArg { addr }
+        op.operation(OpArg::Abs { addr })
     }
 }
 
@@ -1158,7 +1102,7 @@ fn absolute_read_modify_write<'a>(
     nes: &'a Nes,
     op: impl ReadModifyWriteOperation + 'a
 )
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1180,12 +1124,12 @@ fn absolute_read_modify_write<'a>(
 
         nes.write_u8(addr, new_value);
 
-        AbsoluteArg { addr }
+        op.operation(OpArg::Abs { addr })
     }
 }
 
 fn absolute_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1203,12 +1147,12 @@ fn absolute_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        AbsoluteArg { addr }
+        op.operation(OpArg::Abs { addr })
     }
 }
 
 fn absolute_jmp<'a>(nes: &'a Nes)
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1222,14 +1166,12 @@ fn absolute_jmp<'a>(nes: &'a Nes)
         nes.cpu.pc.set(addr);
         yield CpuStep::Cycle;
 
-        AbsoluteArg { addr }
+        Op::JmpAbs { addr }
     }
 }
 
-struct AbsoluteXArg { addr_base: u16 }
-
 fn absolute_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteXArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1262,12 +1204,12 @@ fn absolute_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        AbsoluteXArg { addr_base }
+        op.operation(OpArg::AbsX { addr_base })
     }
 }
 
 fn absolute_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteXArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1291,14 +1233,12 @@ fn absolute_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        AbsoluteXArg { addr_base }
+        op.operation(OpArg::AbsX { addr_base })
     }
 }
 
-struct AbsoluteYArg { addr_base: u16 }
-
 fn absolute_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = AbsoluteYArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1331,14 +1271,12 @@ fn absolute_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        AbsoluteYArg { addr_base }
+        op.operation(OpArg::AbsY { addr_base })
     }
 }
 
-struct IndirectYArg { target_addr_base: u8 }
-
 fn indirect_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = IndirectYArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
@@ -1374,12 +1312,12 @@ fn indirect_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        IndirectYArg { target_addr_base }
+        op.operation(OpArg::IndY { target_addr_base })
     }
 }
 
 fn indirect_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = IndirectYArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
@@ -1410,14 +1348,12 @@ fn indirect_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        return IndirectYArg { target_addr_base };
+        op.operation(OpArg::IndY { target_addr_base })
     }
 }
 
-struct BranchArg { addr_offset: i8 }
-
 fn branch<'a>(nes: &'a Nes, op: impl BranchOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = BranchArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
@@ -1444,7 +1380,7 @@ fn branch<'a>(nes: &'a Nes, op: impl BranchOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        BranchArg { addr_offset }
+        op.operation(OpBranchArg { addr_offset })
     }
 }
 
@@ -1452,7 +1388,7 @@ fn stack_push<'a>(
     nes: &'a Nes,
     op: impl StackPushOperation + 'a,
 )
-    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1464,7 +1400,8 @@ fn stack_push<'a>(
         let value = op.push(&nes.cpu);
         nes.write_u8(nes.cpu.stack_addr(), value);
         nes.cpu.dec_s();
-        yield CpuStep::Cycle;
+
+        op.operation()
     }
 }
 
@@ -1472,7 +1409,7 @@ fn stack_pull<'a>(
     nes: &'a Nes,
     op: impl StackPullOperation + 'a,
 )
-    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1487,13 +1424,13 @@ fn stack_pull<'a>(
         let value = nes.read_u8(nes.cpu.stack_addr());
         op.pull(&nes.cpu, value);
         yield CpuStep::Cycle;
+
+        op.operation()
     }
 }
 
-struct JsrArg { addr: u16 }
-
 fn jsr<'a>(nes: &'a Nes)
-    -> impl Generator<Yield = CpuStep, Return = JsrArg> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let ret_pc = nes.cpu.pc.get().wrapping_add(3);
@@ -1524,12 +1461,12 @@ fn jsr<'a>(nes: &'a Nes)
         nes.cpu.pc.set(addr);
         yield CpuStep::Cycle;
 
-        JsrArg { addr }
+        Op::Jsr { addr }
     }
 }
 
 fn rti<'a>(nes: &'a Nes)
-    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1553,11 +1490,13 @@ fn rti<'a>(nes: &'a Nes)
         let pc_hi = nes.read_u8(nes.cpu.stack_addr());
         nes.cpu.pc.set(u16_from(pc_lo, pc_hi));
         yield CpuStep::Cycle;
+
+        Op::Rti
     }
 }
 
 fn rts<'a>(nes: &'a Nes)
-    -> impl Generator<Yield = CpuStep, Return = ()> + 'a
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
@@ -1579,6 +1518,8 @@ fn rts<'a>(nes: &'a Nes)
 
         nes.cpu.pc_inc();
         yield CpuStep::Cycle;
+
+        Op::Rts
     }
 }
 
@@ -1607,6 +1548,15 @@ impl ReadOperation for AdcOperation {
         cpu.set_flags(CpuFlags::V, !is_sign_correct);
         cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::AdcAbs { addr },
+            OpArg::Imm { value } => Op::AdcImm { value },
+            OpArg::Zero { zero_page } => Op::AdcZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct AndOperation;
@@ -1617,6 +1567,15 @@ impl ReadOperation for AndOperation {
         cpu.a.set(new_a);
         cpu.set_flags(CpuFlags::Z, new_a == 0);
         cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::AndImm { value },
+            OpArg::Zero { zero_page }=> Op::AndZero { zero_page },
+            OpArg::ZeroX { zero_page_base }=> Op::AndZeroX { zero_page_base },
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1632,12 +1591,25 @@ impl ReadModifyWriteOperation for AslOperation {
 
         new_value
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Implied => Op::AslA,
+            OpArg::Zero { zero_page } => Op::AslZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct BccOperation;
 impl BranchOperation for BccOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
         !cpu.contains_flags(CpuFlags::C)
+    }
+
+    fn operation(&self, arg: OpBranchArg) -> Op {
+        let OpBranchArg { addr_offset } = arg;
+        Op::Bcc { addr_offset }
     }
 }
 
@@ -1646,12 +1618,22 @@ impl BranchOperation for BcsOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
         cpu.contains_flags(CpuFlags::C)
     }
+
+    fn operation(&self, arg: OpBranchArg) -> Op {
+        let OpBranchArg { addr_offset } = arg;
+        Op::Bcs { addr_offset }
+    }
 }
 
 struct BeqOperation;
 impl BranchOperation for BeqOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
         cpu.contains_flags(CpuFlags::Z)
+    }
+
+    fn operation(&self, arg: OpBranchArg) -> Op {
+        let OpBranchArg { addr_offset } = arg;
+        Op::Beq { addr_offset }
     }
 }
 
@@ -1660,12 +1642,22 @@ impl BranchOperation for BmiOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
         cpu.contains_flags(CpuFlags::N)
     }
+
+    fn operation(&self, arg: OpBranchArg) -> Op {
+        let OpBranchArg { addr_offset } = arg;
+        Op::Bmi { addr_offset }
+    }
 }
 
 struct BneOperation;
 impl BranchOperation for BneOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
         !cpu.contains_flags(CpuFlags::Z)
+    }
+
+    fn operation(&self, arg: OpBranchArg) -> Op {
+        let OpBranchArg { addr_offset } = arg;
+        Op::Bne { addr_offset }
     }
 }
 
@@ -1674,6 +1666,11 @@ impl BranchOperation for BplOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
         !cpu.contains_flags(CpuFlags::N)
     }
+
+    fn operation(&self, arg: OpBranchArg) -> Op {
+        let OpBranchArg { addr_offset } = arg;
+        Op::Bpl { addr_offset }
+    }
 }
 
 struct ClcOperation;
@@ -1681,12 +1678,20 @@ impl ImpliedOperation for ClcOperation {
     fn operate(&self, cpu: &Cpu) {
         cpu.set_flags(CpuFlags::C, false);
     }
+
+    fn operation(&self) -> Op {
+        Op::Clc
+    }
 }
 
 struct CldOperation;
 impl ImpliedOperation for CldOperation {
     fn operate(&self, cpu: &Cpu) {
         cpu.set_flags(CpuFlags::D, false);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Cld
     }
 }
 
@@ -1700,6 +1705,13 @@ impl ReadOperation for CmpOperation {
         cpu.set_flags(CpuFlags::Z, a == value);
         cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::CmpImm { value },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct DecOperation;
@@ -1712,6 +1724,15 @@ impl ReadModifyWriteOperation for DecOperation {
 
         new_value
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::DecAbs { addr },
+            OpArg::Zero { zero_page } => Op::DecZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::DecZeroX { zero_page_base },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct DexOperation;
@@ -1721,6 +1742,10 @@ impl ImpliedOperation for DexOperation {
         cpu.set_flags(CpuFlags::Z, new_x == 0);
         cpu.set_flags(CpuFlags::N, (new_x & 0b_1000_0000) != 0);
         cpu.x.set(new_x);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Dex
     }
 }
 
@@ -1732,6 +1757,10 @@ impl ImpliedOperation for DeyOperation {
         cpu.set_flags(CpuFlags::N, (new_y & 0b_1000_0000) != 0);
         cpu.y.set(new_y);
     }
+
+    fn operation(&self) -> Op {
+        Op::Dey
+    }
 }
 
 struct EorOperation;
@@ -1742,6 +1771,14 @@ impl ReadOperation for EorOperation {
         cpu.a.set(new_a);
         cpu.set_flags(CpuFlags::Z, new_a == 0);
         cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::EorImm { value },
+            OpArg::Zero { zero_page } => Op::EorZero { zero_page },
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1755,6 +1792,13 @@ impl ReadModifyWriteOperation for IncOperation {
 
         new_value
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Zero { zero_page } => Op::IncZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct InxOperation;
@@ -1764,6 +1808,10 @@ impl ImpliedOperation for InxOperation {
         cpu.set_flags(CpuFlags::Z, new_x == 0);
         cpu.set_flags(CpuFlags::N, (new_x & 0b_1000_0000) != 0);
         cpu.x.set(new_x);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Inx
     }
 }
 
@@ -1775,6 +1823,10 @@ impl ImpliedOperation for InyOperation {
         cpu.set_flags(CpuFlags::N, (new_y & 0b_1000_0000) != 0);
         cpu.y.set(new_y);
     }
+
+    fn operation(&self) -> Op {
+        Op::Iny
+    }
 }
 
 struct LdaOperation;
@@ -1783,6 +1835,19 @@ impl ReadOperation for LdaOperation {
         cpu.a.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::LdaAbs { addr },
+            OpArg::AbsX { addr_base } => Op::LdaAbsX { addr_base },
+            OpArg::AbsY { addr_base } => Op::LdaAbsY { addr_base },
+            OpArg::Imm { value } => Op::LdaImm { value },
+            OpArg::Zero { zero_page } => Op::LdaZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::LdaZeroX { zero_page_base },
+            OpArg::IndY { target_addr_base } => Op::LdaIndY { target_addr_base },
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1793,6 +1858,15 @@ impl ReadOperation for LdxOperation {
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::LdxAbs { addr },
+            OpArg::Imm { value } => Op::LdxImm { value },
+            OpArg::Zero { zero_page } => Op::LdxZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct LdyOperation;
@@ -1801,6 +1875,15 @@ impl ReadOperation for LdyOperation {
         cpu.y.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::LdyImm { value },
+            OpArg::Zero { zero_page } => Op::LdyZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::LdyZeroX { zero_page_base },
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1814,6 +1897,14 @@ impl ReadModifyWriteOperation for LsrOperation {
 
         new_value
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Implied => Op::LsrA,
+            OpArg::Zero { zero_page } => Op::LsrZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct OraOperation;
@@ -1825,6 +1916,14 @@ impl ReadOperation for OraOperation {
         cpu.set_flags(CpuFlags::Z, new_a == 0);
         cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::OraImm { value },
+            OpArg::Zero { zero_page } => Op::OraZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct PhaOperation;
@@ -1832,12 +1931,20 @@ impl StackPushOperation for PhaOperation {
     fn push(&self, cpu: &Cpu) -> u8 {
         cpu.a.get()
     }
+
+    fn operation(&self) -> Op {
+        Op::Pha
+    }
 }
 
 struct PlaOperation;
 impl StackPullOperation for PlaOperation {
     fn pull(&self, cpu: &Cpu, value: u8) {
         cpu.a.set(value);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Pla
     }
 }
 
@@ -1857,6 +1964,13 @@ impl ReadModifyWriteOperation for RolOperation {
         cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
 
         new_value
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Implied => Op::RolA,
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1878,12 +1992,24 @@ impl ReadModifyWriteOperation for RorOperation {
 
         new_value
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Implied => Op::RorA,
+            OpArg::Zero { zero_page } => Op::RorZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct SecOperation;
 impl ImpliedOperation for SecOperation {
     fn operate(&self, cpu: &Cpu) {
         cpu.set_flags(CpuFlags::C, true);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Sec
     }
 }
 
@@ -1892,12 +2018,27 @@ impl ImpliedOperation for SeiOperation {
     fn operate(&self, cpu: &Cpu) {
         cpu.set_flags(CpuFlags::I, true);
     }
+
+    fn operation(&self) -> Op {
+        Op::Sei
+    }
 }
 
 struct StaOperation;
 impl WriteOperation for StaOperation {
     fn write(&self, cpu: &Cpu) -> u8 {
         cpu.a.get()
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::StaAbs { addr },
+            OpArg::AbsX { addr_base } => Op::StaAbsX { addr_base },
+            OpArg::Zero { zero_page } => Op::StaZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::StaZeroX { zero_page_base },
+            OpArg::IndY { target_addr_base } => Op::StaIndY { target_addr_base },
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1906,12 +2047,28 @@ impl WriteOperation for StxOperation {
     fn write(&self, cpu: &Cpu) -> u8 {
         cpu.x.get()
     }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::StxAbs { addr },
+            OpArg::Zero { zero_page } => Op::StxZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
 }
 
 struct StyOperation;
 impl WriteOperation for StyOperation {
     fn write(&self, cpu: &Cpu) -> u8 {
         cpu.y.get()
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Abs { addr } => Op::StyAbs { addr },
+            OpArg::Zero { zero_page } => Op::StyZero { zero_page },
+            _ => { unimplemented!(); },
+        }
     }
 }
 
@@ -1923,6 +2080,10 @@ impl ImpliedOperation for TaxOperation {
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
+
+    fn operation(&self) -> Op {
+        Op::Tax
+    }
 }
 
 struct TayOperation;
@@ -1932,6 +2093,10 @@ impl ImpliedOperation for TayOperation {
         cpu.y.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Tay
     }
 }
 
@@ -1943,6 +2108,10 @@ impl ImpliedOperation for TxaOperation {
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
+
+    fn operation(&self) -> Op {
+        Op::Txa
+    }
 }
 
 struct TxsOperation;
@@ -1950,6 +2119,10 @@ impl ImpliedOperation for TxsOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.x.get();
         cpu.s.set(value);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Txs
     }
 }
 
@@ -1960,6 +2133,10 @@ impl ImpliedOperation for TyaOperation {
         cpu.a.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self) -> Op {
+        Op::Tya
     }
 }
 
