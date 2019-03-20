@@ -208,8 +208,17 @@ impl Nes {
 
         move || loop {
             // TODO: Clean this up
-            let GeneratorState::Yielded(cpu_step) = Pin::new(&mut run_cpu).resume();
-            yield NesStep::Cpu(cpu_step);
+            loop {
+                match Pin::new(&mut run_cpu).resume() {
+                    GeneratorState::Yielded(cpu_step @ CpuStep::Cycle) => {
+                        yield NesStep::Cpu(cpu_step);
+                        break;
+                    }
+                    GeneratorState::Yielded(cpu_step) => {
+                        yield NesStep::Cpu(cpu_step);
+                    }
+                }
+            }
 
             for _ in 0u8..3 {
                 loop {

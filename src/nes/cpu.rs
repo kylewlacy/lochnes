@@ -882,7 +882,8 @@ impl Cpu {
 
             debug_assert_eq!(Opcode::from(&op), opcode);
 
-            yield CpuStep { pc, op };
+            yield CpuStep::Cycle;
+            yield CpuStep::Op(CpuStepOp { pc, op });
         }
     }
 }
@@ -1261,7 +1262,12 @@ impl fmt::Display for Op {
     }
 }
 
-pub struct CpuStep {
+pub enum CpuStep {
+    Cycle,
+    Op(CpuStepOp),
+}
+
+pub struct CpuStepOp {
     pub pc: u16,
     pub op: Op,
 }
