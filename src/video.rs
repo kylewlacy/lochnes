@@ -2,11 +2,13 @@ use sdl2::render::{Canvas, RenderTarget};
 use sdl2::pixels::Color as SdlColor;
 use sdl2::rect::Point as SdlPoint;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Point {
     pub x: u16,
     pub y: u16,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
