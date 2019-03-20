@@ -83,6 +83,11 @@ fn run(opts: Options) -> Result<(), LochnesError> {
                 GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
                     break;
                 }
+                // GeneratorState::Yielded(NesStep::Cpu(nes::cpu::CpuStep::Op(op))) => {
+                //     println!("{:X?}", nes.cpu);
+                //     println!("${:04X}: {}", op.pc, op.op);
+                //     println!();
+                // }
                 GeneratorState::Yielded(_) => { }
             }
         }
