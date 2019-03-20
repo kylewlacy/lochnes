@@ -800,7 +800,8 @@ impl fmt::Display for Opcode {
             | Opcode::DecZeroX => "DEC",
             Opcode::Dex => "DEX",
             Opcode::Dey => "DEY",
-            Opcode::EorImm | Opcode::EorZero => "EOR",
+            Opcode::EorImm
+            | Opcode::EorZero => "EOR",
             Opcode::IncZero => "INC",
             Opcode::Inx => "INX",
             Opcode::Iny => "INY",
@@ -881,15 +882,15 @@ impl fmt::Display for Op {
             | Op::RorA => {
                 write!(f, "{} A", opcode)?;
             }
-            Op::AdcAbs { addr}
+            Op::AdcAbs { addr }
             | Op::DecAbs { addr }
+            | Op::JmpAbs { addr }
+            | Op::Jsr { addr }
             | Op::LdaAbs { addr }
             | Op::LdxAbs { addr }
             | Op::StaAbs { addr }
             | Op::StxAbs { addr }
-            | Op::StyAbs { addr }
-            | Op::JmpAbs { addr }
-            | Op::Jsr { addr } => {
+            | Op::StyAbs { addr } => {
                 write!(f, "{} ${:04X}", opcode, addr)?;
             }
             Op::LdaAbsX { addr_base }
@@ -914,14 +915,14 @@ impl fmt::Display for Op {
             | Op::StaZero { zero_page }
             | Op::StxZero { zero_page }
             | Op::StyZero { zero_page } => {
-                write!(f, "{} ${:04X}", opcode, *zero_page as u16)?;
+                write!(f, "{} ${:02X}", opcode, *zero_page as u16)?;
             }
             Op::AndZeroX { zero_page_base }
             | Op::DecZeroX { zero_page_base }
             | Op::LdaZeroX { zero_page_base }
             | Op::LdyZeroX { zero_page_base }
             | Op::StaZeroX { zero_page_base } => {
-                write!(f, "{} ${:04X},X", opcode, zero_page_base)?;
+                write!(f, "{} ${:02X},X", opcode, zero_page_base)?;
             }
             Op::LdaIndY { target_addr_base }
             | Op::StaIndY { target_addr_base } => {
