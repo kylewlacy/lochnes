@@ -89,7 +89,6 @@ impl Cpu {
             }
 
             let pc = nes.cpu.pc.get();
-            let next_pc;
 
             let opcode = nes.read_u8(pc);
             let opcode = Opcode::from_u8(opcode);
@@ -100,480 +99,409 @@ impl Cpu {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_read(nes, AdcOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::AdcAbs { addr };
                 }
                 Opcode::AdcImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, AdcOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::AdcImm { value };
                 }
                 Opcode::AdcZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, AdcOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::AdcZero { zero_page };
                 }
                 Opcode::AndImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, AndOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::AndImm { value };
                 }
                 Opcode::AndZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, AndOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::AndZero { zero_page };
                 }
                 Opcode::AndZeroX => {
                     let ZeroPageXArg { zero_page_base } = yield_all! {
                         zero_page_x_read(nes, AndOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::AndZeroX { zero_page_base };
                 }
                 Opcode::AslA => {
                     let () = yield_all! {
                         accum_read_modify_write(nes, AslOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::AslA;
                 }
                 Opcode::AslZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read_modify_write(nes, AslOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::AslZero { zero_page };
                 }
                 Opcode::Bcc => {
                     let BranchArg { addr_offset } = yield_all! {
                         branch(&nes, BccOperation)
                     };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Bcc { addr_offset };
                 }
                 Opcode::Bcs => {
                     let BranchArg { addr_offset } = yield_all! {
                         branch(&nes, BcsOperation)
                     };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Bcs { addr_offset };
                 }
                 Opcode::Beq => {
                     let BranchArg { addr_offset } = yield_all! {
                         branch(&nes, BeqOperation)
                     };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Beq { addr_offset };
                 }
                 Opcode::Bmi => {
                     let BranchArg { addr_offset } = yield_all! {
                         branch(&nes, BmiOperation)
                     };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Bmi { addr_offset };
                 }
                 Opcode::Bne => {
                     let BranchArg { addr_offset } = yield_all! {
                         branch(&nes, BneOperation)
                     };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Bne { addr_offset };
                 }
                 Opcode::Bpl => {
                     let BranchArg { addr_offset } = yield_all! {
                         branch(&nes, BplOperation)
                     };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Bpl { addr_offset };
                 }
                 Opcode::Clc => {
                     let () = yield_all! {
                         implied(nes, ClcOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Clc;
                 }
                 Opcode::Cld => {
                     let () = yield_all! {
                         implied(nes, CldOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Cld;
                 }
                 Opcode::CmpImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, CmpOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::CmpImm { value };
                 }
                 Opcode::DecAbs => {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_read_modify_write(nes, DecOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::DecAbs { addr };
                 }
                 Opcode::DecZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read_modify_write(nes, DecOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::DecZero { zero_page };
                 }
                 Opcode::DecZeroX => {
                     let ZeroPageXArg { zero_page_base } = yield_all! {
                         zero_page_x_read_modify_write(nes, DecOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::DecZeroX { zero_page_base };
                 }
                 Opcode::Dex => {
                     let () = yield_all! {
                         implied(nes, DexOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Dex;
                 }
                 Opcode::Dey => {
                     let () = yield_all! {
                         implied(nes, DeyOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Dey;
                 }
                 Opcode::EorImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, EorOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::EorImm { value };
                 }
                 Opcode::EorZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, EorOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::EorZero { zero_page };
                 }
                 Opcode::IncZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read_modify_write(nes, IncOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::IncZero { zero_page };
                 }
                 Opcode::Inx => {
                     let () = yield_all! {
                         implied(nes, InxOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Inx;
                 }
                 Opcode::Iny => {
                     let () = yield_all! {
                         implied(nes, InyOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Iny;
                 }
                 Opcode::JmpAbs => {
                     let AbsoluteArg { addr } = yield_all! { absolute_jmp(nes) };
-                    next_pc = addr;
                     op = Op::JmpAbs { addr };
                 }
                 Opcode::Jsr => {
                     let JsrArg { addr } = yield_all! { jsr(nes) };
-                    next_pc = addr;
                     op = Op::Jsr { addr };
                 }
                 Opcode::LdaAbs => {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::LdaAbs { addr };
                 }
                 Opcode::LdaAbsX => {
                     let AbsoluteXArg { addr_base } = yield_all! {
                         absolute_x_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::LdaAbsX { addr_base };
                 }
                 Opcode::LdaAbsY => {
                     let AbsoluteYArg { addr_base } = yield_all! {
                         absolute_y_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::LdaAbsY { addr_base };
                 }
                 Opcode::LdaImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdaImm { value };
                 }
                 Opcode::LdaIndY => {
                     let IndirectYArg { target_addr_base } = yield_all! {
                         indirect_y_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdaIndY { target_addr_base };
                 }
                 Opcode::LdaZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdaZero { zero_page };
                 }
                 Opcode::LdaZeroX => {
                     let ZeroPageXArg { zero_page_base } = yield_all! {
                         zero_page_x_read(nes, LdaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdaZeroX { zero_page_base };
                 }
                 Opcode::LdxAbs => {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_read(nes, LdxOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::LdxAbs { addr };
                 }
                 Opcode::LdxImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, LdxOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdxImm { value };
                 }
                 Opcode::LdxZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, LdxOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdxZero { zero_page };
                 }
                 Opcode::LdyImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, LdyOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdyImm { value };
                 }
                 Opcode::LdyZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, LdyOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdyZero { zero_page };
                 }
                 Opcode::LdyZeroX => {
                     let ZeroPageXArg { zero_page_base } = yield_all! {
                         zero_page_x_read(nes, LdyOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LdyZeroX { zero_page_base };
                 }
                 Opcode::LsrA => {
                     let () = yield_all! {
                         accum_read_modify_write(nes, LsrOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::LsrA;
                 }
                 Opcode::LsrZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read_modify_write(nes, LsrOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::LsrZero { zero_page };
                 }
                 Opcode::OraImm => {
                     let ImmArg { value } = yield_all! {
                         imm_read(nes, OraOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::OraImm { value };
                 }
                 Opcode::OraZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read(nes, OraOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::OraZero { zero_page };
                 }
                 Opcode::Pha => {
                     let () = yield_all! {
                         stack_push(nes, PhaOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Pha;
                 }
                 Opcode::Pla => {
                     let () = yield_all! {
                         stack_pull(nes, PlaOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Pla;
                 }
                 Opcode::RolA => {
                     let () = yield_all! {
                         accum_read_modify_write(nes, RolOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::RolA;
                 }
                 Opcode::RorA => {
                     let () = yield_all! {
                         accum_read_modify_write(nes, RorOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::RorA;
                 }
                 Opcode::RorZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_read_modify_write(nes, RorOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::RorZero { zero_page };
                 }
                 Opcode::Rti => {
                     let () = yield_all! { rti(nes) };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Rti;
                 }
                 Opcode::Rts => {
                     let () = yield_all! { rts(nes) };
-                    next_pc = nes.cpu.pc.get();
                     op = Op::Rts;
                 }
                 Opcode::Sec => {
                     let () = yield_all! {
                         implied(nes, SecOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Sec;
                 }
                 Opcode::Sei => {
                     let () = yield_all! {
                         implied(nes, SeiOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Sei;
                 }
                 Opcode::StaAbs => {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_write(nes, StaOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::StaAbs { addr };
                 }
                 Opcode::StaAbsX => {
                     let AbsoluteXArg { addr_base } = yield_all! {
                         absolute_x_write(nes, StaOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::StaAbsX { addr_base };
                 }
                 Opcode::StaIndY => {
                     let IndirectYArg { target_addr_base } = yield_all! {
                         indirect_y_write(nes, StaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::StaIndY { target_addr_base };
                 }
                 Opcode::StaZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_write(nes, StaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::StaZero { zero_page };
                 }
                 Opcode::StaZeroX => {
                     let ZeroPageXArg { zero_page_base } = yield_all! {
                         zero_page_x_write(nes, StaOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::StaZeroX { zero_page_base };
                 }
                 Opcode::StxAbs => {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_write(nes, StxOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::StxAbs { addr };
                 }
                 Opcode::StxZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_write(nes, StxOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::StxZero { zero_page };
                 }
                 Opcode::StyAbs => {
                     let AbsoluteArg { addr } = yield_all! {
                         absolute_write(nes, StyOperation)
                     };
-                    next_pc = pc + 3;
                     op = Op::StyAbs { addr };
                 }
                 Opcode::StyZero => {
                     let ZeroPageArg { zero_page } = yield_all! {
                         zero_page_write(nes, StyOperation)
                     };
-                    next_pc = pc + 2;
                     op = Op::StyZero { zero_page };
                 }
                 Opcode::Tax => {
                     let () = yield_all! {
                         implied(nes, TaxOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Tax;
                 }
                 Opcode::Tay => {
                     let () = yield_all! {
                         implied(nes, TayOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Tay;
                 }
                 Opcode::Txa => {
                     let () = yield_all! {
                         implied(nes, TxaOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Txa;
                 }
                 Opcode::Txs => {
                     let () = yield_all! {
                         implied(nes, TxsOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Txs;
                 }
                 Opcode::Tya => {
                     let () = yield_all! {
                         implied(nes, TyaOperation)
                     };
-                    next_pc = pc + 1;
                     op = Op::Tya;
                 }
             }
-
-            nes.cpu.pc.set(next_pc);
 
             debug_assert_eq!(Opcode::from(&op), opcode);
 
