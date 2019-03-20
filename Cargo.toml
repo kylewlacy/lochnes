@@ -8,3 +8,5 @@ bitflags = "1.0.4"
 enum-kinds = "0.4.1"
 structopt = "0.2.15"
 sdl2 = "0.32.1"
+[profile.release]
+debug = true
