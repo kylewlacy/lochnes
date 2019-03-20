@@ -140,6 +140,8 @@ impl Ppu {
         -> impl Generator<Yield = PpuStep, Return = !> + 'a
     {
         move || {
+            // TODO: Disable registers on startup until enough cycles
+            // have elapsed
             for frame in 0_u64.. {
                 let is_even_frame = frame % 2 == 0;
                 for scanline in 0_u16..262 {
@@ -156,7 +158,12 @@ impl Ppu {
                                 status.set(PpuStatusFlags::VBLANK_STARTED, true);
                                 status
                             });
-                            nes.cpu.nmi.set(true);
+                            let ctrl = nes.ppu.ctrl.get();
+                            if ctrl.contains(PpuCtrlFlags::VBLANK_INTERRUPT) {
+                                // TODO: Generate NMI immediately if
+                                // VBLANK_INTERRUPT is toggled during vblank
+                                nes.cpu.nmi.set(true);
+                            }
                             video.present();
                             yield PpuStep::Vblank;
                         }
