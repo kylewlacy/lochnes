@@ -1623,25 +1623,17 @@ fn rts<'a>(nes: &'a Nes)
 struct AdcOperation;
 impl ReadOperation for AdcOperation {
     fn read(&self, cpu: &Cpu, value: u8) {
-        let a = cpu.a.get();
-        let p = cpu.p.get();
-        let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
+        let AdcResult { a, c, z, v, n } = adc(AdcArg {
+            a: cpu.a.get(),
+            c: cpu.contains_flags(CpuFlags::C),
+            value,
+        });
 
-        let result = a as u16 + c as u16 + value as u16;
-        let out = result as u8;
-
-        // TODO: Refactor!
-        let signed_result = result as i8;
-        let signed_out = out as i8;
-        let is_sign_correct =
-            (signed_result >= 0 && signed_out >= 0)
-            || (signed_result < 0 && signed_out < 0);
-
-        cpu.a.set(out);
-        cpu.set_flags(CpuFlags::C, result > u8::MAX as u16);
-        cpu.set_flags(CpuFlags::Z, result == 0);
-        cpu.set_flags(CpuFlags::V, !is_sign_correct);
-        cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+        cpu.a.set(a);
+        cpu.set_flags(CpuFlags::C, c);
+        cpu.set_flags(CpuFlags::Z, z);
+        cpu.set_flags(CpuFlags::V, v);
+        cpu.set_flags(CpuFlags::N, n);
     }
 
     fn operation(&self, arg: OpArg) -> Op {
@@ -2174,24 +2166,19 @@ impl ModifyOperation for RorOperation {
 struct SbcOperation;
 impl ReadOperation for SbcOperation {
     fn read(&self, cpu: &Cpu, value: u8) {
-        let a = cpu.a.get();
-        let p = cpu.p.get();
-        let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
+        // Subtract-with-carry is the same as add-with-carry after
+        // performing a bitwise not on `value`
+        let AdcResult { a, c, z, v, n } = adc(AdcArg {
+            a: cpu.a.get(),
+            c: cpu.contains_flags(CpuFlags::C),
+            value: !value,
+        });
 
-        let result = a as i16 - value as i16 - (1 - c as i16);
-        let out = result as u8;
-
-        // TODO: Refactor!
-        let signed_out = out as i8;
-        let is_sign_correct =
-            (signed_out >= 0 && result >= 0)
-            || (signed_out < 0 && result < 0);
-
-        cpu.a.set(out);
-        cpu.set_flags(CpuFlags::C, result < 0);
-        cpu.set_flags(CpuFlags::Z, result == 0);
-        cpu.set_flags(CpuFlags::V, !is_sign_correct);
-        cpu.set_flags(CpuFlags::N, (out & 0b_1000_0000) != 0);
+        cpu.a.set(a);
+        cpu.set_flags(CpuFlags::C, c);
+        cpu.set_flags(CpuFlags::Z, z);
+        cpu.set_flags(CpuFlags::V, v);
+        cpu.set_flags(CpuFlags::N, n);
     }
 
     fn operation(&self, arg: OpArg) -> Op {
@@ -2342,6 +2329,39 @@ impl ImpliedOperation for TyaOperation {
     fn operation(&self) -> Op {
         Op::Tya
     }
+}
+
+struct AdcArg { a: u8, value: u8, c: bool }
+
+struct AdcResult {
+    a: u8,
+    c: bool,
+    z: bool,
+    v: bool,
+    n: bool,
+}
+
+fn adc(AdcArg { a, value, c }: AdcArg) -> AdcResult {
+    let result = (a as u16).wrapping_add(value as u16).wrapping_add(c as u16);
+    let out = result as u8;
+
+    // Get the "intended" sign of the result by performing the same calculation
+    // with signed integers
+    let signed_a = a as i8;
+    let signed_value = value as i8;
+    let signed_c = c as i8;
+    let signed_result = (signed_a as i16)
+        .wrapping_add(signed_value as i16)
+        .wrapping_add(signed_c as i16);
+    let out_negative = (out & 0b_1000_0000) != 0;
+    let signed_result_negative = signed_result < 0;
+
+    let c = result >= 256;
+    let z = out == 0;
+    let v = out_negative != signed_result_negative;
+    let n = (out & 0b_1000_0000) != 0;
+
+    AdcResult { a: out, c, z, v, n }
 }
 
 fn u16_from(lo: u8, hi: u8) -> u16 {
