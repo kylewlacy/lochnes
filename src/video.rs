@@ -47,3 +47,36 @@ impl<T: RenderTarget> Video for CanvasVideo<T> {
         self.0.clear();
     }
 }
+
+pub struct ScaleVideo<V: Video> {
+    video: V,
+    scale: u16,
+}
+
+impl<V: Video> ScaleVideo<V> {
+    pub fn new(video: V, scale: u16) -> Self {
+        ScaleVideo { video, scale }
+    }
+}
+
+impl<V: Video> Video for ScaleVideo<V> {
+    fn draw_point(&mut self, point: Point, color: Color) {
+        for scale_x in 0..self.scale {
+            for scale_y in 0..self.scale {
+                let scale_point = Point {
+                    x: (point.x * self.scale) + scale_x,
+                    y: (point.y * self.scale) + scale_y,
+                };
+                self.video.draw_point(scale_point, color);
+            }
+        }
+    }
+
+    fn present(&mut self) {
+        self.video.present();
+    }
+
+    fn clear(&mut self) {
+        self.video.clear();
+    }
+}
