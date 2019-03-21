@@ -196,7 +196,7 @@ impl Ppu {
                             let tile = nametable[tile_index].get();
 
                             let palette_ram = nes.ppu.palette_ram();
-                            let attr_index = (attr_y * 8  + attr_x) as usize;
+                            let attr_index = (attr_y * 8 + attr_x) as usize;
                             let attr = nametable[0x3C0 + attr_index].get();
                             let palette_index = match (attr_is_top, attr_is_left) {
                                 (true, true)   =>  attr & 0b_0000_0011,
@@ -237,7 +237,7 @@ impl Ppu {
                             let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
                             let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
 
-                            let color_code = match (pattern_lo_bit, pattern_hi_bit) {
+                            let color_code = match (pattern_hi_bit, pattern_lo_bit) {
                                 (false, false) => palette[0],
                                 (false, true) => palette[1],
                                 (true, false) => palette[2],
