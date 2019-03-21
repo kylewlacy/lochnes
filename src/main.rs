@@ -45,23 +45,28 @@ fn main() {
 struct Options {
     #[structopt(name = "ROM", parse(from_os_str))]
     rom: PathBuf,
+
+    #[structopt(long = "scale")]
+    scale: Option<u32>,
 }
 
 fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let nes = nes::Nes::new_from_rom(rom);
+    let scale = opts.scale.unwrap_or(1);
 
     let sdl = sdl2::init().map_err(LochnesError::Sdl2Error)?;
     let sdl_video = sdl.video().map_err(LochnesError::Sdl2Error)?;
-    let sdl_window = sdl_video.window("Lochnes", 256, 240)
+    let sdl_window = sdl_video.window("Lochnes", 256 * scale, 240 * scale)
         .opengl()
         .build()?;
     let sdl_canvas = sdl_window.into_canvas()
         .build()?;
     let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
 
-    let mut video = video::CanvasVideo(sdl_canvas);
+    let video = video::CanvasVideo(sdl_canvas);
+    let mut video = video::ScaleVideo::new(video, scale as u16);
     let mut run_nes = nes.run(&mut video);
 
     'running: loop {
