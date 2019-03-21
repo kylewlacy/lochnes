@@ -97,6 +97,9 @@ impl Cpu {
                 Opcode::AdcAbs => {
                     yield_all! { abs_read(nes, AdcOperation) }
                 }
+                Opcode::AdcAbsX => {
+                    yield_all! { abs_x_read(nes, AdcOperation) }
+                }
                 Opcode::AdcImm => {
                     yield_all! { imm_read(nes, AdcOperation) }
                 }
@@ -142,11 +145,38 @@ impl Cpu {
                 Opcode::Cld => {
                     yield_all! { implied(nes, CldOperation) }
                 }
+                Opcode::CmpAbs => {
+                    yield_all! { abs_x_read(nes, CmpOperation) }
+                }
+                Opcode::CmpAbsX => {
+                    yield_all! { abs_x_read(nes, CmpOperation) }
+                }
+                Opcode::CmpAbsY => {
+                    yield_all! { abs_y_read(nes, CmpOperation) }
+                }
                 Opcode::CmpImm => {
                     yield_all! { imm_read(nes, CmpOperation) }
                 }
+                Opcode::CmpZero => {
+                    yield_all! { zero_read(nes, CmpOperation) }
+                }
+                Opcode::CmpZeroX => {
+                    yield_all! { zero_x_read(nes, CmpOperation) }
+                }
+                Opcode::CpxImm => {
+                    yield_all! { imm_read(nes, CpxOperation) }
+                }
+                Opcode::CpxZero => {
+                    yield_all! { zero_read(nes, CpxOperation) }
+                }
+                Opcode::CpyImm => {
+                    yield_all! { imm_read(nes, CpyOperation) }
+                }
                 Opcode::DecAbs => {
                     yield_all! { abs_modify(nes, DecOperation) }
+                }
+                Opcode::DecAbsX => {
+                    yield_all! { abs_x_modify(nes, DecOperation) }
                 }
                 Opcode::DecZero => {
                     yield_all! { zero_modify(nes, DecOperation) }
@@ -160,14 +190,26 @@ impl Cpu {
                 Opcode::Dey => {
                     yield_all! { implied(nes, DeyOperation) }
                 }
+                Opcode::EorAbs => {
+                    yield_all! { abs_read(nes, EorOperation) }
+                }
                 Opcode::EorImm => {
                     yield_all! { imm_read(nes, EorOperation) }
                 }
                 Opcode::EorZero => {
                     yield_all! { zero_read(nes, EorOperation) }
                 }
+                Opcode::IncAbs => {
+                    yield_all! { abs_modify(nes, IncOperation) }
+                }
+                Opcode::IncAbsX => {
+                    yield_all! { abs_x_modify(nes, IncOperation) }
+                }
                 Opcode::IncZero => {
                     yield_all! { zero_modify(nes, IncOperation) }
+                }
+                Opcode::IncZeroX => {
+                    yield_all! { zero_x_modify(nes, IncOperation) }
                 }
                 Opcode::Inx => {
                     yield_all! { implied(nes, InxOperation) }
@@ -211,6 +253,12 @@ impl Cpu {
                 Opcode::LdxZero => {
                     yield_all! { zero_read(nes, LdxOperation) }
                 }
+                Opcode::LdyAbs => {
+                    yield_all! { abs_read(nes, LdyOperation) }
+                }
+                Opcode::LdyAbsX => {
+                    yield_all! { abs_x_read(nes, LdyOperation) }
+                }
                 Opcode::LdyImm => {
                     yield_all! { imm_read(nes, LdyOperation) }
                 }
@@ -235,8 +283,14 @@ impl Cpu {
                 Opcode::Pha => {
                     yield_all! { stack_push(nes, PhaOperation) }
                 }
+                Opcode::Php => {
+                    yield_all! { stack_push(nes, PhpOperation) }
+                }
                 Opcode::Pla => {
                     yield_all! { stack_pull(nes, PlaOperation) }
+                }
+                Opcode::Plp => {
+                    yield_all! { stack_pull(nes, PlpOperation) }
                 }
                 Opcode::RolA => {
                     yield_all! { accum_modify(nes, RolOperation) }
@@ -253,6 +307,15 @@ impl Cpu {
                 Opcode::Rts => {
                     yield_all! { rts(nes) }
                 }
+                Opcode::SbcAbsX => {
+                    yield_all! { abs_x_read(nes, SbcOperation) }
+                }
+                Opcode::SbcImm => {
+                    yield_all! { imm_read(nes, SbcOperation) }
+                }
+                Opcode::SbcZero => {
+                    yield_all! { zero_read(nes, SbcOperation) }
+                }
                 Opcode::Sec => {
                     yield_all! { implied(nes, SecOperation) }
                 }
@@ -264,6 +327,9 @@ impl Cpu {
                 }
                 Opcode::StaAbsX => {
                     yield_all! { abs_x_write(nes, StaOperation) }
+                }
+                Opcode::StaAbsY => {
+                    yield_all! { abs_y_write(nes, StaOperation) }
                 }
                 Opcode::StaIndY => {
                     yield_all! { ind_y_write(nes, StaOperation) }
@@ -285,6 +351,9 @@ impl Cpu {
                 }
                 Opcode::StyZero => {
                     yield_all! { zero_write(nes, StyOperation) }
+                }
+                Opcode::StyZeroX => {
+                    yield_all! { zero_x_write(nes, StyOperation) }
                 }
                 Opcode::Tax => {
                     yield_all! { implied(nes, TaxOperation) }
@@ -354,6 +423,7 @@ bitflags! {
 #[enum_kind(Opcode)]
 pub enum Op {
     AdcAbs { addr: u16 },
+    AdcAbsX { addr_base: u16 },
     AdcImm { value: u8 },
     AdcZero { zero_page: u8 },
     AndImm { value: u8 },
@@ -369,15 +439,28 @@ pub enum Op {
     Bpl { addr_offset: i8 },
     Clc,
     Cld,
+    CmpAbs { addr: u16 },
+    CmpAbsX { addr_base: u16 },
+    CmpAbsY { addr_base: u16 },
     CmpImm { value: u8 },
+    CmpZero { zero_page: u8 },
+    CmpZeroX { zero_page_base: u8 },
+    CpxImm { value: u8 },
+    CpxZero { zero_page: u8 },
+    CpyImm { value: u8 },
     DecAbs { addr: u16 },
+    DecAbsX { addr_base: u16 },
     DecZero { zero_page: u8 },
     DecZeroX { zero_page_base: u8 },
     Dex,
     Dey,
+    EorAbs { addr: u16 },
     EorImm { value: u8 },
     EorZero { zero_page: u8 },
+    IncAbs { addr: u16 },
+    IncAbsX { addr_base: u16 },
     IncZero { zero_page: u8 },
+    IncZeroX { zero_page_base: u8 },
     Inx,
     Iny,
     JmpAbs { addr: u16 },
@@ -392,6 +475,8 @@ pub enum Op {
     LdxAbs { addr: u16 },
     LdxImm { value: u8 },
     LdxZero { zero_page: u8 },
+    LdyAbs { addr: u16 },
+    LdyAbsX { addr_base: u16 },
     LdyImm { value: u8 },
     LdyZero { zero_page: u8 },
     LdyZeroX { zero_page_base: u8 },
@@ -400,16 +485,22 @@ pub enum Op {
     OraImm { value: u8 },
     OraZero { zero_page: u8 },
     Pha,
+    Php,
     Pla,
+    Plp,
     RolA,
     RorA,
     RorZero { zero_page: u8 },
     Rti,
     Rts,
+    SbcAbsX { addr_base: u16 },
+    SbcImm { value: u8 },
+    SbcZero { zero_page: u8 },
     Sec,
     Sei,
     StaAbs { addr: u16 },
     StaAbsX { addr_base: u16 },
+    StaAbsY { addr_base: u16 },
     StaZero { zero_page: u8 },
     StaZeroX { zero_page_base: u8},
     StaIndY { target_addr_base: u8 },
@@ -417,6 +508,7 @@ pub enum Op {
     StxZero { zero_page: u8 },
     StyAbs { addr: u16 },
     StyZero { zero_page: u8 },
+    StyZeroX { zero_page_base: u8 },
     Tax,
     Tay,
     Txa,
@@ -429,12 +521,14 @@ impl Opcode {
         match opcode {
             0x05 => Opcode::OraZero,
             0x06 => Opcode::AslZero,
+            0x08 => Opcode::Php,
             0x09 => Opcode::OraImm,
             0x0A => Opcode::AslA,
             0x10 => Opcode::Bpl,
             0x18 => Opcode::Clc,
             0x20 => Opcode::Jsr,
             0x25 => Opcode::AndZero,
+            0x28 => Opcode::Plp,
             0x29 => Opcode::AndImm,
             0x2A => Opcode::RolA,
             0x30 => Opcode::Bmi,
@@ -447,6 +541,7 @@ impl Opcode {
             0x49 => Opcode::EorImm,
             0x4A => Opcode::LsrA,
             0x4C => Opcode::JmpAbs,
+            0x4D => Opcode::EorAbs,
             0x60 => Opcode::Rts,
             0x65 => Opcode::AdcZero,
             0x66 => Opcode::RorZero,
@@ -455,6 +550,7 @@ impl Opcode {
             0x6A => Opcode::RorA,
             0x6D => Opcode::AdcAbs,
             0x78 => Opcode::Sei,
+            0x7D => Opcode::AdcAbsX,
             0x8A => Opcode::Txa,
             0x84 => Opcode::StyZero,
             0x85 => Opcode::StaZero,
@@ -465,8 +561,10 @@ impl Opcode {
             0x8E => Opcode::StxAbs,
             0x90 => Opcode::Bcc,
             0x91 => Opcode::StaIndY,
+            0x94 => Opcode::StyZeroX,
             0x95 => Opcode::StaZeroX,
             0x98 => Opcode::Tya,
+            0x99 => Opcode::StaAbsY,
             0x9A => Opcode::Txs,
             0x9D => Opcode::StaAbsX,
             0xA0 => Opcode::LdyImm,
@@ -477,6 +575,7 @@ impl Opcode {
             0xA8 => Opcode::Tay,
             0xA9 => Opcode::LdaImm,
             0xAA => Opcode::Tax,
+            0xAC => Opcode::LdyAbs,
             0xAD => Opcode::LdaAbs,
             0xAE => Opcode::LdxAbs,
             0xB0 => Opcode::Bcs,
@@ -484,18 +583,34 @@ impl Opcode {
             0xB4 => Opcode::LdyZeroX,
             0xB5 => Opcode::LdaZeroX,
             0xB9 => Opcode::LdaAbsY,
+            0xBC => Opcode::LdyAbsX,
             0xBD => Opcode::LdaAbsX,
+            0xC0 => Opcode::CpyImm,
+            0xC5 => Opcode::CmpZero,
             0xC6 => Opcode::DecZero,
             0xC8 => Opcode::Iny,
             0xC9 => Opcode::CmpImm,
             0xCA => Opcode::Dex,
+            0xCD => Opcode::CmpAbs,
             0xCE => Opcode::DecAbs,
             0xD0 => Opcode::Bne,
+            0xD5 => Opcode::CmpZeroX,
             0xD6 => Opcode::DecZeroX,
             0xD8 => Opcode::Cld,
+            0xD9 => Opcode::CmpAbsY,
+            0xDD => Opcode::CmpAbsX,
+            0xDE => Opcode::DecAbsX,
+            0xE0 => Opcode::CpxImm,
+            0xE4 => Opcode::CpxZero,
+            0xE5 => Opcode::SbcZero,
             0xE6 => Opcode::IncZero,
             0xE8 => Opcode::Inx,
+            0xE9 => Opcode::SbcImm,
+            0xEE => Opcode::IncAbs,
             0xF0 => Opcode::Beq,
+            0xF6 => Opcode::IncZeroX,
+            0xFD => Opcode::SbcAbsX,
+            0xFE => Opcode::IncAbsX,
             opcode => {
                 unimplemented!("Unhandled opcode: 0x{:X}", opcode);
             }
@@ -507,6 +622,7 @@ impl fmt::Display for Opcode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mnemonic = match self {
             Opcode::AdcAbs
+            | Opcode::AdcAbsX
             | Opcode::AdcImm
             | Opcode::AdcZero => "ADC",
             Opcode::AndImm
@@ -522,15 +638,28 @@ impl fmt::Display for Opcode {
             Opcode::Bpl => "BPL",
             Opcode::Clc => "CLC",
             Opcode::Cld => "CLD",
-            Opcode::CmpImm => "CMP",
+            Opcode::CmpAbs
+            | Opcode::CmpAbsX
+            | Opcode::CmpAbsY
+            | Opcode::CmpImm
+            | Opcode::CmpZero
+            | Opcode::CmpZeroX => "CMP",
+            Opcode::CpxImm
+            | Opcode::CpxZero => "CPX",
+            Opcode::CpyImm => "CPY",
             Opcode::DecAbs
+            | Opcode::DecAbsX
             | Opcode::DecZero
             | Opcode::DecZeroX => "DEC",
             Opcode::Dex => "DEX",
             Opcode::Dey => "DEY",
-            Opcode::EorImm
+            Opcode::EorAbs
+            | Opcode::EorImm
             | Opcode::EorZero => "EOR",
-            Opcode::IncZero => "INC",
+            Opcode::IncAbs
+            | Opcode::IncAbsX
+            | Opcode::IncZero
+            | Opcode::IncZeroX => "INC",
             Opcode::Inx => "INX",
             Opcode::Iny => "INY",
             Opcode::JmpAbs => "JMP",
@@ -545,7 +674,9 @@ impl fmt::Display for Opcode {
             Opcode::LdxAbs
             | Opcode::LdxImm
             | Opcode::LdxZero => "LDX",
-            Opcode::LdyImm
+            Opcode::LdyAbs
+            | Opcode::LdyAbsX
+            | Opcode::LdyImm
             | Opcode::LdyZero
             | Opcode::LdyZeroX => "LDY",
             Opcode::LsrA
@@ -553,23 +684,30 @@ impl fmt::Display for Opcode {
             Opcode::OraZero
             | Opcode::OraImm => "ORA",
             Opcode::Pha => "PHA",
+            Opcode::Php => "PHP",
             Opcode::Pla => "PLA",
+            Opcode::Plp => "PLP",
             Opcode::RolA => "ROL",
             Opcode::RorA
             | Opcode::RorZero => "ROR",
             Opcode::Rti => "RTI",
             Opcode::Rts => "RTS",
+            Opcode::SbcAbsX
+            | Opcode::SbcImm
+            | Opcode::SbcZero => "SBC",
             Opcode::Sec => "SEC",
             Opcode::Sei => "SEI",
             Opcode::StaAbs
             | Opcode::StaAbsX
+            | Opcode::StaAbsY
             | Opcode::StaIndY
             | Opcode::StaZero
             | Opcode::StaZeroX => "STA",
             Opcode::StxAbs
             | Opcode::StxZero => "STX",
             Opcode::StyAbs
-            | Opcode::StyZero => "STY",
+            | Opcode::StyZero
+            | Opcode::StyZeroX => "STY",
             Opcode::Tax => "TAX",
             Opcode::Tay => "TAY",
             Opcode::Txa => "TXA",
@@ -592,7 +730,9 @@ impl fmt::Display for Op {
             | Op::Inx
             | Op::Iny
             | Op::Pha
+            | Op::Php
             | Op::Pla
+            | Op::Plp
             | Op::Rti
             | Op::Rts
             | Op::Sec
@@ -611,26 +751,40 @@ impl fmt::Display for Op {
                 write!(f, "{} A", opcode)?;
             }
             Op::AdcAbs { addr }
+            | Op::CmpAbs { addr }
             | Op::DecAbs { addr }
+            | Op::EorAbs { addr }
+            | Op::IncAbs { addr }
             | Op::JmpAbs { addr }
             | Op::Jsr { addr }
             | Op::LdaAbs { addr }
             | Op::LdxAbs { addr }
+            | Op::LdyAbs { addr }
             | Op::StaAbs { addr }
             | Op::StxAbs { addr }
             | Op::StyAbs { addr } => {
                 write!(f, "{} ${:04X}", opcode, addr)?;
             }
-            Op::LdaAbsX { addr_base }
+            Op::AdcAbsX { addr_base }
+            | Op::CmpAbsX { addr_base }
+            | Op::DecAbsX { addr_base }
+            | Op::IncAbsX { addr_base }
+            | Op::LdaAbsX { addr_base }
+            | Op::LdyAbsX { addr_base }
+            | Op::SbcAbsX { addr_base }
             | Op::StaAbsX { addr_base } => {
                 write!(f, "{} ${:04X},X", opcode, addr_base)?;
             }
-            Op::LdaAbsY { addr_base } => {
+            Op::CmpAbsY { addr_base }
+            | Op::LdaAbsY { addr_base }
+            | Op::StaAbsY { addr_base } => {
                 write!(f, "{} ${:04X},Y", opcode, addr_base)?;
             }
             Op::AdcZero { zero_page }
             | Op::AndZero { zero_page }
             | Op::AslZero { zero_page }
+            | Op::CmpZero { zero_page }
+            | Op::CpxZero { zero_page }
             | Op::DecZero { zero_page }
             | Op::EorZero { zero_page }
             | Op::IncZero { zero_page }
@@ -640,16 +794,20 @@ impl fmt::Display for Op {
             | Op::LsrZero { zero_page }
             | Op::OraZero { zero_page }
             | Op::RorZero { zero_page }
+            | Op::SbcZero { zero_page }
             | Op::StaZero { zero_page }
             | Op::StxZero { zero_page }
             | Op::StyZero { zero_page } => {
                 write!(f, "{} ${:02X}", opcode, *zero_page as u16)?;
             }
             Op::AndZeroX { zero_page_base }
+            | Op::CmpZeroX { zero_page_base }
             | Op::DecZeroX { zero_page_base }
+            | Op::IncZeroX { zero_page_base }
             | Op::LdaZeroX { zero_page_base }
             | Op::LdyZeroX { zero_page_base }
-            | Op::StaZeroX { zero_page_base } => {
+            | Op::StaZeroX { zero_page_base }
+            | Op::StyZeroX { zero_page_base } => {
                 write!(f, "{} ${:02X},X", opcode, zero_page_base)?;
             }
             Op::LdaIndY { target_addr_base }
@@ -659,11 +817,14 @@ impl fmt::Display for Op {
             Op::AdcImm { value }
             | Op::AndImm { value }
             | Op::CmpImm { value }
+            | Op::CpxImm { value }
+            | Op::CpyImm { value }
             | Op::EorImm { value }
             | Op::LdaImm { value }
             | Op::LdxImm { value }
             | Op::LdyImm { value }
-            | Op::OraImm { value } => {
+            | Op::OraImm { value }
+            | Op::SbcImm { value } => {
                 write!(f, "{} #${:02X}", opcode, value)?;
             }
             Op::Bcc { addr_offset }
@@ -1078,6 +1239,41 @@ fn abs_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
+fn abs_x_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        let addr_base = u16_from(addr_lo, addr_hi);
+        let x = nes.cpu.x.get();
+        let addr_lo_x = addr_lo.wrapping_add(x);
+        yield CpuStep::Cycle;
+
+        let addr_unfixed = u16_from(addr_lo_x, addr_hi);
+        let _garbage = nes.read_u8(addr_unfixed);
+        yield CpuStep::Cycle;
+
+        let addr = addr_base.wrapping_add(x as u16);
+        let value = nes.read_u8(addr);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, value);
+        let new_value = op.modify(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, new_value);
+        yield CpuStep::Cycle;
+
+        op.operation(OpArg::AbsX { addr_base })
+    }
+}
+
 fn abs_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
@@ -1140,6 +1336,35 @@ fn abs_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             op.read(&nes.cpu, value);
             yield CpuStep::Cycle;
         }
+
+        op.operation(OpArg::AbsY { addr_base })
+    }
+}
+
+fn abs_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let addr_hi = Cpu::pc_fetch_inc(nes);
+        let addr_base = u16_from(addr_lo, addr_hi);
+        let y = nes.cpu.y.get();
+        let addr_lo_y = addr_lo.wrapping_add(y);
+        yield CpuStep::Cycle;
+
+        let addr_unfixed = u16_from(addr_lo_y, addr_hi);
+        let _garbage = nes.read_u8(addr_unfixed);
+        yield CpuStep::Cycle;
+
+        let addr = addr_base.wrapping_add(y as u16);
+        let new_value = op.write(&nes.cpu);
+        nes.write_u8(addr, new_value);
+        yield CpuStep::Cycle;
 
         op.operation(OpArg::AbsY { addr_base })
     }
@@ -1422,6 +1647,7 @@ impl ReadOperation for AdcOperation {
     fn operation(&self, arg: OpArg) -> Op {
         match arg {
             OpArg::Abs { addr } => Op::AdcAbs { addr },
+            OpArg::AbsX { addr_base } => Op::AdcAbsX { addr_base },
             OpArg::Imm { value } => Op::AdcImm { value },
             OpArg::Zero { zero_page } => Op::AdcZero { zero_page },
             _ => { unimplemented!(); },
@@ -1578,7 +1804,51 @@ impl ReadOperation for CmpOperation {
 
     fn operation(&self, arg: OpArg) -> Op {
         match arg {
+            OpArg::Abs { addr } => Op::CmpAbs { addr },
+            OpArg::AbsX { addr_base } => Op::CmpAbsX { addr_base },
+            OpArg::AbsY { addr_base } => Op::CmpAbsY { addr_base },
             OpArg::Imm { value } => Op::CmpImm { value },
+            OpArg::Zero { zero_page } => Op::CmpZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::CmpZeroX { zero_page_base },
+            _ => { unimplemented!(); },
+        }
+    }
+}
+
+struct CpxOperation;
+impl ReadOperation for CpxOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let x = cpu.x.get();
+        let result = x.wrapping_sub(value);
+
+        cpu.set_flags(CpuFlags::C, x >= value);
+        cpu.set_flags(CpuFlags::Z, x == value);
+        cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::CpxImm { value },
+            OpArg::Zero { zero_page } => Op::CpxZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
+}
+
+struct CpyOperation;
+impl ReadOperation for CpyOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let y = cpu.y.get();
+        let result = y.wrapping_sub(value);
+
+        cpu.set_flags(CpuFlags::C, y >= value);
+        cpu.set_flags(CpuFlags::Z, y == value);
+        cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::Imm { value } => Op::CpyImm { value },
             _ => { unimplemented!(); },
         }
     }
@@ -1598,6 +1868,7 @@ impl ModifyOperation for DecOperation {
     fn operation(&self, arg: OpArg) -> Op {
         match arg {
             OpArg::Abs { addr } => Op::DecAbs { addr },
+            OpArg::AbsX { addr_base } => Op::DecAbsX { addr_base },
             OpArg::Zero { zero_page } => Op::DecZero { zero_page },
             OpArg::ZeroX { zero_page_base } => Op::DecZeroX { zero_page_base },
             _ => { unimplemented!(); },
@@ -1645,6 +1916,7 @@ impl ReadOperation for EorOperation {
 
     fn operation(&self, arg: OpArg) -> Op {
         match arg {
+            OpArg::Abs { addr } => Op::EorAbs { addr },
             OpArg::Imm { value } => Op::EorImm { value },
             OpArg::Zero { zero_page } => Op::EorZero { zero_page },
             _ => { unimplemented!(); },
@@ -1665,7 +1937,10 @@ impl ModifyOperation for IncOperation {
 
     fn operation(&self, arg: OpArg) -> Op {
         match arg {
+            OpArg::Abs { addr } => Op::IncAbs { addr },
+            OpArg::AbsX { addr_base } => Op::IncAbsX { addr_base },
             OpArg::Zero { zero_page } => Op::IncZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::IncZeroX { zero_page_base },
             _ => { unimplemented!(); },
         }
     }
@@ -1749,6 +2024,8 @@ impl ReadOperation for LdyOperation {
 
     fn operation(&self, arg: OpArg) -> Op {
         match arg {
+            OpArg::Abs { addr } => Op::LdyAbs { addr },
+            OpArg::AbsX { addr_base } => Op::LdyAbsX { addr_base },
             OpArg::Imm { value } => Op::LdyImm { value },
             OpArg::Zero { zero_page } => Op::LdyZero { zero_page },
             OpArg::ZeroX { zero_page_base } => Op::LdyZeroX { zero_page_base },
@@ -1807,6 +2084,17 @@ impl StackPushOperation for PhaOperation {
     }
 }
 
+struct PhpOperation;
+impl StackPushOperation for PhpOperation {
+    fn push(&self, cpu: &Cpu) -> u8 {
+        cpu.p.get().bits
+    }
+
+    fn operation(&self) -> Op {
+        Op::Php
+    }
+}
+
 struct PlaOperation;
 impl StackPullOperation for PlaOperation {
     fn pull(&self, cpu: &Cpu, value: u8) {
@@ -1815,6 +2103,17 @@ impl StackPullOperation for PlaOperation {
 
     fn operation(&self) -> Op {
         Op::Pla
+    }
+}
+
+struct PlpOperation;
+impl StackPullOperation for PlpOperation {
+    fn pull(&self, cpu: &Cpu, value: u8) {
+        cpu.p.set(CpuFlags::from_bits_truncate(value));
+    }
+
+    fn operation(&self) -> Op {
+        Op::Plp
     }
 }
 
@@ -1872,6 +2171,39 @@ impl ModifyOperation for RorOperation {
     }
 }
 
+struct SbcOperation;
+impl ReadOperation for SbcOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        let a = cpu.a.get();
+        let p = cpu.p.get();
+        let c = if p.contains(CpuFlags::C) { 1 } else { 0 };
+
+        let result = a as i16 - value as i16 - (1 - c as i16);
+        let out = result as u8;
+
+        // TODO: Refactor!
+        let signed_out = out as i8;
+        let is_sign_correct =
+            (signed_out >= 0 && result >= 0)
+            || (signed_out < 0 && result < 0);
+
+        cpu.a.set(out);
+        cpu.set_flags(CpuFlags::C, result < 0);
+        cpu.set_flags(CpuFlags::Z, result == 0);
+        cpu.set_flags(CpuFlags::V, !is_sign_correct);
+        cpu.set_flags(CpuFlags::N, (out & 0b_1000_0000) != 0);
+    }
+
+    fn operation(&self, arg: OpArg) -> Op {
+        match arg {
+            OpArg::AbsX { addr_base } => Op::SbcAbsX { addr_base },
+            OpArg::Imm { value } => Op::SbcImm { value },
+            OpArg::Zero { zero_page } => Op::SbcZero { zero_page },
+            _ => { unimplemented!(); },
+        }
+    }
+}
+
 struct SecOperation;
 impl ImpliedOperation for SecOperation {
     fn operate(&self, cpu: &Cpu) {
@@ -1904,6 +2236,7 @@ impl WriteOperation for StaOperation {
         match arg {
             OpArg::Abs { addr } => Op::StaAbs { addr },
             OpArg::AbsX { addr_base } => Op::StaAbsX { addr_base },
+            OpArg::AbsY { addr_base } => Op::StaAbsY { addr_base },
             OpArg::Zero { zero_page } => Op::StaZero { zero_page },
             OpArg::ZeroX { zero_page_base } => Op::StaZeroX { zero_page_base },
             OpArg::IndY { target_addr_base } => Op::StaIndY { target_addr_base },
@@ -1937,6 +2270,7 @@ impl WriteOperation for StyOperation {
         match arg {
             OpArg::Abs { addr } => Op::StyAbs { addr },
             OpArg::Zero { zero_page } => Op::StyZero { zero_page },
+            OpArg::ZeroX { zero_page_base } => Op::StyZeroX { zero_page_base },
             _ => { unimplemented!(); },
         }
     }
