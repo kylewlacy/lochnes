@@ -187,8 +187,8 @@ impl Ppu {
 
                             let attr_x = x / 32;
                             let attr_y = y / 32;
-                            let attr_is_left = (tile_x % 2) == 0;
-                            let attr_is_top = (tile_y % 2) == 0;
+                            let attr_is_left = ((x / 16) % 2) == 0;
+                            let attr_is_top = ((y / 16) % 2) == 0;
 
                             let nametables = nes.ppu.nametables();
                             let nametable = &nametables[0x000..0x400];
