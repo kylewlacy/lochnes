@@ -25,8 +25,6 @@ mod rom;
 mod nes;
 mod video;
 
-const NES_REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000_u64 / 60);
-
 fn main() {
     let opts = Options::from_args();
     let run_result = run(opts);
@@ -51,22 +49,34 @@ struct Options {
 }
 
 fn run(opts: Options) -> Result<(), LochnesError> {
+    const NES_REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000 / 60);
+    const NES_WIDTH: u32 = 256;
+    const NES_HEIGHT: u32 = 240;
+
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let nes = nes::Nes::new_from_rom(rom);
     let scale = opts.scale.unwrap_or(1);
 
+    let window_width = NES_WIDTH * scale;
+    let window_height = NES_HEIGHT * scale;
+
     let sdl = sdl2::init().map_err(LochnesError::Sdl2Error)?;
     let sdl_video = sdl.video().map_err(LochnesError::Sdl2Error)?;
-    let sdl_window = sdl_video.window("Lochnes", 256 * scale, 240 * scale)
+    let sdl_window = sdl_video.window("Lochnes", window_width, window_height)
         .opengl()
         .build()?;
-    let sdl_canvas = sdl_window.into_canvas()
+    let mut sdl_canvas = sdl_window.into_canvas()
         .build()?;
+    let sdl_texture_creator = sdl_canvas.texture_creator();
     let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
 
-    let video = video::CanvasVideo(sdl_canvas);
-    let mut video = video::ScaleVideo::new(video, scale as u16);
+    let texture_buffer_video = video::TextureBufferedVideo::new(
+        &sdl_texture_creator,
+        NES_WIDTH,
+        NES_HEIGHT
+    )?;
+    let mut video = &texture_buffer_video;
     let mut run_nes = nes.run(&mut video);
 
     'running: loop {
@@ -96,6 +106,10 @@ fn run(opts: Options) -> Result<(), LochnesError> {
                 GeneratorState::Yielded(_) => { }
             }
         }
+
+        texture_buffer_video.copy_to(&mut sdl_canvas)
+            .map_err(LochnesError::Sdl2Error)?;
+        sdl_canvas.present();
 
         let elapsed = frame_start.elapsed();
         println!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
@@ -136,6 +150,12 @@ impl From<sdl2::video::WindowBuildError> for LochnesError {
 
 impl From<sdl2::IntegerOrSdlError> for LochnesError {
     fn from(err: sdl2::IntegerOrSdlError) -> Self {
+        LochnesError::Sdl2Error(err.to_string())
+    }
+}
+
+impl From<sdl2::render::TextureValueError> for LochnesError {
+    fn from(err: sdl2::render::TextureValueError) -> Self {
         LochnesError::Sdl2Error(err.to_string())
     }
 }
