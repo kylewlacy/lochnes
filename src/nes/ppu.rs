@@ -136,7 +136,7 @@ impl Ppu {
         self.status.get().bits()
     }
 
-    pub fn run<'a, 'b>(nes: &'a Nes, video: &'a mut impl Video)
+    pub fn run<'a>(nes: &'a Nes, video: &'a mut impl Video)
         -> impl Generator<Yield = PpuStep, Return = !> + 'a
     {
         move || {
