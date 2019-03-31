@@ -44,6 +44,11 @@ impl Ppu {
         nametables.as_slice_of_cells()
     }
 
+    fn oam(&self) -> &[Cell<u8>] {
+        let oam: &Cell<[u8]> = &self.oam;
+        oam.as_slice_of_cells()
+    }
+
     fn palette_ram(&self) -> &[Cell<u8>] {
         let palette_ram: &Cell<[u8]> = &self.palette_ram;
         palette_ram.as_slice_of_cells()
@@ -179,69 +184,203 @@ impl Ppu {
                             let x = cycle;
                             let y = scanline - 1;
 
-                            let tile_x = x / 8;
-                            let tile_y = y / 8;
-
-                            let tile_x_pixel = x % 8;
-                            let tile_y_pixel = y % 8;
-
-                            let attr_x = x / 32;
-                            let attr_y = y / 32;
-                            let attr_is_left = ((x / 16) % 2) == 0;
-                            let attr_is_top = ((y / 16) % 2) == 0;
-
                             let nametables = nes.ppu.nametables();
-                            let nametable = &nametables[0x000..0x400];
-                            let tile_index = (tile_y * 32 + tile_x) as usize;
-                            let tile = nametable[tile_index].get();
-
                             let palette_ram = nes.ppu.palette_ram();
-                            let attr_index = (attr_y * 8 + attr_x) as usize;
-                            let attr = nametable[0x3C0 + attr_index].get();
-                            let palette_index = match (attr_is_top, attr_is_left) {
-                                (true, true)   =>  attr & 0b_0000_0011,
-                                (true, false)  => (attr & 0b_0000_1100) >> 2,
-                                (false, true)  => (attr & 0b_0011_0000) >> 4,
-                                (false, false) => (attr & 0b_1100_0000) >> 6
-                            };
-                            let palette_ram_indices = match palette_index {
-                                0 => [0x00, 0x01, 0x02, 0x03],
-                                1 => [0x00, 0x05, 0x06, 0x07],
-                                2 => [0x00, 0x09, 0x0A, 0x0B],
-                                3 => [0x00, 0x0D, 0x0E, 0x0F],
-                                _ => { unreachable!(); }
-                            };
-                            let palette = [
-                                palette_ram[palette_ram_indices[0]].get(),
-                                palette_ram[palette_ram_indices[1]].get(),
-                                palette_ram[palette_ram_indices[2]].get(),
-                                palette_ram[palette_ram_indices[3]].get(),
+                            let palette_ram_indices = [
+                                [0x00, 0x01, 0x02, 0x03],
+                                [0x00, 0x05, 0x06, 0x07],
+                                [0x00, 0x09, 0x0A, 0x0B],
+                                [0x00, 0x0D, 0x0E, 0x0F],
+                                [0x00, 0x11, 0x12, 0x13],
+                                [0x00, 0x15, 0x16, 0x17],
+                                [0x00, 0x19, 0x1A, 0x1B],
+                                [0x00, 0x1D, 0x1E, 0x1F],
                             ];
-
-
-                            let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
+                            let palettes = [
+                                [
+                                    palette_ram[palette_ram_indices[0][0]].get(),
+                                    palette_ram[palette_ram_indices[0][1]].get(),
+                                    palette_ram[palette_ram_indices[0][2]].get(),
+                                    palette_ram[palette_ram_indices[0][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[1][0]].get(),
+                                    palette_ram[palette_ram_indices[1][1]].get(),
+                                    palette_ram[palette_ram_indices[1][2]].get(),
+                                    palette_ram[palette_ram_indices[1][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[2][0]].get(),
+                                    palette_ram[palette_ram_indices[2][1]].get(),
+                                    palette_ram[palette_ram_indices[2][2]].get(),
+                                    palette_ram[palette_ram_indices[2][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[3][0]].get(),
+                                    palette_ram[palette_ram_indices[3][1]].get(),
+                                    palette_ram[palette_ram_indices[3][2]].get(),
+                                    palette_ram[palette_ram_indices[3][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[4][0]].get(),
+                                    palette_ram[palette_ram_indices[4][1]].get(),
+                                    palette_ram[palette_ram_indices[4][2]].get(),
+                                    palette_ram[palette_ram_indices[4][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[5][0]].get(),
+                                    palette_ram[palette_ram_indices[5][1]].get(),
+                                    palette_ram[palette_ram_indices[5][2]].get(),
+                                    palette_ram[palette_ram_indices[5][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[6][0]].get(),
+                                    palette_ram[palette_ram_indices[6][1]].get(),
+                                    palette_ram[palette_ram_indices[6][2]].get(),
+                                    palette_ram[palette_ram_indices[6][3]].get(),
+                                ],
+                                [
+                                    palette_ram[palette_ram_indices[7][0]].get(),
+                                    palette_ram[palette_ram_indices[7][1]].get(),
+                                    palette_ram[palette_ram_indices[7][2]].get(),
+                                    palette_ram[palette_ram_indices[7][3]].get(),
+                                ],
+                            ];
                             let pattern_tables = &nes.rom.chr_rom;
-
                             let ppu_ctrl = nes.ppu.ctrl.get();
-                            let pattern_table_offset =
-                                if ppu_ctrl.contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
-                                    0x1000
-                                }
-                                else {
-                                    0x0000
-                                };
-                            let pattern_offset = pattern_table_offset + tile as usize * 16;
-                            let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
-                            let pattern_lo_byte = pattern[tile_y_pixel as usize];
-                            let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
-                            let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
-                            let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
 
-                            let color_code = match (pattern_hi_bit, pattern_lo_bit) {
-                                (false, false) => palette[0],
-                                (false, true) => palette[1],
-                                (true, false) => palette[2],
-                                (true, true) => palette[3],
+                            let bg_color_code = {
+                                let tile_x = x / 8;
+                                let tile_y = y / 8;
+
+                                let tile_x_pixel = x % 8;
+                                let tile_y_pixel = y % 8;
+
+                                let attr_x = x / 32;
+                                let attr_y = y / 32;
+                                let attr_is_left = ((x / 16) % 2) == 0;
+                                let attr_is_top = ((y / 16) % 2) == 0;
+
+                                let nametable = &nametables[0x000..0x400];
+                                let tile_index = (tile_y * 32 + tile_x) as usize;
+                                let tile = nametable[tile_index].get();
+
+                                let attr_index = (attr_y * 8 + attr_x) as usize;
+                                let attr = nametable[0x3C0 + attr_index].get();
+                                let palette_index = match (attr_is_top, attr_is_left) {
+                                    (true, true)   =>  attr & 0b_0000_0011,
+                                    (true, false)  => (attr & 0b_0000_1100) >> 2,
+                                    (false, true)  => (attr & 0b_0011_0000) >> 4,
+                                    (false, false) => (attr & 0b_1100_0000) >> 6
+                                };
+                                let palette = palettes[palette_index as usize];
+
+                                let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
+                                let pattern_table_offset =
+                                    if ppu_ctrl.contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
+                                        0x1000
+                                    }
+                                    else {
+                                        0x0000
+                                    };
+                                let pattern_offset = pattern_table_offset + tile as usize * 16;
+                                let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
+                                let pattern_lo_byte = pattern[tile_y_pixel as usize];
+                                let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
+                                let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
+                                let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
+
+                                let palette_index = match (pattern_hi_bit, pattern_lo_bit) {
+                                    (false, false) => 0,
+                                    (false, true) => 1,
+                                    (true, false) => 2,
+                                    (true, true) => 3,
+                                };
+                                let color_code = palette[palette_index];
+
+                                color_code
+                            };
+
+                            let sprite_index_with_color_code = {
+                                let oam = nes.ppu.oam();
+                                let mut objects = oam.chunks(4);
+                                let object = objects.find(|object| {
+                                    let object_y = object[0].get() as u16;
+                                    let object_x = object[3].get() as u16;
+
+                                    object_x <= x && x < object_x + 8
+                                        && object_y <= y - 1 && y - 1 < object_y + 8
+                                });
+
+                                object.map(|object| {
+                                    let object_y = object[0].get() as u16;
+                                    let tile_index = object[1].get();
+                                    let attrs = object[2].get();
+                                    let object_x = object[3].get() as u16;
+
+                                    let flip_horizontal = (attrs & 0b_0100_0000) != 0;
+                                    let flip_vertical = (attrs & 0b_1000_0000) != 0;
+
+                                    let object_x_pixel = x - object_x;
+                                    let object_y_pixel = y - 1 - object_y;
+
+                                    let object_x_pixel =
+                                        if flip_horizontal {
+                                            7 - object_x_pixel
+                                        }
+                                        else {
+                                            object_x_pixel
+                                        };
+                                    let object_y_pixel =
+                                        if flip_vertical {
+                                            7 - object_y_pixel
+                                        }
+                                        else {
+                                            object_y_pixel
+                                        };
+
+                                    let pattern_bitmask = 0b_1000_0000 >> object_x_pixel;
+                                    let pattern_table_offset =
+                                        if ppu_ctrl.contains(PpuCtrlFlags::SPRITE_PATTERN_TABLE_ADDR) {
+                                            0x1000
+                                        }
+                                        else {
+                                            0x0000
+                                        };
+                                    let pattern_offset = pattern_table_offset + tile_index as usize * 16;
+                                    let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
+                                    let pattern_lo_byte = pattern[object_y_pixel as usize];
+                                    let pattern_hi_byte = pattern[object_y_pixel as usize + 8];
+                                    let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
+                                    let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
+
+                                    let palette_lo_bit = (attrs & 0b_0000_0001) != 0;
+                                    let palette_hi_bit = (attrs & 0b_0000_0010) != 0;
+
+                                    let palette_index = match (palette_hi_bit, palette_lo_bit) {
+                                        (false, false) => 4,
+                                        (false, true) => 5,
+                                        (true, false) => 6,
+                                        (true, true) => 7,
+                                    };
+                                    let palette = palettes[palette_index as usize];
+
+                                    let pattern_index = match (pattern_hi_bit, pattern_lo_bit) {
+                                        (false, false) => 0,
+                                        (false, true) => 1,
+                                        (true, false) => 2,
+                                        (true, true) => 3,
+                                    };
+
+                                    let color_code = palette[pattern_index];
+
+                                    (pattern_index, color_code)
+                                })
+                            };
+
+                            let color_code = match sprite_index_with_color_code {
+                                None | Some((0, _)) => bg_color_code,
+                                Some((_, sprite_color_code)) => sprite_color_code,
                             };
                             let color = nes_color_code_to_rgb(color_code);
                             let point = Point { x, y };
