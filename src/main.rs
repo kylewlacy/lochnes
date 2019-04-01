@@ -2,9 +2,6 @@
     as_cell, cell_update, never_type, exhaustive_patterns,
     generators, generator_trait
 )]
-#![cfg_attr(test, feature(test))]
-
-#[cfg(test)] extern crate test;
 
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
@@ -20,10 +17,7 @@ use sdl2::keyboard::Keycode as SdlKeycode;
 use nes::NesStep;
 use nes::ppu::PpuStep;
 
-#[macro_use] mod gen_utils;
-mod rom;
-mod nes;
-mod video;
+use lochnes::{rom, nes, video};
 
 fn main() {
     let opts = Options::from_args();
@@ -157,41 +151,5 @@ impl From<sdl2::IntegerOrSdlError> for LochnesError {
 impl From<sdl2::render::TextureValueError> for LochnesError {
     fn from(err: sdl2::render::TextureValueError) -> Self {
         LochnesError::Sdl2Error(err.to_string())
-    }
-}
-
-
-
-#[cfg(test)]
-mod tests {
-    use std::{env, fs};
-    use test::Bencher;
-    use nes::cpu::CpuStep;
-    use super::*;
-
-    #[bench]
-    fn bench_cycles(b: &mut Bencher) {
-        // TODO: Add a ROM as a fixture for benchmarking
-        let rom_path = env::var("BENCH_ROM").expect("BENCH_ROM env var must be set for benchmarking");
-        let rom_bytes = fs::read(rom_path).expect("Failed to open BENCH_ROM");
-        let rom = rom::Rom::from_bytes(rom_bytes.into_iter()).expect("Failed to parse BENCH_ROM into a valid ROM");
-
-        let cycles = env::var("BENCH_CYCLES").expect("BENCH_CYCLES env var must be set for benchmarking");
-        let cycles: u64 = cycles.parse().unwrap();
-
-        b.iter(|| {
-            let nes = nes::Nes::new_from_rom(rom.clone());
-            let mut video = video::NullVideo;
-            let mut run_nes = nes.run(&mut video);
-
-            for _ in 0..cycles {
-                loop {
-                    match Pin::new(&mut run_nes).resume() {
-                        GeneratorState::Yielded(NesStep::Cpu(CpuStep::Cycle)) => { break; }
-                        GeneratorState::Yielded(_) => { }
-                    }
-                }
-            }
-        });
     }
 }

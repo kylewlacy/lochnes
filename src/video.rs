@@ -21,10 +21,8 @@ pub trait Video {
     fn clear(&mut self);
 }
 
-#[cfg(test)]
 pub struct NullVideo;
 
-#[cfg(test)]
 impl Video for NullVideo {
     fn draw_point(&mut self, _point: Point, _color: Color) { }
     fn present(&mut self) { }
