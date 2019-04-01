@@ -3,7 +3,7 @@ use std::fmt;
 use std::cell::Cell;
 use std::ops::Generator;
 use bitflags::bitflags;
-use enum_kinds::EnumKind;
+use num_derive::{FromPrimitive, ToPrimitive};
 use crate::nes::Nes;
 
 #[derive(Debug, Clone)]
@@ -372,7 +372,7 @@ impl Cpu {
                 }
             };
 
-            debug_assert_eq!(Opcode::from(&op), opcode);
+            debug_assert_eq!(op.instruction, opcode.instruction_with_mode().0);
 
             yield CpuStep::Op(CpuStepOp { pc, op });
         }
@@ -419,96 +419,50 @@ bitflags! {
     }
 }
 
-#[derive(Debug, EnumKind)]
-#[enum_kind(Opcode)]
-pub enum Op {
-    AdcAbs { addr: u16 },
-    AdcAbsX { addr_base: u16 },
-    AdcImm { value: u8 },
-    AdcZero { zero_page: u8 },
-    AndImm { value: u8 },
-    AndZero { zero_page: u8 },
-    AndZeroX { zero_page_base: u8 },
-    AslA,
-    AslZero { zero_page: u8 },
-    Bcc { addr_offset: i8 },
-    Bcs { addr_offset: i8 },
-    Beq { addr_offset: i8 },
-    Bmi { addr_offset: i8 },
-    Bne { addr_offset: i8 },
-    Bpl { addr_offset: i8 },
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Instruction {
+    Adc,
+    And,
+    Asl,
+    Bcc,
+    Bcs,
+    Beq,
+    Bmi,
+    Bne,
+    Bpl,
     Clc,
     Cld,
-    CmpAbs { addr: u16 },
-    CmpAbsX { addr_base: u16 },
-    CmpAbsY { addr_base: u16 },
-    CmpImm { value: u8 },
-    CmpZero { zero_page: u8 },
-    CmpZeroX { zero_page_base: u8 },
-    CpxImm { value: u8 },
-    CpxZero { zero_page: u8 },
-    CpyImm { value: u8 },
-    DecAbs { addr: u16 },
-    DecAbsX { addr_base: u16 },
-    DecZero { zero_page: u8 },
-    DecZeroX { zero_page_base: u8 },
+    Cmp,
+    Cpx,
+    Cpy,
+    Dec,
     Dex,
     Dey,
-    EorAbs { addr: u16 },
-    EorImm { value: u8 },
-    EorZero { zero_page: u8 },
-    IncAbs { addr: u16 },
-    IncAbsX { addr_base: u16 },
-    IncZero { zero_page: u8 },
-    IncZeroX { zero_page_base: u8 },
+    Eor,
+    Inc,
     Inx,
     Iny,
-    JmpAbs { addr: u16 },
-    Jsr { addr: u16 },
-    LdaAbs { addr: u16 },
-    LdaAbsX { addr_base: u16 },
-    LdaAbsY { addr_base: u16 },
-    LdaImm { value: u8 },
-    LdaZero { zero_page: u8 },
-    LdaZeroX { zero_page_base: u8 },
-    LdaIndY { target_addr_base: u8 },
-    LdxAbs { addr: u16 },
-    LdxImm { value: u8 },
-    LdxZero { zero_page: u8 },
-    LdyAbs { addr: u16 },
-    LdyAbsX { addr_base: u16 },
-    LdyImm { value: u8 },
-    LdyZero { zero_page: u8 },
-    LdyZeroX { zero_page_base: u8 },
-    LsrA,
-    LsrZero { zero_page: u8 },
-    OraImm { value: u8 },
-    OraZero { zero_page: u8 },
+    Jmp,
+    Jsr,
+    Lda,
+    Ldx,
+    Ldy,
+    Lsr,
+    Ora,
     Pha,
     Php,
     Pla,
     Plp,
-    RolA,
-    RorA,
-    RorZero { zero_page: u8 },
+    Rol,
+    Ror,
     Rti,
     Rts,
-    SbcAbsX { addr_base: u16 },
-    SbcImm { value: u8 },
-    SbcZero { zero_page: u8 },
+    Sbc,
     Sec,
     Sei,
-    StaAbs { addr: u16 },
-    StaAbsX { addr_base: u16 },
-    StaAbsY { addr_base: u16 },
-    StaZero { zero_page: u8 },
-    StaZeroX { zero_page_base: u8},
-    StaIndY { target_addr_base: u8 },
-    StxAbs { addr: u16 },
-    StxZero { zero_page: u8 },
-    StyAbs { addr: u16 },
-    StyZero { zero_page: u8 },
-    StyZeroX { zero_page_base: u8 },
+    Sta,
+    Stx,
+    Sty,
     Tax,
     Tay,
     Txa,
@@ -516,104 +470,294 @@ pub enum Op {
     Tya,
 }
 
+impl fmt::Display for Instruction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mnemonic = match self {
+            Instruction::Adc => "ADC",
+            Instruction::And => "AND",
+            Instruction::Asl => "ASL",
+            Instruction::Bcc => "BCC",
+            Instruction::Bcs => "BCS",
+            Instruction::Beq => "BEQ",
+            Instruction::Bmi => "BMI",
+            Instruction::Bne => "BNE",
+            Instruction::Bpl => "BPL",
+            Instruction::Clc => "CLC",
+            Instruction::Cld => "CLD",
+            Instruction::Cmp => "CMP",
+            Instruction::Cpx => "CPX",
+            Instruction::Cpy => "CPY",
+            Instruction::Dec => "DEC",
+            Instruction::Dex => "DEX",
+            Instruction::Dey => "DEY",
+            Instruction::Eor => "EOR",
+            Instruction::Inc => "INC",
+            Instruction::Inx => "INX",
+            Instruction::Iny => "INY",
+            Instruction::Jmp => "JMP",
+            Instruction::Jsr => "JSR",
+            Instruction::Lda => "LDA",
+            Instruction::Ldx => "LDX",
+            Instruction::Ldy => "LDY",
+            Instruction::Lsr => "LSR",
+            Instruction::Ora => "ORA",
+            Instruction::Pha => "PHA",
+            Instruction::Php => "PHP",
+            Instruction::Pla => "PLA",
+            Instruction::Plp => "PLP",
+            Instruction::Rol => "ROL",
+            Instruction::Ror => "ROR",
+            Instruction::Rti => "RTI",
+            Instruction::Rts => "RTS",
+            Instruction::Sbc => "SBC",
+            Instruction::Sec => "SEC",
+            Instruction::Sei => "SEI",
+            Instruction::Sta => "STA",
+            Instruction::Stx => "STX",
+            Instruction::Sty => "STY",
+            Instruction::Tax => "TAX",
+            Instruction::Tay => "TAY",
+            Instruction::Txa => "TXA",
+            Instruction::Txs => "TXS",
+            Instruction::Tya => "TYA",
+        };
+        write!(f, "{}", mnemonic)?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OpMode {
+    Implied,
+    Accum,
+    Abs,
+    AbsX,
+    AbsY,
+    Imm,
+    IndY,
+    ZeroX,
+    Zero,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OpArg {
+    Implied,
+    Accum,
+    Abs { addr: u16 },
+    AbsX { addr_base: u16 },
+    AbsY { addr_base: u16 },
+    Branch { addr_offset: i8 },
+    Imm { value: u8 },
+    IndY { target_addr_base: u8 },
+    ZeroX { zero_page_base: u8 },
+    Zero { zero_page: u8 },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Op {
+    instruction: Instruction,
+    arg: OpArg,
+}
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
+pub enum Opcode {
+    OraZero = 0x05,
+    AslZero = 0x06,
+    Php = 0x08,
+    OraImm = 0x09,
+    AslA = 0x0A,
+    Bpl = 0x10,
+    Clc = 0x18,
+    Jsr = 0x20,
+    AndZero = 0x25,
+    Plp = 0x28,
+    AndImm = 0x29,
+    RolA = 0x2A,
+    Bmi = 0x30,
+    AndZeroX = 0x35,
+    Sec = 0x38,
+    Rti = 0x40,
+    EorZero = 0x45,
+    LsrZero = 0x46,
+    Pha = 0x48,
+    EorImm = 0x49,
+    LsrA = 0x4A,
+    JmpAbs = 0x4C,
+    EorAbs = 0x4D,
+    Rts = 0x60,
+    AdcZero = 0x65,
+    RorZero = 0x66,
+    Pla = 0x68,
+    AdcImm = 0x69,
+    RorA = 0x6A,
+    AdcAbs = 0x6D,
+    Sei = 0x78,
+    AdcAbsX = 0x7D,
+    Txa = 0x8A,
+    StyZero = 0x84,
+    StaZero = 0x85,
+    StxZero = 0x86,
+    Dey = 0x88,
+    StyAbs = 0x8C,
+    StaAbs = 0x8D,
+    StxAbs = 0x8E,
+    Bcc = 0x90,
+    StaIndY = 0x91,
+    StyZeroX = 0x94,
+    StaZeroX = 0x95,
+    Tya = 0x98,
+    StaAbsY = 0x99,
+    Txs = 0x9A,
+    StaAbsX = 0x9D,
+    LdyImm = 0xA0,
+    LdxImm = 0xA2,
+    LdyZero = 0xA4,
+    LdaZero = 0xA5,
+    LdxZero = 0xA6,
+    Tay = 0xA8,
+    LdaImm = 0xA9,
+    Tax = 0xAA,
+    LdyAbs = 0xAC,
+    LdaAbs = 0xAD,
+    LdxAbs = 0xAE,
+    Bcs = 0xB0,
+    LdaIndY = 0xB1,
+    LdyZeroX = 0xB4,
+    LdaZeroX = 0xB5,
+    LdaAbsY = 0xB9,
+    LdyAbsX = 0xBC,
+    LdaAbsX = 0xBD,
+    CpyImm = 0xC0,
+    CmpZero = 0xC5,
+    DecZero = 0xC6,
+    Iny = 0xC8,
+    CmpImm = 0xC9,
+    Dex = 0xCA,
+    CmpAbs = 0xCD,
+    DecAbs = 0xCE,
+    Bne = 0xD0,
+    CmpZeroX = 0xD5,
+    DecZeroX = 0xD6,
+    Cld = 0xD8,
+    CmpAbsY = 0xD9,
+    CmpAbsX = 0xDD,
+    DecAbsX = 0xDE,
+    CpxImm = 0xE0,
+    CpxZero = 0xE4,
+    SbcZero = 0xE5,
+    IncZero = 0xE6,
+    Inx = 0xE8,
+    SbcImm = 0xE9,
+    IncAbs = 0xEE,
+    Beq = 0xF0,
+    IncZeroX = 0xF6,
+    SbcAbsX = 0xFD,
+    IncAbsX = 0xFE,
+}
+
 impl Opcode {
     fn from_u8(opcode: u8) -> Self {
-        match opcode {
-            0x05 => Opcode::OraZero,
-            0x06 => Opcode::AslZero,
-            0x08 => Opcode::Php,
-            0x09 => Opcode::OraImm,
-            0x0A => Opcode::AslA,
-            0x10 => Opcode::Bpl,
-            0x18 => Opcode::Clc,
-            0x20 => Opcode::Jsr,
-            0x25 => Opcode::AndZero,
-            0x28 => Opcode::Plp,
-            0x29 => Opcode::AndImm,
-            0x2A => Opcode::RolA,
-            0x30 => Opcode::Bmi,
-            0x35 => Opcode::AndZeroX,
-            0x38 => Opcode::Sec,
-            0x40 => Opcode::Rti,
-            0x45 => Opcode::EorZero,
-            0x46 => Opcode::LsrZero,
-            0x48 => Opcode::Pha,
-            0x49 => Opcode::EorImm,
-            0x4A => Opcode::LsrA,
-            0x4C => Opcode::JmpAbs,
-            0x4D => Opcode::EorAbs,
-            0x60 => Opcode::Rts,
-            0x65 => Opcode::AdcZero,
-            0x66 => Opcode::RorZero,
-            0x68 => Opcode::Pla,
-            0x69 => Opcode::AdcImm,
-            0x6A => Opcode::RorA,
-            0x6D => Opcode::AdcAbs,
-            0x78 => Opcode::Sei,
-            0x7D => Opcode::AdcAbsX,
-            0x8A => Opcode::Txa,
-            0x84 => Opcode::StyZero,
-            0x85 => Opcode::StaZero,
-            0x86 => Opcode::StxZero,
-            0x88 => Opcode::Dey,
-            0x8C => Opcode::StyAbs,
-            0x8D => Opcode::StaAbs,
-            0x8E => Opcode::StxAbs,
-            0x90 => Opcode::Bcc,
-            0x91 => Opcode::StaIndY,
-            0x94 => Opcode::StyZeroX,
-            0x95 => Opcode::StaZeroX,
-            0x98 => Opcode::Tya,
-            0x99 => Opcode::StaAbsY,
-            0x9A => Opcode::Txs,
-            0x9D => Opcode::StaAbsX,
-            0xA0 => Opcode::LdyImm,
-            0xA2 => Opcode::LdxImm,
-            0xA4 => Opcode::LdyZero,
-            0xA5 => Opcode::LdaZero,
-            0xA6 => Opcode::LdxZero,
-            0xA8 => Opcode::Tay,
-            0xA9 => Opcode::LdaImm,
-            0xAA => Opcode::Tax,
-            0xAC => Opcode::LdyAbs,
-            0xAD => Opcode::LdaAbs,
-            0xAE => Opcode::LdxAbs,
-            0xB0 => Opcode::Bcs,
-            0xB1 => Opcode::LdaIndY,
-            0xB4 => Opcode::LdyZeroX,
-            0xB5 => Opcode::LdaZeroX,
-            0xB9 => Opcode::LdaAbsY,
-            0xBC => Opcode::LdyAbsX,
-            0xBD => Opcode::LdaAbsX,
-            0xC0 => Opcode::CpyImm,
-            0xC5 => Opcode::CmpZero,
-            0xC6 => Opcode::DecZero,
-            0xC8 => Opcode::Iny,
-            0xC9 => Opcode::CmpImm,
-            0xCA => Opcode::Dex,
-            0xCD => Opcode::CmpAbs,
-            0xCE => Opcode::DecAbs,
-            0xD0 => Opcode::Bne,
-            0xD5 => Opcode::CmpZeroX,
-            0xD6 => Opcode::DecZeroX,
-            0xD8 => Opcode::Cld,
-            0xD9 => Opcode::CmpAbsY,
-            0xDD => Opcode::CmpAbsX,
-            0xDE => Opcode::DecAbsX,
-            0xE0 => Opcode::CpxImm,
-            0xE4 => Opcode::CpxZero,
-            0xE5 => Opcode::SbcZero,
-            0xE6 => Opcode::IncZero,
-            0xE8 => Opcode::Inx,
-            0xE9 => Opcode::SbcImm,
-            0xEE => Opcode::IncAbs,
-            0xF0 => Opcode::Beq,
-            0xF6 => Opcode::IncZeroX,
-            0xFD => Opcode::SbcAbsX,
-            0xFE => Opcode::IncAbsX,
-            opcode => {
-                unimplemented!("Unhandled opcode: 0x{:X}", opcode);
-            }
+        match <Opcode as num_traits::FromPrimitive>::from_u8(opcode) {
+            Some(opcode) => opcode,
+            None => { unimplemented!("Unhandled opcode: 0x{:X}", opcode); }
+        }
+    }
+
+    fn instruction_with_mode(&self) -> (Instruction, OpMode) {
+        match self {
+            Opcode::AdcAbs => (Instruction::Adc, OpMode::Abs),
+            Opcode::AdcAbsX => (Instruction::Adc, OpMode::AbsX),
+            Opcode::AdcImm => (Instruction::Adc, OpMode::Imm),
+            Opcode::AdcZero => (Instruction::Adc, OpMode::Zero),
+            Opcode::AndImm => (Instruction::And, OpMode::Imm),
+            Opcode::AndZero => (Instruction::And, OpMode::Zero),
+            Opcode::AndZeroX => (Instruction::And, OpMode::ZeroX),
+            Opcode::AslA => (Instruction::Asl, OpMode::Accum),
+            Opcode::AslZero => (Instruction::Asl, OpMode::Zero),
+            Opcode::Bcc => (Instruction::Bcc, OpMode::Implied),
+            Opcode::Bcs => (Instruction::Bcs, OpMode::Implied),
+            Opcode::Beq => (Instruction::Beq, OpMode::Implied),
+            Opcode::Bmi => (Instruction::Bmi, OpMode::Implied),
+            Opcode::Bne => (Instruction::Bne, OpMode::Implied),
+            Opcode::Bpl => (Instruction::Bpl, OpMode::Implied),
+            Opcode::Clc => (Instruction::Clc, OpMode::Implied),
+            Opcode::Cld => (Instruction::Cld, OpMode::Implied),
+            Opcode::CmpAbs => (Instruction::Cmp, OpMode::Abs),
+            Opcode::CmpAbsX => (Instruction::Cmp, OpMode::AbsX),
+            Opcode::CmpAbsY => (Instruction::Cmp, OpMode::AbsY),
+            Opcode::CmpImm => (Instruction::Cmp, OpMode::Imm),
+            Opcode::CmpZero => (Instruction::Cmp, OpMode::Zero),
+            Opcode::CmpZeroX => (Instruction::Cmp, OpMode::ZeroX),
+            Opcode::CpxImm => (Instruction::Cpx, OpMode::Imm),
+            Opcode::CpxZero => (Instruction::Cpx, OpMode::Zero),
+            Opcode::CpyImm => (Instruction::Cpy, OpMode::Imm),
+            Opcode::DecAbs => (Instruction::Dec, OpMode::Abs),
+            Opcode::DecAbsX => (Instruction::Dec, OpMode::AbsX),
+            Opcode::DecZero => (Instruction::Dec, OpMode::Zero),
+            Opcode::DecZeroX => (Instruction::Dec, OpMode::ZeroX),
+            Opcode::Dex => (Instruction::Dex, OpMode::Implied),
+            Opcode::Dey => (Instruction::Dey, OpMode::Implied),
+            Opcode::EorAbs => (Instruction::Eor, OpMode::Abs),
+            Opcode::EorImm => (Instruction::Eor, OpMode::Imm),
+            Opcode::EorZero => (Instruction::Eor, OpMode::Zero),
+            Opcode::IncAbs => (Instruction::Inc, OpMode::Abs),
+            Opcode::IncAbsX => (Instruction::Inc, OpMode::AbsX),
+            Opcode::IncZero => (Instruction::Inc, OpMode::Zero),
+            Opcode::IncZeroX => (Instruction::Inc, OpMode::ZeroX),
+            Opcode::Inx => (Instruction::Inx, OpMode::Implied),
+            Opcode::Iny => (Instruction::Iny, OpMode::Implied),
+            Opcode::JmpAbs => (Instruction::Jmp, OpMode::Abs),
+            Opcode::Jsr => (Instruction::Jsr, OpMode::Implied),
+            Opcode::LdaAbs => (Instruction::Lda, OpMode::Abs),
+            Opcode::LdaAbsX => (Instruction::Lda, OpMode::AbsX),
+            Opcode::LdaAbsY => (Instruction::Lda, OpMode::AbsY),
+            Opcode::LdaImm => (Instruction::Lda, OpMode::Imm),
+            Opcode::LdaIndY => (Instruction::Lda, OpMode::IndY),
+            Opcode::LdaZero => (Instruction::Lda, OpMode::Zero),
+            Opcode::LdaZeroX => (Instruction::Lda, OpMode::ZeroX),
+            Opcode::LdxAbs => (Instruction::Ldx, OpMode::Abs),
+            Opcode::LdxImm => (Instruction::Ldx, OpMode::Imm),
+            Opcode::LdxZero => (Instruction::Ldx, OpMode::Zero),
+            Opcode::LdyAbs => (Instruction::Ldy, OpMode::Abs),
+            Opcode::LdyAbsX => (Instruction::Ldy, OpMode::AbsX),
+            Opcode::LdyImm => (Instruction::Ldy, OpMode::Imm),
+            Opcode::LdyZero => (Instruction::Ldy, OpMode::Zero),
+            Opcode::LdyZeroX => (Instruction::Ldy, OpMode::ZeroX),
+            Opcode::LsrA => (Instruction::Lsr, OpMode::Accum),
+            Opcode::LsrZero => (Instruction::Lsr, OpMode::Zero),
+            Opcode::OraImm => (Instruction::Ora, OpMode::Imm),
+            Opcode::OraZero => (Instruction::Ora, OpMode::Zero),
+            Opcode::Pha => (Instruction::Pha, OpMode::Implied),
+            Opcode::Php => (Instruction::Php, OpMode::Implied),
+            Opcode::Pla => (Instruction::Pla, OpMode::Implied),
+            Opcode::Plp => (Instruction::Plp, OpMode::Implied),
+            Opcode::RolA => (Instruction::Rol, OpMode::Accum),
+            Opcode::RorA => (Instruction::Ror, OpMode::Accum),
+            Opcode::RorZero => (Instruction::Ror, OpMode::Zero),
+            Opcode::Rti => (Instruction::Rti, OpMode::Implied),
+            Opcode::Rts => (Instruction::Rts, OpMode::Implied),
+            Opcode::SbcAbsX => (Instruction::Sbc, OpMode::AbsX),
+            Opcode::SbcImm => (Instruction::Sbc, OpMode::Imm),
+            Opcode::SbcZero => (Instruction::Sbc, OpMode::Zero),
+            Opcode::Sec => (Instruction::Sec, OpMode::Implied),
+            Opcode::Sei => (Instruction::Sei, OpMode::Implied),
+            Opcode::StaAbs => (Instruction::Sta, OpMode::Abs),
+            Opcode::StaAbsX => (Instruction::Sta, OpMode::AbsX),
+            Opcode::StaAbsY => (Instruction::Sta, OpMode::AbsY),
+            Opcode::StaIndY => (Instruction::Sta, OpMode::IndY),
+            Opcode::StaZero => (Instruction::Sta, OpMode::Zero),
+            Opcode::StaZeroX => (Instruction::Sta, OpMode::ZeroX),
+            Opcode::StxAbs => (Instruction::Stx, OpMode::Abs),
+            Opcode::StxZero => (Instruction::Stx, OpMode::Zero),
+            Opcode::StyAbs => (Instruction::Sty, OpMode::Abs),
+            Opcode::StyZero => (Instruction::Sty, OpMode::Zero),
+            Opcode::StyZeroX => (Instruction::Sty, OpMode::ZeroX),
+            Opcode::Tax => (Instruction::Tax, OpMode::Implied),
+            Opcode::Tay => (Instruction::Tay, OpMode::Implied),
+            Opcode::Txa => (Instruction::Txa, OpMode::Implied),
+            Opcode::Txs => (Instruction::Txs, OpMode::Implied),
+            Opcode::Tya => (Instruction::Tya, OpMode::Implied),
         }
     }
 }
@@ -721,124 +865,41 @@ impl fmt::Display for Opcode {
 
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let opcode = Opcode::from(self);
-        match self {
-            Op::Clc
-            | Op::Cld
-            | Op::Dex
-            | Op::Dey
-            | Op::Inx
-            | Op::Iny
-            | Op::Pha
-            | Op::Php
-            | Op::Pla
-            | Op::Plp
-            | Op::Rti
-            | Op::Rts
-            | Op::Sec
-            | Op::Sei
-            | Op::Tax
-            | Op::Tay
-            | Op::Txa
-            | Op::Txs
-            | Op::Tya => {
-                write!(f, "{}", opcode)?;
+        match self.arg {
+            OpArg::Implied => {
+                write!(f, "{}", self.instruction)?;
             }
-            Op::AslA
-            | Op::LsrA
-            | Op::RolA
-            | Op::RorA => {
-                write!(f, "{} A", opcode)?;
+            OpArg::Accum => {
+                write!(f, "{} A", self.instruction)?;
             }
-            Op::AdcAbs { addr }
-            | Op::CmpAbs { addr }
-            | Op::DecAbs { addr }
-            | Op::EorAbs { addr }
-            | Op::IncAbs { addr }
-            | Op::JmpAbs { addr }
-            | Op::Jsr { addr }
-            | Op::LdaAbs { addr }
-            | Op::LdxAbs { addr }
-            | Op::LdyAbs { addr }
-            | Op::StaAbs { addr }
-            | Op::StxAbs { addr }
-            | Op::StyAbs { addr } => {
-                write!(f, "{} ${:04X}", opcode, addr)?;
+            OpArg::Abs { addr } => {
+                write!(f, "{} ${:04X}", self.instruction, addr)?;
             }
-            Op::AdcAbsX { addr_base }
-            | Op::CmpAbsX { addr_base }
-            | Op::DecAbsX { addr_base }
-            | Op::IncAbsX { addr_base }
-            | Op::LdaAbsX { addr_base }
-            | Op::LdyAbsX { addr_base }
-            | Op::SbcAbsX { addr_base }
-            | Op::StaAbsX { addr_base } => {
-                write!(f, "{} ${:04X},X", opcode, addr_base)?;
+            OpArg::AbsX { addr_base } => {
+                write!(f, "{} ${:04X},X", self.instruction, addr_base)?;
             }
-            Op::CmpAbsY { addr_base }
-            | Op::LdaAbsY { addr_base }
-            | Op::StaAbsY { addr_base } => {
-                write!(f, "{} ${:04X},Y", opcode, addr_base)?;
+            OpArg::AbsY { addr_base } => {
+                write!(f, "{} ${:04X},Y", self.instruction, addr_base)?;
             }
-            Op::AdcZero { zero_page }
-            | Op::AndZero { zero_page }
-            | Op::AslZero { zero_page }
-            | Op::CmpZero { zero_page }
-            | Op::CpxZero { zero_page }
-            | Op::DecZero { zero_page }
-            | Op::EorZero { zero_page }
-            | Op::IncZero { zero_page }
-            | Op::LdaZero { zero_page }
-            | Op::LdxZero { zero_page }
-            | Op::LdyZero { zero_page }
-            | Op::LsrZero { zero_page }
-            | Op::OraZero { zero_page }
-            | Op::RorZero { zero_page }
-            | Op::SbcZero { zero_page }
-            | Op::StaZero { zero_page }
-            | Op::StxZero { zero_page }
-            | Op::StyZero { zero_page } => {
-                write!(f, "{} ${:02X}", opcode, *zero_page as u16)?;
+            OpArg::Zero { zero_page } => {
+                write!(f, "{} ${:02X}", self.instruction, zero_page as u16)?;
             }
-            Op::AndZeroX { zero_page_base }
-            | Op::CmpZeroX { zero_page_base }
-            | Op::DecZeroX { zero_page_base }
-            | Op::IncZeroX { zero_page_base }
-            | Op::LdaZeroX { zero_page_base }
-            | Op::LdyZeroX { zero_page_base }
-            | Op::StaZeroX { zero_page_base }
-            | Op::StyZeroX { zero_page_base } => {
-                write!(f, "{} ${:02X},X", opcode, zero_page_base)?;
+            OpArg::ZeroX { zero_page_base } => {
+                write!(f, "{} ${:02X},X", self.instruction, zero_page_base)?;
             }
-            Op::LdaIndY { target_addr_base }
-            | Op::StaIndY { target_addr_base } => {
-                write!(f, "{} (${:02X}),Y", opcode, target_addr_base)?;
+            OpArg::IndY { target_addr_base } => {
+                write!(f, "{} (${:02X}),Y", self.instruction, target_addr_base)?;
             }
-            Op::AdcImm { value }
-            | Op::AndImm { value }
-            | Op::CmpImm { value }
-            | Op::CpxImm { value }
-            | Op::CpyImm { value }
-            | Op::EorImm { value }
-            | Op::LdaImm { value }
-            | Op::LdxImm { value }
-            | Op::LdyImm { value }
-            | Op::OraImm { value }
-            | Op::SbcImm { value } => {
-                write!(f, "{} #${:02X}", opcode, value)?;
+            OpArg::Imm { value } => {
+                write!(f, "{} #${:02X}", self.instruction, value)?;
             }
-            Op::Bcc { addr_offset }
-            | Op::Bcs { addr_offset }
-            | Op::Beq { addr_offset }
-            | Op::Bmi { addr_offset }
-            | Op::Bne { addr_offset }
-            | Op::Bpl { addr_offset } => {
-                if *addr_offset >= 0 {
-                    write!(f, "{} _ + #${:02X}", opcode, addr_offset)?;
+            OpArg::Branch { addr_offset } => {
+                if addr_offset >= 0 {
+                    write!(f, "{} _ + #${:02X}", self.instruction, addr_offset)?;
                 }
                 else {
-                    let abs_offset = -(*addr_offset as i16);
-                    write!(f, "{} _ - #${:02X}", opcode, abs_offset)?;
+                    let abs_offset = -(addr_offset as i16);
+                    write!(f, "{} _ - #${:02X}", self.instruction, abs_offset)?;
                 }
             }
         }
@@ -858,52 +919,39 @@ pub struct CpuStepOp {
 
 
 
-enum OpArg {
-    Implied,
-    Imm { value: u8 },
-    Zero { zero_page: u8 },
-    ZeroX { zero_page_base: u8 },
-    Abs { addr: u16 },
-    AbsX { addr_base: u16 },
-    AbsY { addr_base: u16 },
-    IndY { target_addr_base: u8 },
-}
-
-struct OpBranchArg { addr_offset: i8 }
-
 trait ImpliedOperation {
     fn operate(&self, cpu: &Cpu);
-    fn operation(&self) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 trait ReadOperation {
     fn read(&self, cpu: &Cpu, value: u8);
-    fn operation(&self, arg: OpArg) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 trait ModifyOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8;
-    fn operation(&self, arg: OpArg) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 trait WriteOperation {
     fn write(&self, cpu: &Cpu) -> u8;
-    fn operation(&self, arg: OpArg) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 trait BranchOperation {
     fn branch(&self, cpu: &Cpu) -> bool;
-    fn operation(&self, arg: OpBranchArg) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 trait StackPushOperation {
     fn push(&self, cpu: &Cpu) -> u8;
-    fn operation(&self) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 trait StackPullOperation {
     fn pull(&self, cpu: &Cpu, value: u8);
-    fn operation(&self) -> Op;
+    fn instruction(&self) -> Instruction;
 }
 
 fn implied<'a>(
@@ -920,7 +968,10 @@ fn implied<'a>(
         op.operate(&nes.cpu);
         yield CpuStep::Cycle;
 
-        op.operation()
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Implied,
+        }
     }
 }
 
@@ -941,7 +992,10 @@ fn accum_modify<'a>(
         nes.cpu.a.set(new_value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Implied)
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Accum,
+        }
     }
 }
 
@@ -959,7 +1013,11 @@ fn imm_read<'a>(
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Imm { value })
+
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Imm { value },
+        }
     }
 }
 
@@ -979,7 +1037,10 @@ fn zero_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Zero { zero_page })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Zero { zero_page },
+        }
     }
 }
 
@@ -1007,7 +1068,10 @@ fn zero_modify<'a>(
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Zero { zero_page })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Zero { zero_page },
+        }
     }
 }
 
@@ -1027,7 +1091,10 @@ fn zero_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Zero { zero_page })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Zero { zero_page },
+        }
     }
 }
 
@@ -1049,7 +1116,10 @@ fn zero_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::ZeroX { zero_page_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::ZeroX { zero_page_base },
+        }
     }
 }
 
@@ -1080,7 +1150,10 @@ fn zero_x_modify<'a>(
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::ZeroX { zero_page_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::ZeroX { zero_page_base },
+        }
     }
 }
 
@@ -1102,7 +1175,10 @@ fn zero_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::ZeroX { zero_page_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::ZeroX { zero_page_base },
+        }
     }
 }
 
@@ -1125,7 +1201,10 @@ fn abs_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Abs { addr })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Abs { addr },
+        }
     }
 }
 
@@ -1155,7 +1234,10 @@ fn abs_modify<'a>(
 
         nes.write_u8(addr, new_value);
 
-        op.operation(OpArg::Abs { addr })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Abs { addr },
+        }
     }
 }
 
@@ -1178,7 +1260,10 @@ fn abs_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::Abs { addr })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Abs { addr },
+        }
     }
 }
 
@@ -1197,7 +1282,10 @@ fn abs_jmp<'a>(nes: &'a Nes)
         nes.cpu.pc.set(addr);
         yield CpuStep::Cycle;
 
-        Op::JmpAbs { addr }
+        Op {
+            instruction: Instruction::Jmp,
+            arg: OpArg::Abs { addr },
+        }
     }
 }
 
@@ -1235,7 +1323,10 @@ fn abs_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        op.operation(OpArg::AbsX { addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::AbsX { addr_base },
+        }
     }
 }
 
@@ -1270,7 +1361,10 @@ fn abs_x_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::AbsX { addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::AbsX { addr_base },
+        }
     }
 }
 
@@ -1299,7 +1393,10 @@ fn abs_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::AbsX { addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::AbsX { addr_base },
+        }
     }
 }
 
@@ -1337,7 +1434,10 @@ fn abs_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        op.operation(OpArg::AbsY { addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::AbsY { addr_base },
+        }
     }
 }
 
@@ -1366,7 +1466,10 @@ fn abs_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::AbsY { addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::AbsY { addr_base },
+        }
     }
 }
 
@@ -1407,7 +1510,10 @@ fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        op.operation(OpArg::IndY { target_addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::IndY { target_addr_base },
+        }
     }
 }
 
@@ -1443,7 +1549,10 @@ fn ind_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
         nes.write_u8(addr, value);
         yield CpuStep::Cycle;
 
-        op.operation(OpArg::IndY { target_addr_base })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::IndY { target_addr_base },
+        }
     }
 }
 
@@ -1475,7 +1584,10 @@ fn branch<'a>(nes: &'a Nes, op: impl BranchOperation + 'a)
             yield CpuStep::Cycle;
         }
 
-        op.operation(OpBranchArg { addr_offset })
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Branch { addr_offset },
+        }
     }
 }
 
@@ -1496,7 +1608,10 @@ fn stack_push<'a>(
         nes.write_u8(nes.cpu.stack_addr(), value);
         nes.cpu.dec_s();
 
-        op.operation()
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Implied,
+        }
     }
 }
 
@@ -1520,7 +1635,10 @@ fn stack_pull<'a>(
         op.pull(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-        op.operation()
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::Implied,
+        }
     }
 }
 
@@ -1556,7 +1674,10 @@ fn jsr<'a>(nes: &'a Nes)
         nes.cpu.pc.set(addr);
         yield CpuStep::Cycle;
 
-        Op::Jsr { addr }
+        Op {
+            instruction: Instruction::Jsr,
+            arg: OpArg::Abs { addr },
+        }
     }
 }
 
@@ -1586,7 +1707,10 @@ fn rti<'a>(nes: &'a Nes)
         nes.cpu.pc.set(u16_from(pc_lo, pc_hi));
         yield CpuStep::Cycle;
 
-        Op::Rti
+        Op {
+            instruction: Instruction::Rti,
+            arg: OpArg::Implied,
+        }
     }
 }
 
@@ -1614,7 +1738,10 @@ fn rts<'a>(nes: &'a Nes)
         nes.cpu.pc_inc();
         yield CpuStep::Cycle;
 
-        Op::Rts
+        Op {
+            instruction: Instruction::Rts,
+            arg: OpArg::Implied,
+        }
     }
 }
 
@@ -1636,14 +1763,8 @@ impl ReadOperation for AdcOperation {
         cpu.set_flags(CpuFlags::N, n);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::AdcAbs { addr },
-            OpArg::AbsX { addr_base } => Op::AdcAbsX { addr_base },
-            OpArg::Imm { value } => Op::AdcImm { value },
-            OpArg::Zero { zero_page } => Op::AdcZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Adc
     }
 }
 
@@ -1657,13 +1778,8 @@ impl ReadOperation for AndOperation {
         cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Imm { value } => Op::AndImm { value },
-            OpArg::Zero { zero_page }=> Op::AndZero { zero_page },
-            OpArg::ZeroX { zero_page_base }=> Op::AndZeroX { zero_page_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::And
     }
 }
 
@@ -1680,12 +1796,8 @@ impl ModifyOperation for AslOperation {
         new_value
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Implied => Op::AslA,
-            OpArg::Zero { zero_page } => Op::AslZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Asl
     }
 }
 
@@ -1695,9 +1807,8 @@ impl BranchOperation for BccOperation {
         !cpu.contains_flags(CpuFlags::C)
     }
 
-    fn operation(&self, arg: OpBranchArg) -> Op {
-        let OpBranchArg { addr_offset } = arg;
-        Op::Bcc { addr_offset }
+    fn instruction(&self) -> Instruction {
+        Instruction::Bcc
     }
 }
 
@@ -1707,9 +1818,8 @@ impl BranchOperation for BcsOperation {
         cpu.contains_flags(CpuFlags::C)
     }
 
-    fn operation(&self, arg: OpBranchArg) -> Op {
-        let OpBranchArg { addr_offset } = arg;
-        Op::Bcs { addr_offset }
+    fn instruction(&self) -> Instruction {
+        Instruction::Bcs
     }
 }
 
@@ -1719,9 +1829,8 @@ impl BranchOperation for BeqOperation {
         cpu.contains_flags(CpuFlags::Z)
     }
 
-    fn operation(&self, arg: OpBranchArg) -> Op {
-        let OpBranchArg { addr_offset } = arg;
-        Op::Beq { addr_offset }
+    fn instruction(&self) -> Instruction {
+        Instruction::Beq
     }
 }
 
@@ -1731,9 +1840,8 @@ impl BranchOperation for BmiOperation {
         cpu.contains_flags(CpuFlags::N)
     }
 
-    fn operation(&self, arg: OpBranchArg) -> Op {
-        let OpBranchArg { addr_offset } = arg;
-        Op::Bmi { addr_offset }
+    fn instruction(&self) -> Instruction {
+        Instruction::Bmi
     }
 }
 
@@ -1743,9 +1851,8 @@ impl BranchOperation for BneOperation {
         !cpu.contains_flags(CpuFlags::Z)
     }
 
-    fn operation(&self, arg: OpBranchArg) -> Op {
-        let OpBranchArg { addr_offset } = arg;
-        Op::Bne { addr_offset }
+    fn instruction(&self) -> Instruction {
+        Instruction::Bne
     }
 }
 
@@ -1755,9 +1862,8 @@ impl BranchOperation for BplOperation {
         !cpu.contains_flags(CpuFlags::N)
     }
 
-    fn operation(&self, arg: OpBranchArg) -> Op {
-        let OpBranchArg { addr_offset } = arg;
-        Op::Bpl { addr_offset }
+    fn instruction(&self) -> Instruction {
+        Instruction::Bpl
     }
 }
 
@@ -1767,8 +1873,8 @@ impl ImpliedOperation for ClcOperation {
         cpu.set_flags(CpuFlags::C, false);
     }
 
-    fn operation(&self) -> Op {
-        Op::Clc
+    fn instruction(&self) -> Instruction {
+        Instruction::Clc
     }
 }
 
@@ -1778,8 +1884,8 @@ impl ImpliedOperation for CldOperation {
         cpu.set_flags(CpuFlags::D, false);
     }
 
-    fn operation(&self) -> Op {
-        Op::Cld
+    fn instruction(&self) -> Instruction {
+        Instruction::Cld
     }
 }
 
@@ -1794,16 +1900,8 @@ impl ReadOperation for CmpOperation {
         cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::CmpAbs { addr },
-            OpArg::AbsX { addr_base } => Op::CmpAbsX { addr_base },
-            OpArg::AbsY { addr_base } => Op::CmpAbsY { addr_base },
-            OpArg::Imm { value } => Op::CmpImm { value },
-            OpArg::Zero { zero_page } => Op::CmpZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::CmpZeroX { zero_page_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Cmp
     }
 }
 
@@ -1818,12 +1916,8 @@ impl ReadOperation for CpxOperation {
         cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Imm { value } => Op::CpxImm { value },
-            OpArg::Zero { zero_page } => Op::CpxZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Cpx
     }
 }
 
@@ -1838,11 +1932,8 @@ impl ReadOperation for CpyOperation {
         cpu.set_flags(CpuFlags::N, (result & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Imm { value } => Op::CpyImm { value },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Cpy
     }
 }
 
@@ -1857,14 +1948,8 @@ impl ModifyOperation for DecOperation {
         new_value
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::DecAbs { addr },
-            OpArg::AbsX { addr_base } => Op::DecAbsX { addr_base },
-            OpArg::Zero { zero_page } => Op::DecZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::DecZeroX { zero_page_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Dec
     }
 }
 
@@ -1877,8 +1962,8 @@ impl ImpliedOperation for DexOperation {
         cpu.x.set(new_x);
     }
 
-    fn operation(&self) -> Op {
-        Op::Dex
+    fn instruction(&self) -> Instruction {
+        Instruction::Dex
     }
 }
 
@@ -1891,8 +1976,8 @@ impl ImpliedOperation for DeyOperation {
         cpu.y.set(new_y);
     }
 
-    fn operation(&self) -> Op {
-        Op::Dey
+    fn instruction(&self) -> Instruction {
+        Instruction::Dey
     }
 }
 
@@ -1906,13 +1991,8 @@ impl ReadOperation for EorOperation {
         cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::EorAbs { addr },
-            OpArg::Imm { value } => Op::EorImm { value },
-            OpArg::Zero { zero_page } => Op::EorZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Eor
     }
 }
 
@@ -1927,14 +2007,8 @@ impl ModifyOperation for IncOperation {
         new_value
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::IncAbs { addr },
-            OpArg::AbsX { addr_base } => Op::IncAbsX { addr_base },
-            OpArg::Zero { zero_page } => Op::IncZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::IncZeroX { zero_page_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Inc
     }
 }
 
@@ -1947,8 +2021,8 @@ impl ImpliedOperation for InxOperation {
         cpu.x.set(new_x);
     }
 
-    fn operation(&self) -> Op {
-        Op::Inx
+    fn instruction(&self) -> Instruction {
+        Instruction::Inx
     }
 }
 
@@ -1961,8 +2035,8 @@ impl ImpliedOperation for InyOperation {
         cpu.y.set(new_y);
     }
 
-    fn operation(&self) -> Op {
-        Op::Iny
+    fn instruction(&self) -> Instruction {
+        Instruction::Iny
     }
 }
 
@@ -1974,17 +2048,8 @@ impl ReadOperation for LdaOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::LdaAbs { addr },
-            OpArg::AbsX { addr_base } => Op::LdaAbsX { addr_base },
-            OpArg::AbsY { addr_base } => Op::LdaAbsY { addr_base },
-            OpArg::Imm { value } => Op::LdaImm { value },
-            OpArg::Zero { zero_page } => Op::LdaZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::LdaZeroX { zero_page_base },
-            OpArg::IndY { target_addr_base } => Op::LdaIndY { target_addr_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Lda
     }
 }
 
@@ -1996,13 +2061,8 @@ impl ReadOperation for LdxOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::LdxAbs { addr },
-            OpArg::Imm { value } => Op::LdxImm { value },
-            OpArg::Zero { zero_page } => Op::LdxZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Ldx
     }
 }
 
@@ -2014,15 +2074,8 @@ impl ReadOperation for LdyOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::LdyAbs { addr },
-            OpArg::AbsX { addr_base } => Op::LdyAbsX { addr_base },
-            OpArg::Imm { value } => Op::LdyImm { value },
-            OpArg::Zero { zero_page } => Op::LdyZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::LdyZeroX { zero_page_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Ldy
     }
 }
 
@@ -2037,12 +2090,8 @@ impl ModifyOperation for LsrOperation {
         new_value
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Implied => Op::LsrA,
-            OpArg::Zero { zero_page } => Op::LsrZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Lsr
     }
 }
 
@@ -2056,12 +2105,8 @@ impl ReadOperation for OraOperation {
         cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Imm { value } => Op::OraImm { value },
-            OpArg::Zero { zero_page } => Op::OraZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Ora
     }
 }
 
@@ -2071,8 +2116,8 @@ impl StackPushOperation for PhaOperation {
         cpu.a.get()
     }
 
-    fn operation(&self) -> Op {
-        Op::Pha
+    fn instruction(&self) -> Instruction {
+        Instruction::Pha
     }
 }
 
@@ -2082,8 +2127,8 @@ impl StackPushOperation for PhpOperation {
         cpu.p.get().bits
     }
 
-    fn operation(&self) -> Op {
-        Op::Php
+    fn instruction(&self) -> Instruction {
+        Instruction::Php
     }
 }
 
@@ -2093,8 +2138,8 @@ impl StackPullOperation for PlaOperation {
         cpu.a.set(value);
     }
 
-    fn operation(&self) -> Op {
-        Op::Pla
+    fn instruction(&self) -> Instruction {
+        Instruction::Pla
     }
 }
 
@@ -2104,8 +2149,8 @@ impl StackPullOperation for PlpOperation {
         cpu.p.set(CpuFlags::from_bits_truncate(value));
     }
 
-    fn operation(&self) -> Op {
-        Op::Plp
+    fn instruction(&self) -> Instruction {
+        Instruction::Plp
     }
 }
 
@@ -2127,11 +2172,8 @@ impl ModifyOperation for RolOperation {
         new_value
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Implied => Op::RolA,
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Rol
     }
 }
 
@@ -2154,12 +2196,8 @@ impl ModifyOperation for RorOperation {
         new_value
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Implied => Op::RorA,
-            OpArg::Zero { zero_page } => Op::RorZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Ror
     }
 }
 
@@ -2181,13 +2219,8 @@ impl ReadOperation for SbcOperation {
         cpu.set_flags(CpuFlags::N, n);
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::AbsX { addr_base } => Op::SbcAbsX { addr_base },
-            OpArg::Imm { value } => Op::SbcImm { value },
-            OpArg::Zero { zero_page } => Op::SbcZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Sbc
     }
 }
 
@@ -2197,8 +2230,8 @@ impl ImpliedOperation for SecOperation {
         cpu.set_flags(CpuFlags::C, true);
     }
 
-    fn operation(&self) -> Op {
-        Op::Sec
+    fn instruction(&self) -> Instruction {
+        Instruction::Sec
     }
 }
 
@@ -2208,8 +2241,8 @@ impl ImpliedOperation for SeiOperation {
         cpu.set_flags(CpuFlags::I, true);
     }
 
-    fn operation(&self) -> Op {
-        Op::Sei
+    fn instruction(&self) -> Instruction {
+        Instruction::Sei
     }
 }
 
@@ -2219,16 +2252,8 @@ impl WriteOperation for StaOperation {
         cpu.a.get()
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::StaAbs { addr },
-            OpArg::AbsX { addr_base } => Op::StaAbsX { addr_base },
-            OpArg::AbsY { addr_base } => Op::StaAbsY { addr_base },
-            OpArg::Zero { zero_page } => Op::StaZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::StaZeroX { zero_page_base },
-            OpArg::IndY { target_addr_base } => Op::StaIndY { target_addr_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Sta
     }
 }
 
@@ -2238,12 +2263,8 @@ impl WriteOperation for StxOperation {
         cpu.x.get()
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::StxAbs { addr },
-            OpArg::Zero { zero_page } => Op::StxZero { zero_page },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Stx
     }
 }
 
@@ -2253,13 +2274,8 @@ impl WriteOperation for StyOperation {
         cpu.y.get()
     }
 
-    fn operation(&self, arg: OpArg) -> Op {
-        match arg {
-            OpArg::Abs { addr } => Op::StyAbs { addr },
-            OpArg::Zero { zero_page } => Op::StyZero { zero_page },
-            OpArg::ZeroX { zero_page_base } => Op::StyZeroX { zero_page_base },
-            _ => { unimplemented!(); },
-        }
+    fn instruction(&self) -> Instruction {
+        Instruction::Sty
     }
 }
 
@@ -2272,8 +2288,8 @@ impl ImpliedOperation for TaxOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self) -> Op {
-        Op::Tax
+    fn instruction(&self) -> Instruction {
+        Instruction::Tax
     }
 }
 
@@ -2286,8 +2302,8 @@ impl ImpliedOperation for TayOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self) -> Op {
-        Op::Tay
+    fn instruction(&self) -> Instruction {
+        Instruction::Tay
     }
 }
 
@@ -2300,8 +2316,8 @@ impl ImpliedOperation for TxaOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self) -> Op {
-        Op::Txa
+    fn instruction(&self) -> Instruction {
+        Instruction::Txa
     }
 }
 
@@ -2312,8 +2328,8 @@ impl ImpliedOperation for TxsOperation {
         cpu.s.set(value);
     }
 
-    fn operation(&self) -> Op {
-        Op::Txs
+    fn instruction(&self) -> Instruction {
+        Instruction::Txs
     }
 }
 
@@ -2326,8 +2342,8 @@ impl ImpliedOperation for TyaOperation {
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
-    fn operation(&self) -> Op {
-        Op::Tya
+    fn instruction(&self) -> Instruction {
+        Instruction::Tya
     }
 }
 
