@@ -308,8 +308,13 @@ impl Ppu {
                                     let object_y = object[0].get() as u16;
                                     let object_x = object[3].get() as u16;
 
-                                    object_x <= x && x < object_x + 8
-                                        && object_y <= y - 1 && y - 1 < object_y + 8
+                                    // Check if (x, y - 1) is in the bounding
+                                    // box of {x=object_x, y=object_y, w=8, h=8}
+                                    object_x <= x
+                                        && x < object_x + 8
+                                        && y >= 1
+                                        && object_y <= y - 1
+                                        && y - 1 < object_y + 8
                                 });
 
                                 object.map(|object| {
