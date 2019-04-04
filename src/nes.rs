@@ -14,6 +14,7 @@ pub mod ppu;
 pub struct Nes {
     pub rom: Rom,
     pub ram: Cell<[u8; 0x0800]>,
+    pub work_ram: Cell<[u8; 0x2000]>,
     pub cpu: Cpu,
     pub ppu: Ppu,
 }
@@ -23,10 +24,12 @@ impl Nes {
         let ram = Cell::new([0; 0x0800]);
         let cpu = Cpu::new();
         let ppu = Ppu::new();
+        let work_ram = Cell::new([0; 0x2000]);
 
         let nes = Nes {
             rom,
             ram,
+            work_ram,
             cpu,
             ppu,
         };
@@ -43,6 +46,11 @@ impl Nes {
         ram.as_slice_of_cells()
     }
 
+    fn work_ram(&self) -> &[Cell<u8>] {
+        let ram: &Cell<[u8]> = &self.work_ram;
+        ram.as_slice_of_cells()
+    }
+
     pub fn read_u8(&self, addr: u16) -> u8 {
         let mapper = self.rom.header.mapper;
         if mapper != 0 {
@@ -50,6 +58,7 @@ impl Nes {
         }
 
         let ram = self.ram();
+        let work_ram = self.work_ram();
 
         match addr {
             0x0000..=0x07FF => {
@@ -73,6 +82,11 @@ impl Nes {
             0x4017 => {
                 // TODO: Return joystick state
                 0x40
+            }
+            0x6000..=0x7FFF => {
+                // TODO: Handle different mappers
+                let ram_offset = addr - 0x6000;
+                work_ram[ram_offset as usize].get()
             }
             0x8000..=0xFFFF => {
                 let rom_offset = addr - 0x8000;
@@ -99,6 +113,7 @@ impl Nes {
         }
 
         let ram = self.ram();
+        let work_ram = self.work_ram();
 
         match addr {
             0x0000..=0x07FF => {
@@ -139,6 +154,11 @@ impl Nes {
             }
             0x4017 => {
                 // TODO: Implement APU frame counter
+            }
+            0x6000..=0x7FFF => {
+                // TODO: Handle different mappers
+                let ram_offset = addr - 0x6000;
+                work_ram[ram_offset as usize].set(value);
             }
             _ => {
                 unimplemented!("Unhandled write to address: 0x{:X}", addr);
