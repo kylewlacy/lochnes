@@ -130,6 +130,12 @@ impl Cpu {
                 Opcode::Beq => {
                     yield_all! { branch(&nes, BeqOperation) }
                 }
+                Opcode::BitZero => {
+                    yield_all! { zero_read(&nes, BitOperation) }
+                }
+                Opcode::BitAbs => {
+                    yield_all! { abs_read(&nes, BitOperation) }
+                }
                 Opcode::Bmi => {
                     yield_all! { branch(&nes, BmiOperation) }
                 }
@@ -144,6 +150,12 @@ impl Cpu {
                 }
                 Opcode::Cld => {
                     yield_all! { implied(nes, CldOperation) }
+                }
+                Opcode::Cli => {
+                    yield_all! { implied(nes, CliOperation) }
+                }
+                Opcode::Clv => {
+                    yield_all! { implied(nes, ClvOperation) }
                 }
                 Opcode::CmpAbs => {
                     yield_all! { abs_x_read(nes, CmpOperation) }
@@ -169,6 +181,9 @@ impl Cpu {
                 Opcode::CpxZero => {
                     yield_all! { zero_read(nes, CpxOperation) }
                 }
+                Opcode::CpyAbs => {
+                    yield_all! { abs_read(nes, CpyOperation) }
+                }
                 Opcode::CpyImm => {
                     yield_all! { imm_read(nes, CpyOperation) }
                 }
@@ -192,6 +207,9 @@ impl Cpu {
                 }
                 Opcode::EorAbs => {
                     yield_all! { abs_read(nes, EorOperation) }
+                }
+                Opcode::EorAbsX => {
+                    yield_all! { abs_x_read(nes, EorOperation) }
                 }
                 Opcode::EorImm => {
                     yield_all! { imm_read(nes, EorOperation) }
@@ -274,6 +292,12 @@ impl Cpu {
                 Opcode::LsrZero => {
                     yield_all! { zero_modify(nes, LsrOperation) }
                 }
+                Opcode::Nop => {
+                    yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::OraAbs => {
+                    yield_all! { abs_read(nes, OraOperation) }
+                }
                 Opcode::OraImm => {
                     yield_all! { imm_read(nes, OraOperation) }
                 }
@@ -319,6 +343,9 @@ impl Cpu {
                 Opcode::Sec => {
                     yield_all! { implied(nes, SecOperation) }
                 }
+                Opcode::Sed => {
+                    yield_all! { implied(nes, SedOperation) }
+                }
                 Opcode::Sei => {
                     yield_all! { implied(nes, SeiOperation) }
                 }
@@ -361,6 +388,9 @@ impl Cpu {
                 Opcode::Tay => {
                     yield_all! { implied(nes, TayOperation) }
                 }
+                Opcode::Tsx => {
+                    yield_all! { implied(nes, TsxOperation) }
+                }
                 Opcode::Txa => {
                     yield_all! { implied(nes, TxaOperation) }
                 }
@@ -369,6 +399,24 @@ impl Cpu {
                 }
                 Opcode::Tya => {
                     yield_all! { implied(nes, TyaOperation) }
+                }
+                Opcode::_1A => {
+                    yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_3A => {
+                    yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_5A => {
+                    yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_7A => {
+                    yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_DA => {
+                    yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_FA => {
+                    yield_all! { implied(nes, NopOperation) }
                 }
             };
 
@@ -427,11 +475,14 @@ enum Instruction {
     Bcc,
     Bcs,
     Beq,
+    Bit,
     Bmi,
     Bne,
     Bpl,
     Clc,
     Cld,
+    Cli,
+    Clv,
     Cmp,
     Cpx,
     Cpy,
@@ -448,6 +499,7 @@ enum Instruction {
     Ldx,
     Ldy,
     Lsr,
+    Nop,
     Ora,
     Pha,
     Php,
@@ -459,12 +511,14 @@ enum Instruction {
     Rts,
     Sbc,
     Sec,
+    Sed,
     Sei,
     Sta,
     Stx,
     Sty,
     Tax,
     Tay,
+    Tsx,
     Txa,
     Txs,
     Tya,
@@ -479,11 +533,14 @@ impl fmt::Display for Instruction {
             Instruction::Bcc => "BCC",
             Instruction::Bcs => "BCS",
             Instruction::Beq => "BEQ",
+            Instruction::Bit => "BIT",
             Instruction::Bmi => "BMI",
             Instruction::Bne => "BNE",
             Instruction::Bpl => "BPL",
             Instruction::Clc => "CLC",
             Instruction::Cld => "CLD",
+            Instruction::Cli => "CLI",
+            Instruction::Clv => "CLV",
             Instruction::Cmp => "CMP",
             Instruction::Cpx => "CPX",
             Instruction::Cpy => "CPY",
@@ -500,6 +557,7 @@ impl fmt::Display for Instruction {
             Instruction::Ldx => "LDX",
             Instruction::Ldy => "LDY",
             Instruction::Lsr => "LSR",
+            Instruction::Nop => "NOP",
             Instruction::Ora => "ORA",
             Instruction::Pha => "PHA",
             Instruction::Php => "PHP",
@@ -511,12 +569,14 @@ impl fmt::Display for Instruction {
             Instruction::Rts => "RTS",
             Instruction::Sbc => "SBC",
             Instruction::Sec => "SEC",
+            Instruction::Sed => "SED",
             Instruction::Sei => "SEI",
             Instruction::Sta => "STA",
             Instruction::Stx => "STX",
             Instruction::Sty => "STY",
             Instruction::Tax => "TAX",
             Instruction::Tay => "TAY",
+            Instruction::Tsx => "TSX",
             Instruction::Txa => "TXA",
             Instruction::Txs => "TXS",
             Instruction::Tya => "TYA",
@@ -567,24 +627,32 @@ pub enum Opcode {
     Php = 0x08,
     OraImm = 0x09,
     AslA = 0x0A,
+    OraAbs = 0x0D,
     Bpl = 0x10,
     Clc = 0x18,
+    _1A = 0x1A, // NOP (implied)
     Jsr = 0x20,
+    BitZero = 0x24,
     AndZero = 0x25,
     Plp = 0x28,
     AndImm = 0x29,
     RolA = 0x2A,
+    BitAbs = 0x2C,
     Bmi = 0x30,
     AndZeroX = 0x35,
     Sec = 0x38,
+    _3A = 0x3A, // NOP (implied)
     Rti = 0x40,
     EorZero = 0x45,
     LsrZero = 0x46,
     Pha = 0x48,
+    EorAbsX = 0x5D,
     EorImm = 0x49,
     LsrA = 0x4A,
     JmpAbs = 0x4C,
     EorAbs = 0x4D,
+    Cli = 0x58,
+    _5A = 0x5A,
     Rts = 0x60,
     AdcZero = 0x65,
     RorZero = 0x66,
@@ -593,6 +661,7 @@ pub enum Opcode {
     RorA = 0x6A,
     AdcAbs = 0x6D,
     Sei = 0x78,
+    _7A = 0x7A,
     AdcAbsX = 0x7D,
     Txa = 0x8A,
     StyZero = 0x84,
@@ -625,7 +694,9 @@ pub enum Opcode {
     LdaIndY = 0xB1,
     LdyZeroX = 0xB4,
     LdaZeroX = 0xB5,
+    Clv = 0xB8,
     LdaAbsY = 0xB9,
+    Tsx = 0xBA,
     LdyAbsX = 0xBC,
     LdaAbsX = 0xBD,
     CpyImm = 0xC0,
@@ -634,6 +705,7 @@ pub enum Opcode {
     Iny = 0xC8,
     CmpImm = 0xC9,
     Dex = 0xCA,
+    CpyAbs = 0xCC,
     CmpAbs = 0xCD,
     DecAbs = 0xCE,
     Bne = 0xD0,
@@ -641,6 +713,7 @@ pub enum Opcode {
     DecZeroX = 0xD6,
     Cld = 0xD8,
     CmpAbsY = 0xD9,
+    _DA = 0xDA,
     CmpAbsX = 0xDD,
     DecAbsX = 0xDE,
     CpxImm = 0xE0,
@@ -648,10 +721,13 @@ pub enum Opcode {
     SbcZero = 0xE5,
     IncZero = 0xE6,
     Inx = 0xE8,
+    Nop = 0xEA,
     SbcImm = 0xE9,
     IncAbs = 0xEE,
     Beq = 0xF0,
     IncZeroX = 0xF6,
+    Sed = 0xF8,
+    _FA = 0xFA,
     SbcAbsX = 0xFD,
     IncAbsX = 0xFE,
 }
@@ -678,11 +754,15 @@ impl Opcode {
             Opcode::Bcc => (Instruction::Bcc, OpMode::Implied),
             Opcode::Bcs => (Instruction::Bcs, OpMode::Implied),
             Opcode::Beq => (Instruction::Beq, OpMode::Implied),
+            Opcode::BitAbs => (Instruction::Bit, OpMode::Abs),
+            Opcode::BitZero => (Instruction::Bit, OpMode::Zero),
             Opcode::Bmi => (Instruction::Bmi, OpMode::Implied),
             Opcode::Bne => (Instruction::Bne, OpMode::Implied),
             Opcode::Bpl => (Instruction::Bpl, OpMode::Implied),
             Opcode::Clc => (Instruction::Clc, OpMode::Implied),
             Opcode::Cld => (Instruction::Cld, OpMode::Implied),
+            Opcode::Cli => (Instruction::Cli, OpMode::Implied),
+            Opcode::Clv => (Instruction::Clv, OpMode::Implied),
             Opcode::CmpAbs => (Instruction::Cmp, OpMode::Abs),
             Opcode::CmpAbsX => (Instruction::Cmp, OpMode::AbsX),
             Opcode::CmpAbsY => (Instruction::Cmp, OpMode::AbsY),
@@ -691,6 +771,7 @@ impl Opcode {
             Opcode::CmpZeroX => (Instruction::Cmp, OpMode::ZeroX),
             Opcode::CpxImm => (Instruction::Cpx, OpMode::Imm),
             Opcode::CpxZero => (Instruction::Cpx, OpMode::Zero),
+            Opcode::CpyAbs => (Instruction::Cpy, OpMode::Abs),
             Opcode::CpyImm => (Instruction::Cpy, OpMode::Imm),
             Opcode::DecAbs => (Instruction::Dec, OpMode::Abs),
             Opcode::DecAbsX => (Instruction::Dec, OpMode::AbsX),
@@ -699,6 +780,7 @@ impl Opcode {
             Opcode::Dex => (Instruction::Dex, OpMode::Implied),
             Opcode::Dey => (Instruction::Dey, OpMode::Implied),
             Opcode::EorAbs => (Instruction::Eor, OpMode::Abs),
+            Opcode::EorAbsX => (Instruction::Eor, OpMode::AbsX),
             Opcode::EorImm => (Instruction::Eor, OpMode::Imm),
             Opcode::EorZero => (Instruction::Eor, OpMode::Zero),
             Opcode::IncAbs => (Instruction::Inc, OpMode::Abs),
@@ -726,6 +808,8 @@ impl Opcode {
             Opcode::LdyZeroX => (Instruction::Ldy, OpMode::ZeroX),
             Opcode::LsrA => (Instruction::Lsr, OpMode::Accum),
             Opcode::LsrZero => (Instruction::Lsr, OpMode::Zero),
+            Opcode::Nop => (Instruction::Nop, OpMode::Implied),
+            Opcode::OraAbs => (Instruction::Ora, OpMode::Abs),
             Opcode::OraImm => (Instruction::Ora, OpMode::Imm),
             Opcode::OraZero => (Instruction::Ora, OpMode::Zero),
             Opcode::Pha => (Instruction::Pha, OpMode::Implied),
@@ -741,6 +825,7 @@ impl Opcode {
             Opcode::SbcImm => (Instruction::Sbc, OpMode::Imm),
             Opcode::SbcZero => (Instruction::Sbc, OpMode::Zero),
             Opcode::Sec => (Instruction::Sec, OpMode::Implied),
+            Opcode::Sed => (Instruction::Sed, OpMode::Implied),
             Opcode::Sei => (Instruction::Sei, OpMode::Implied),
             Opcode::StaAbs => (Instruction::Sta, OpMode::Abs),
             Opcode::StaAbsX => (Instruction::Sta, OpMode::AbsX),
@@ -755,9 +840,16 @@ impl Opcode {
             Opcode::StyZeroX => (Instruction::Sty, OpMode::ZeroX),
             Opcode::Tax => (Instruction::Tax, OpMode::Implied),
             Opcode::Tay => (Instruction::Tay, OpMode::Implied),
+            Opcode::Tsx => (Instruction::Tsx, OpMode::Implied),
             Opcode::Txa => (Instruction::Txa, OpMode::Implied),
             Opcode::Txs => (Instruction::Txs, OpMode::Implied),
             Opcode::Tya => (Instruction::Tya, OpMode::Implied),
+            Opcode::_1A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_3A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_5A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_7A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_DA => (Instruction::Nop, OpMode::Implied),
+            Opcode::_FA => (Instruction::Nop, OpMode::Implied),
         }
     }
 }
@@ -1733,6 +1825,19 @@ impl BranchOperation for BeqOperation {
     }
 }
 
+struct BitOperation;
+impl ReadOperation for BitOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        cpu.set_flags(CpuFlags::Z, cpu.a.get() & value == 0);
+        cpu.set_flags(CpuFlags::N, value & 0b_1000_0000 != 0);
+        cpu.set_flags(CpuFlags::V, value & 0b_0100_0000 != 0);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Bit
+    }
+}
+
 struct BmiOperation;
 impl BranchOperation for BmiOperation {
     fn branch(&self, cpu: &Cpu) -> bool {
@@ -1785,6 +1890,28 @@ impl ImpliedOperation for CldOperation {
 
     fn instruction(&self) -> Instruction {
         Instruction::Cld
+    }
+}
+
+struct CliOperation;
+impl ImpliedOperation for CliOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::D, false);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Cli
+    }
+}
+
+struct ClvOperation;
+impl ImpliedOperation for ClvOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::V, false);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Clv
     }
 }
 
@@ -1994,6 +2121,15 @@ impl ModifyOperation for LsrOperation {
     }
 }
 
+struct NopOperation;
+impl ImpliedOperation for NopOperation {
+    fn operate(&self, _cpu: &Cpu) { }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Nop
+    }
+}
+
 struct OraOperation;
 impl ReadOperation for OraOperation {
     fn read(&self, cpu: &Cpu, value: u8) {
@@ -2134,6 +2270,17 @@ impl ImpliedOperation for SecOperation {
     }
 }
 
+struct SedOperation;
+impl ImpliedOperation for SedOperation {
+    fn operate(&self, cpu: &Cpu) {
+        cpu.set_flags(CpuFlags::D, true);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Sed
+    }
+}
+
 struct SeiOperation;
 impl ImpliedOperation for SeiOperation {
     fn operate(&self, cpu: &Cpu) {
@@ -2203,6 +2350,18 @@ impl ImpliedOperation for TayOperation {
 
     fn instruction(&self) -> Instruction {
         Instruction::Tay
+    }
+}
+
+struct TsxOperation;
+impl ImpliedOperation for TsxOperation {
+    fn operate(&self, cpu: &Cpu) {
+        let value = cpu.s.get();
+        cpu.x.set(value);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Tsx
     }
 }
 
