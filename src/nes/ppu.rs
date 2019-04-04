@@ -70,7 +70,7 @@ impl Ppu {
             0x0000..=0x0FFF => {
                 unimplemented!();
             }
-            0x2000..=0x23FF => {
+            0x2000..=0x2FFF => {
                 let offset = addr as usize - 0x2000;
                 nametables[offset].set(value);
             }
@@ -86,6 +86,16 @@ impl Ppu {
 
     pub fn write_oamaddr(&self, value: u8) {
         self.oam_addr.set(value);
+    }
+
+    pub fn write_oamdata(&self, value: u8) {
+        let oam_addr = self.oam_addr.get();
+        let oam = self.oam();
+
+        oam[oam_addr as usize].set(value);
+
+        let next_oam_addr = oam_addr.wrapping_add(1) as usize % oam.len();
+        self.oam_addr.set(next_oam_addr as u8);
     }
 
     pub fn write_ppuscroll(&self, value: u8) {

@@ -128,6 +128,9 @@ impl Nes {
             0x2003 => {
                 self.ppu.write_oamaddr(value);
             }
+            0x2004 => {
+                self.ppu.write_oamdata(value);
+            }
             0x2005 => {
                 self.ppu.write_ppuscroll(value);
             }
