@@ -1896,7 +1896,7 @@ impl ImpliedOperation for CldOperation {
 struct CliOperation;
 impl ImpliedOperation for CliOperation {
     fn operate(&self, cpu: &Cpu) {
-        cpu.set_flags(CpuFlags::D, false);
+        cpu.set_flags(CpuFlags::I, false);
     }
 
     fn instruction(&self) -> Instruction {
@@ -1983,9 +1983,10 @@ struct DexOperation;
 impl ImpliedOperation for DexOperation {
     fn operate(&self, cpu: &Cpu) {
         let new_x = cpu.x.get().wrapping_sub(1);
+
+        cpu.x.set(new_x);
         cpu.set_flags(CpuFlags::Z, new_x == 0);
         cpu.set_flags(CpuFlags::N, (new_x & 0b_1000_0000) != 0);
-        cpu.x.set(new_x);
     }
 
     fn instruction(&self) -> Instruction {
@@ -1997,9 +1998,10 @@ struct DeyOperation;
 impl ImpliedOperation for DeyOperation {
     fn operate(&self, cpu: &Cpu) {
         let new_y = cpu.y.get().wrapping_sub(1);
+
+        cpu.y.set(new_y);
         cpu.set_flags(CpuFlags::Z, new_y == 0);
         cpu.set_flags(CpuFlags::N, (new_y & 0b_1000_0000) != 0);
-        cpu.y.set(new_y);
     }
 
     fn instruction(&self) -> Instruction {
@@ -2042,9 +2044,10 @@ struct InxOperation;
 impl ImpliedOperation for InxOperation {
     fn operate(&self, cpu: &Cpu) {
         let new_x = cpu.x.get().wrapping_add(1);
+
+        cpu.x.set(new_x);
         cpu.set_flags(CpuFlags::Z, new_x == 0);
         cpu.set_flags(CpuFlags::N, (new_x & 0b_1000_0000) != 0);
-        cpu.x.set(new_x);
     }
 
     fn instruction(&self) -> Instruction {
@@ -2056,9 +2059,10 @@ struct InyOperation;
 impl ImpliedOperation for InyOperation {
     fn operate(&self, cpu: &Cpu) {
         let new_y = cpu.y.get().wrapping_add(1);
+
+        cpu.y.set(new_y);
         cpu.set_flags(CpuFlags::Z, new_y == 0);
         cpu.set_flags(CpuFlags::N, (new_y & 0b_1000_0000) != 0);
-        cpu.y.set(new_y);
     }
 
     fn instruction(&self) -> Instruction {
@@ -2109,6 +2113,7 @@ struct LsrOperation;
 impl ModifyOperation for LsrOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let new_value = value >> 1;
+
         cpu.set_flags(CpuFlags::C, (value & 0b_0000_0001) != 0);
         cpu.set_flags(CpuFlags::Z, new_value == 0);
         cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
@@ -2159,7 +2164,7 @@ impl StackPushOperation for PhaOperation {
 struct PhpOperation;
 impl StackPushOperation for PhpOperation {
     fn push(&self, cpu: &Cpu) -> u8 {
-        cpu.p.get().bits
+        cpu.p.get().bits | 0b_0011_0000
     }
 
     fn instruction(&self) -> Instruction {
@@ -2171,6 +2176,8 @@ struct PlaOperation;
 impl StackPullOperation for PlaOperation {
     fn pull(&self, cpu: &Cpu, value: u8) {
         cpu.a.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
     fn instruction(&self) -> Instruction {
@@ -2223,7 +2230,6 @@ impl ModifyOperation for RorOperation {
 
         let new_value = (value >> 1) | carry_mask;
 
-        cpu.a.set(new_value);
         cpu.set_flags(CpuFlags::C, (value & 0b_0000_0001) != 0);
         cpu.set_flags(CpuFlags::Z, new_value == 0);
         cpu.set_flags(CpuFlags::N, (new_value & 0b_1000_0000) != 0);
@@ -2329,6 +2335,7 @@ struct TaxOperation;
 impl ImpliedOperation for TaxOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.a.get();
+
         cpu.x.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
@@ -2343,6 +2350,7 @@ struct TayOperation;
 impl ImpliedOperation for TayOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.a.get();
+
         cpu.y.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
@@ -2357,7 +2365,10 @@ struct TsxOperation;
 impl ImpliedOperation for TsxOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.s.get();
+
         cpu.x.set(value);
+        cpu.set_flags(CpuFlags::Z, value == 0);
+        cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
     }
 
     fn instruction(&self) -> Instruction {
@@ -2369,6 +2380,7 @@ struct TxaOperation;
 impl ImpliedOperation for TxaOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.x.get();
+
         cpu.a.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
@@ -2383,6 +2395,7 @@ struct TxsOperation;
 impl ImpliedOperation for TxsOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.x.get();
+
         cpu.s.set(value);
     }
 
@@ -2395,6 +2408,7 @@ struct TyaOperation;
 impl ImpliedOperation for TyaOperation {
     fn operate(&self, cpu: &Cpu) {
         let value = cpu.y.get();
+
         cpu.a.set(value);
         cpu.set_flags(CpuFlags::Z, value == 0);
         cpu.set_flags(CpuFlags::N, (value & 0b_1000_0000) != 0);
