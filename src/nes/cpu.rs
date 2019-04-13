@@ -400,20 +400,56 @@ impl Cpu {
                 Opcode::Tya => {
                     yield_all! { implied(nes, TyaOperation) }
                 }
+                Opcode::_0B => {
+                    yield_all! { imm_read(nes, UnofficialAncOperation) }
+                }
                 Opcode::_1A => {
                     yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_2B => {
+                    yield_all! { imm_read(nes, UnofficialAncOperation) }
                 }
                 Opcode::_3A => {
                     yield_all! { implied(nes, NopOperation) }
                 }
+                Opcode::_4B => {
+                    yield_all! { imm_read(nes, UnofficialAlrOperation) }
+                }
                 Opcode::_5A => {
                     yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_6B => {
+                    yield_all! { imm_read(nes, UnofficialArrOperation) }
                 }
                 Opcode::_7A => {
                     yield_all! { implied(nes, NopOperation) }
                 }
+                Opcode::_80 => {
+                    yield_all! { imm_read(nes, NopOperation) }
+                }
+                Opcode::_82 => {
+                    yield_all! { imm_read(nes, NopOperation) }
+                }
+                Opcode::_89 => {
+                    yield_all! { imm_read(nes, NopOperation) }
+                }
+                Opcode::_AB => {
+                    yield_all! { imm_read(nes, UnofficialLaxOperation) }
+                }
+                Opcode::_C2 => {
+                    yield_all! { imm_read(nes, NopOperation) }
+                }
+                Opcode::_CB => {
+                    yield_all! { imm_read(nes, UnofficialAxsOperation) }
+                }
                 Opcode::_DA => {
                     yield_all! { implied(nes, NopOperation) }
+                }
+                Opcode::_E2 => {
+                    yield_all! { imm_read(nes, NopOperation) }
+                }
+                Opcode::_EB => {
+                    yield_all! { imm_read(nes, SbcOperation) }
                 }
                 Opcode::_FA => {
                     yield_all! { implied(nes, NopOperation) }
@@ -522,6 +558,11 @@ enum Instruction {
     Txa,
     Txs,
     Tya,
+    UnofficialAnc,
+    UnofficialAlr,
+    UnofficialArr,
+    UnofficialAxs,
+    UnofficialLax,
 }
 
 impl fmt::Display for Instruction {
@@ -580,6 +621,11 @@ impl fmt::Display for Instruction {
             Instruction::Txa => "TXA",
             Instruction::Txs => "TXS",
             Instruction::Tya => "TYA",
+            Instruction::UnofficialAnc => "ANC",
+            Instruction::UnofficialAlr => "ALR",
+            Instruction::UnofficialArr => "ARR",
+            Instruction::UnofficialAxs => "AXS",
+            Instruction::UnofficialLax => "LAX",
         };
         write!(f, "{}", mnemonic)?;
         Ok(())
@@ -627,6 +673,7 @@ pub enum Opcode {
     Php = 0x08,
     OraImm = 0x09,
     AslA = 0x0A,
+    _0B = 0x0B, // ANC (implied)
     OraAbs = 0x0D,
     Bpl = 0x10,
     Clc = 0x18,
@@ -637,6 +684,7 @@ pub enum Opcode {
     Plp = 0x28,
     AndImm = 0x29,
     RolA = 0x2A,
+    _2B = 0x2B, // ANC (immediate)
     BitAbs = 0x2C,
     Bmi = 0x30,
     AndZeroX = 0x35,
@@ -649,6 +697,7 @@ pub enum Opcode {
     EorAbsX = 0x5D,
     EorImm = 0x49,
     LsrA = 0x4A,
+    _4B = 0x4B, // ALR (immediate)
     JmpAbs = 0x4C,
     EorAbs = 0x4D,
     Cli = 0x58,
@@ -659,10 +708,14 @@ pub enum Opcode {
     Pla = 0x68,
     AdcImm = 0x69,
     RorA = 0x6A,
+    _6B = 0x6B, // ARR (immediate)
     AdcAbs = 0x6D,
     Sei = 0x78,
     _7A = 0x7A,
     AdcAbsX = 0x7D,
+    _80 = 0x80, // NOP (immediate)
+    _82 = 0x82, // NOP (immediate) -- can (rarely) jam an actual NES
+    _89 = 0x89, // NOP (immediate) -- can (rarely) jam an actual NES
     Txa = 0x8A,
     StyZero = 0x84,
     StaZero = 0x85,
@@ -687,6 +740,7 @@ pub enum Opcode {
     Tay = 0xA8,
     LdaImm = 0xA9,
     Tax = 0xAA,
+    _AB = 0xAB, // LAX (immediate) -- unstable!
     LdyAbs = 0xAC,
     LdaAbs = 0xAD,
     LdxAbs = 0xAE,
@@ -700,11 +754,13 @@ pub enum Opcode {
     LdyAbsX = 0xBC,
     LdaAbsX = 0xBD,
     CpyImm = 0xC0,
+    _C2 = 0xC2, // NOP (immediate)
     CmpZero = 0xC5,
     DecZero = 0xC6,
     Iny = 0xC8,
     CmpImm = 0xC9,
     Dex = 0xCA,
+    _CB = 0xCB, // AXS (immediate)
     CpyAbs = 0xCC,
     CmpAbs = 0xCD,
     DecAbs = 0xCE,
@@ -717,11 +773,13 @@ pub enum Opcode {
     CmpAbsX = 0xDD,
     DecAbsX = 0xDE,
     CpxImm = 0xE0,
+    _E2 = 0xE2, // NOP (immediate) -- can (rarely) jam an actual NES
     CpxZero = 0xE4,
     SbcZero = 0xE5,
     IncZero = 0xE6,
     Inx = 0xE8,
     Nop = 0xEA,
+    _EB = 0xEB, // SBC (immediate)
     SbcImm = 0xE9,
     IncAbs = 0xEE,
     Beq = 0xF0,
@@ -844,11 +902,23 @@ impl Opcode {
             Opcode::Txa => (Instruction::Txa, OpMode::Implied),
             Opcode::Txs => (Instruction::Txs, OpMode::Implied),
             Opcode::Tya => (Instruction::Tya, OpMode::Implied),
+            Opcode::_0B => (Instruction::UnofficialAnc, OpMode::Imm),
             Opcode::_1A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_2B => (Instruction::UnofficialAnc, OpMode::Imm),
             Opcode::_3A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_4B => (Instruction::UnofficialAlr, OpMode::Imm),
             Opcode::_5A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_6B => (Instruction::UnofficialArr, OpMode::Imm),
             Opcode::_7A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_80 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_82 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_89 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_AB => (Instruction::UnofficialLax, OpMode::Imm),
+            Opcode::_C2 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_CB => (Instruction::UnofficialAxs, OpMode::Imm),
             Opcode::_DA => (Instruction::Nop, OpMode::Implied),
+            Opcode::_E2 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_EB => (Instruction::Sbc, OpMode::Imm),
             Opcode::_FA => (Instruction::Nop, OpMode::Implied),
         }
     }
@@ -2127,8 +2197,18 @@ impl ModifyOperation for LsrOperation {
 }
 
 struct NopOperation;
+
 impl ImpliedOperation for NopOperation {
     fn operate(&self, _cpu: &Cpu) { }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Nop
+    }
+}
+
+// NOTE: Some undocumented opcodes do nothing, but still perform a memory read
+impl ReadOperation for NopOperation {
+    fn read(&self, _cpu: &Cpu, _value: u8) { }
 
     fn instruction(&self) -> Instruction {
         Instruction::Nop
@@ -2416,6 +2496,102 @@ impl ImpliedOperation for TyaOperation {
 
     fn instruction(&self) -> Instruction {
         Instruction::Tya
+    }
+}
+
+struct UnofficialAncOperation;
+impl ReadOperation for UnofficialAncOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        // This operation is like AND, but the C flag is also set to
+        // bit 7 of the result
+        let new_a = cpu.a.get() & value;
+
+        cpu.a.set(new_a);
+        cpu.set_flags(CpuFlags::Z, new_a == 0);
+        cpu.set_flags(CpuFlags::N, (new_a & 0b_1000_0000) != 0);
+        cpu.set_flags(CpuFlags::C, (new_a & 0b_1000_0000) != 0);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialAnc
+    }
+}
+
+struct UnofficialAlrOperation;
+impl ReadOperation for UnofficialAlrOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        // This operation combines AND and LSR
+        AndOperation.read(cpu, value);
+        cpu.a.set(LsrOperation.modify(cpu, cpu.a.get()));
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialAlr
+    }
+}
+
+struct UnofficialArrOperation;
+impl ReadOperation for UnofficialArrOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        // This operation is a combination of AND and ROR, except it
+        // sets the C and V flags differently
+        let prev_c = cpu.contains_flags(CpuFlags::C);
+        let carry_mask = match prev_c {
+            true  => 0b_1000_0000,
+            false => 0b_0000_0000,
+        };
+
+        let and_a = cpu.a.get() & value;
+        let result = (and_a >> 1) | carry_mask;
+        let result_bit_7 = (result & 0b_1000_0000) != 0;
+        let result_bit_6 = (result & 0b_0100_0000) != 0;
+        let result_bit_5 = (result & 0b_0010_0000) != 0;
+
+        cpu.a.set(result);
+        cpu.set_flags(CpuFlags::C, result_bit_6);
+        cpu.set_flags(CpuFlags::Z, result == 0);
+        cpu.set_flags(CpuFlags::V, result_bit_6 != result_bit_5);
+        cpu.set_flags(CpuFlags::N, result_bit_7);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialArr
+    }
+}
+
+struct UnofficialAxsOperation;
+impl ReadOperation for UnofficialAxsOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        // This operation sets X to ((A & X) - value), and updates the
+        // C, Z, and N flags appropriately.
+        let a_and_x = cpu.a.get() & cpu.x.get();
+        let AdcResult { a: result, c, z, v: _, n } = adc(AdcArg {
+            a: a_and_x,
+            c: true,
+            value: !value
+        });
+
+        cpu.x.set(result);
+        cpu.set_flags(CpuFlags::C, c);
+        cpu.set_flags(CpuFlags::Z, z);
+        cpu.set_flags(CpuFlags::N, n);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialAxs
+    }
+}
+
+struct UnofficialLaxOperation;
+impl ReadOperation for UnofficialLaxOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        // This operation combines LDA and LDX
+        LdaOperation.read(cpu, value);
+        LdxOperation.read(cpu, value);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialLax
     }
 }
 
