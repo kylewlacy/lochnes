@@ -58,6 +58,11 @@ fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
 }
 
 #[test]
-fn rom_blargg_instr_test() {
+fn rom_blargg_instr_test_implied() {
     run_blargg_instr_test("01-implied", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/01-implied.nes"));
+}
+
+#[test]
+fn rom_blargg_instr_test_immediate() {
+    run_blargg_instr_test("02-immediate", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/02-immediate.nes"));
 }
