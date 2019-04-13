@@ -7,17 +7,9 @@ use lochnes::{nes, rom, video};
 use lochnes::nes::NesStep;
 use lochnes::nes::ppu::PpuStep;
 
-const ROM_BLARGG_EXPECTED_OUTPUT: &str = r##"
-01-implied
-
-Passed
-"##;
-
-#[test]
-fn rom_blargg_instr_test() {
-    let rom_bytes = include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/01-implied.nes");
+fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
     let rom = rom::Rom::from_bytes(rom_bytes.into_iter().cloned())
-        .expect("Failed to parse test ROM");
+        .expect(&format!("Failed to parse test ROM {:?}", test_name));
 
     let nes = nes::Nes::new_from_rom(rom.clone());
     let mut video = video::NullVideo;
@@ -60,5 +52,12 @@ fn rom_blargg_instr_test() {
     let test_output = String::from_utf8_lossy(&test_output);
     println!("{}", test_output);
     assert_eq!(status, 0);
-    assert_eq!(test_output, ROM_BLARGG_EXPECTED_OUTPUT);
+
+    let expected_output = format!("\n{}\n\nPassed\n", test_name);
+    assert_eq!(test_output, expected_output);
+}
+
+#[test]
+fn rom_blargg_instr_test() {
+    run_blargg_instr_test("01-implied", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/01-implied.nes"));
 }
