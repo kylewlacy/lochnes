@@ -15,8 +15,8 @@ fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
     let mut video = video::NullVideo;
     let mut run_nes = nes.run(&mut video);
 
-    // Run for a max of 120 frames, just in case the test ROM never completes
-    for frame in 0..120 {
+    // Run for a max of 240 frames, just in case the test ROM never completes
+    for frame in 0..240 {
         loop {
             match Pin::new(&mut run_nes).resume() {
                 GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => { break; }
@@ -70,4 +70,9 @@ fn rom_blargg_instr_test_immediate() {
 #[test]
 fn rom_blargg_instr_test_zero_page() {
     run_blargg_instr_test("03-zero_page", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/03-zero_page.nes"));
+}
+
+#[test]
+fn rom_blargg_instr_test_zero_page_indexed() {
+    run_blargg_instr_test("04-zp_xy", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/04-zp_xy.nes"));
 }
