@@ -713,6 +713,23 @@ enum OpArg {
     Zero { zero_page: u8 },
 }
 
+impl From<OpArg> for OpMode {
+    fn from(arg: OpArg) -> Self {
+        match arg {
+            OpArg::Implied => OpMode::Implied,
+            OpArg::Accum => OpMode::Accum,
+            OpArg::Abs { .. } => OpMode::Abs,
+            OpArg::AbsX { .. } => OpMode::AbsX,
+            OpArg::AbsY { .. } => OpMode::AbsY,
+            OpArg::Branch { .. } => OpMode::Branch,
+            OpArg::Imm { .. } => OpMode::Imm,
+            OpArg::IndY { .. } => OpMode::IndY,
+            OpArg::ZeroX { .. } => OpMode::ZeroX,
+            OpArg::Zero { .. } => OpMode::Zero,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Op {
     instruction: Instruction,
