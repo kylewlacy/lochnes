@@ -916,7 +916,7 @@ impl Opcode {
             Opcode::Inx => (Instruction::Inx, OpMode::Implied),
             Opcode::Iny => (Instruction::Iny, OpMode::Implied),
             Opcode::JmpAbs => (Instruction::Jmp, OpMode::Abs),
-            Opcode::Jsr => (Instruction::Jsr, OpMode::Implied),
+            Opcode::Jsr => (Instruction::Jsr, OpMode::Abs),
             Opcode::LdaAbs => (Instruction::Lda, OpMode::Abs),
             Opcode::LdaAbsX => (Instruction::Lda, OpMode::AbsX),
             Opcode::LdaAbsY => (Instruction::Lda, OpMode::AbsY),
