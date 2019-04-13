@@ -158,7 +158,7 @@ impl Cpu {
                     yield_all! { implied(nes, ClvOperation) }
                 }
                 Opcode::CmpAbs => {
-                    yield_all! { abs_x_read(nes, CmpOperation) }
+                    yield_all! { abs_read(nes, CmpOperation) }
                 }
                 Opcode::CmpAbsX => {
                     yield_all! { abs_x_read(nes, CmpOperation) }
