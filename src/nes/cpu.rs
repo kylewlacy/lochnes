@@ -495,7 +495,10 @@ impl Cpu {
                 }
             };
 
-            debug_assert_eq!(op.instruction, opcode.instruction_with_mode().0);
+            debug_assert_eq!(
+                opcode.instruction_with_mode(),
+                op.instruction_with_mode()
+            );
 
             yield CpuStep::Op(CpuStepOp { pc, op });
         }
