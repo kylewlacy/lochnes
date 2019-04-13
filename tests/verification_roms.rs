@@ -76,3 +76,8 @@ fn rom_blargg_instr_test_zero_page() {
 fn rom_blargg_instr_test_zero_page_indexed() {
     run_blargg_instr_test("04-zp_xy", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/04-zp_xy.nes"));
 }
+
+#[test]
+fn rom_blargg_instr_test_abs() {
+    run_blargg_instr_test("05-absolute", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/05-absolute.nes"));
+}
