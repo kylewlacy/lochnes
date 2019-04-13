@@ -736,6 +736,12 @@ pub struct Op {
     arg: OpArg,
 }
 
+impl Op {
+    fn instruction_with_mode(&self) -> (Instruction, OpMode) {
+        (self.instruction, self.arg.into())
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Opcode {
