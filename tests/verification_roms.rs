@@ -120,3 +120,8 @@ fn rom_blargg_instr_test_abs_indexed() {
 fn rom_blargg_instr_test_indexed_indirect() {
     run_blargg_instr_test("07-ind_x", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/07-ind_x.nes"));
 }
+
+#[test]
+fn rom_blargg_instr_test_indirect_indexed() {
+    run_blargg_instr_test("08-ind_y", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/08-ind_y.nes"));
+}
