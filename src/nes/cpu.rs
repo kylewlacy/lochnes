@@ -2009,7 +2009,7 @@ fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
 
         let target_addr_base = Cpu::pc_fetch_inc(&nes);
         let target_addr_base_lo = target_addr_base as u16;
-        let target_addr_base_hi = target_addr_base_lo.wrapping_add(1);
+        let target_addr_base_hi = target_addr_base.wrapping_add(1) as u16;
         yield CpuStep::Cycle;
 
         let addr_base_lo = nes.read_u8(target_addr_base_lo);
@@ -2018,24 +2018,32 @@ fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         let addr_base_hi = nes.read_u8(target_addr_base_hi);
         let y = nes.cpu.y.get();
 
-        let addr_unfixed = u16_from(addr_base_lo.wrapping_add(y), addr_base_hi);
         yield CpuStep::Cycle;
 
-        // Speculatively execute the operation based on the
+        // Speculatively load from memory based on the
         // incomplete address calculation
+        let addr_unfixed = u16_from(addr_base_lo.wrapping_add(y), addr_base_hi);
         let value_unfixed = nes.read_u8(addr_unfixed);
-        op.read(&nes.cpu, value_unfixed);
         yield CpuStep::Cycle;
 
+        // Calculate the actual address to use
         let addr_base = u16_from(addr_base_lo, addr_base_hi);
         let addr = addr_base.wrapping_add(y as u16);
-        if addr != addr_unfixed {
-            // Re-run the operation if the original calculation
-            // was incorrect (i.e. a page boundary was crossed)
-            let value = nes.read_u8(addr);
-            op.read(&nes.cpu, value);
-            yield CpuStep::Cycle;
-        }
+        let value =
+            if addr == addr_unfixed {
+                value_unfixed
+            }
+            else {
+                // If the speculative load was incorrect, read the from
+                // the correct address (at the cost of an extra cycle)
+                let fixed_value = nes.read_u8(addr);
+                yield CpuStep::Cycle;
+
+                fixed_value
+            };
+
+        op.read(&nes.cpu, value);
+        yield CpuStep::Cycle;
 
         Op {
             instruction: op.instruction(),
@@ -2053,7 +2061,7 @@ fn ind_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
 
         let target_addr_base = Cpu::pc_fetch_inc(&nes);
         let target_addr_base_lo = target_addr_base as u16;
-        let target_addr_base_hi = target_addr_base_lo.wrapping_add(1);
+        let target_addr_base_hi = target_addr_base.wrapping_add(1) as u16;
         yield CpuStep::Cycle;
 
         let addr_base_lo = nes.read_u8(target_addr_base_lo);
