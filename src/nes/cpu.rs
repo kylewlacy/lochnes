@@ -494,7 +494,7 @@ impl Cpu {
                     yield_all! { implied(nes, TyaOperation) }
                 }
                 Opcode::_04 => {
-                    yield_all! { zero_read(nes, NopOperation) }
+                    yield_all! { zero_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_07 => {
                     yield_all! { zero_modify(nes, UnofficialSloOperation) }
@@ -503,25 +503,25 @@ impl Cpu {
                     yield_all! { imm_read(nes, UnofficialAncOperation) }
                 }
                 Opcode::_0C => {
-                    yield_all! { abs_read(nes, NopOperation) }
+                    yield_all! { abs_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_0F => {
                     yield_all! { abs_modify(nes, UnofficialSloOperation) }
                 }
                 Opcode::_14 => {
-                    yield_all! { zero_x_read(nes, NopOperation) }
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_17 => {
                     yield_all! { zero_x_modify(nes, UnofficialSloOperation) }
                 }
                 Opcode::_1A => {
-                    yield_all! { implied(nes, NopOperation) }
+                    yield_all! { implied(nes, UnofficialNopOperation) }
                 }
                 Opcode::_1B => {
                     yield_all! { abs_y_modify(nes, UnofficialSloOperation) }
                 }
                 Opcode::_1C => {
-                    yield_all! { abs_x_read(nes, NopOperation) }
+                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_1F => {
                     yield_all! { abs_x_modify(nes, UnofficialSloOperation) }
@@ -536,25 +536,25 @@ impl Cpu {
                     yield_all! { abs_modify(nes, UnofficialRlaOperation) }
                 }
                 Opcode::_34 => {
-                    yield_all! { zero_x_read(nes, NopOperation) }
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_37 => {
                     yield_all! { zero_x_modify(nes, UnofficialRlaOperation) }
                 }
                 Opcode::_3A => {
-                    yield_all! { implied(nes, NopOperation) }
+                    yield_all! { implied(nes, UnofficialNopOperation) }
                 }
                 Opcode::_3B => {
                     yield_all! { abs_y_modify(nes, UnofficialRlaOperation) }
                 }
                 Opcode::_3C => {
-                    yield_all! { abs_x_read(nes, NopOperation) }
+                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_3F => {
                     yield_all! { abs_x_modify(nes, UnofficialRlaOperation) }
                 }
                 Opcode::_44 => {
-                    yield_all! { zero_read(nes, NopOperation) }
+                    yield_all! { zero_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_47 => {
                     yield_all! { zero_modify(nes, UnofficialSreOperation) }
@@ -566,25 +566,25 @@ impl Cpu {
                     yield_all! { abs_modify(nes, UnofficialSreOperation) }
                 }
                 Opcode::_54 => {
-                    yield_all! { zero_x_read(nes, NopOperation) }
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_57 => {
                     yield_all! { zero_x_modify(nes, UnofficialSreOperation) }
                 }
                 Opcode::_5A => {
-                    yield_all! { implied(nes, NopOperation) }
+                    yield_all! { implied(nes, UnofficialNopOperation) }
                 }
                 Opcode::_5B => {
                     yield_all! { abs_y_modify(nes, UnofficialSreOperation) }
                 }
                 Opcode::_5C => {
-                    yield_all! { abs_x_read(nes, NopOperation) }
+                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_5F => {
                     yield_all! { abs_x_modify(nes, UnofficialSreOperation) }
                 }
                 Opcode::_64 => {
-                    yield_all! { zero_read(nes, NopOperation) }
+                    yield_all! { zero_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_67 => {
                     yield_all! { zero_modify(nes, UnofficialRraOperation) }
@@ -596,34 +596,34 @@ impl Cpu {
                     yield_all! { abs_modify(nes, UnofficialRraOperation) }
                 }
                 Opcode::_74 => {
-                    yield_all! { zero_x_read(nes, NopOperation) }
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_77 => {
                     yield_all! { zero_x_modify(nes, UnofficialRraOperation) }
                 }
                 Opcode::_7A => {
-                    yield_all! { implied(nes, NopOperation) }
+                    yield_all! { implied(nes, UnofficialNopOperation) }
                 }
                 Opcode::_7B => {
                     yield_all! { abs_y_modify(nes, UnofficialRraOperation) }
                 }
                 Opcode::_7C => {
-                    yield_all! { abs_x_read(nes, NopOperation) }
+                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_7F => {
                     yield_all! { abs_x_modify(nes, UnofficialRraOperation) }
                 }
                 Opcode::_80 => {
-                    yield_all! { imm_read(nes, NopOperation) }
+                    yield_all! { imm_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_82 => {
-                    yield_all! { imm_read(nes, NopOperation) }
+                    yield_all! { imm_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_87 => {
                     yield_all! { zero_write(nes, UnofficialSaxOperation) }
                 }
                 Opcode::_89 => {
-                    yield_all! { imm_read(nes, NopOperation) }
+                    yield_all! { imm_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_8F => {
                     yield_all! { abs_write(nes, UnofficialSaxOperation) }
@@ -653,7 +653,7 @@ impl Cpu {
                     yield_all! { abs_y_read(nes, UnofficialLaxOperation) }
                 }
                 Opcode::_C2 => {
-                    yield_all! { imm_read(nes, NopOperation) }
+                    yield_all! { imm_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_C7 => {
                     yield_all! { zero_modify(nes, UnofficialDcpOperation) }
@@ -665,49 +665,49 @@ impl Cpu {
                     yield_all! { abs_modify(nes, UnofficialDcpOperation) }
                 }
                 Opcode::_D4 => {
-                    yield_all! { zero_x_read(nes, NopOperation) }
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_D7 => {
                     yield_all! { zero_x_modify(nes, UnofficialDcpOperation) }
                 }
                 Opcode::_DA => {
-                    yield_all! { implied(nes, NopOperation) }
+                    yield_all! { implied(nes, UnofficialNopOperation) }
                 }
                 Opcode::_DB => {
                     yield_all! { abs_y_modify(nes, UnofficialDcpOperation) }
                 }
                 Opcode::_DC => {
-                    yield_all! { abs_x_read(nes, NopOperation) }
+                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_DF => {
                     yield_all! { abs_x_modify(nes, UnofficialDcpOperation) }
                 }
                 Opcode::_E2 => {
-                    yield_all! { imm_read(nes, NopOperation) }
+                    yield_all! { imm_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_E7 => {
                     yield_all! { zero_modify(nes, UnofficialIscOperation) }
                 }
                 Opcode::_EB => {
-                    yield_all! { imm_read(nes, SbcOperation) }
+                    yield_all! { imm_read(nes, UnofficialSbcOperation) }
                 }
                 Opcode::_EF => {
                     yield_all! { abs_modify(nes, UnofficialIscOperation) }
                 }
                 Opcode::_F4 => {
-                    yield_all! { zero_x_read(nes, NopOperation) }
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_F7 => {
                     yield_all! { zero_x_modify(nes, UnofficialIscOperation) }
                 }
                 Opcode::_FA => {
-                    yield_all! { implied(nes, NopOperation) }
+                    yield_all! { implied(nes, UnofficialNopOperation) }
                 }
                 Opcode::_FB => {
                     yield_all! { abs_y_modify(nes, UnofficialIscOperation) }
                 }
                 Opcode::_FC => {
-                    yield_all! { abs_x_read(nes, NopOperation) }
+                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
                 Opcode::_FF => {
                     yield_all! { abs_x_modify(nes, UnofficialIscOperation) }
@@ -826,9 +826,11 @@ enum Instruction {
     UnofficialDcp,
     UnofficialIsc,
     UnofficialLax,
+    UnofficialNop,
     UnofficialRla,
     UnofficialRra,
     UnofficialSax,
+    UnofficialSbc,
     UnofficialShx,
     UnofficialShy,
     UnofficialSlo,
@@ -868,7 +870,7 @@ impl fmt::Display for Instruction {
             Instruction::Ldx => "LDX",
             Instruction::Ldy => "LDY",
             Instruction::Lsr => "LSR",
-            Instruction::Nop => "NOP",
+            Instruction::Nop | Instruction::UnofficialNop => "NOP",
             Instruction::Ora => "ORA",
             Instruction::Pha => "PHA",
             Instruction::Php => "PHP",
@@ -878,7 +880,7 @@ impl fmt::Display for Instruction {
             Instruction::Ror => "ROR",
             Instruction::Rti => "RTI",
             Instruction::Rts => "RTS",
-            Instruction::Sbc => "SBC",
+            Instruction::Sbc | Instruction::UnofficialSbc => "SBC",
             Instruction::Sec => "SEC",
             Instruction::Sed => "SED",
             Instruction::Sei => "SEI",
@@ -1325,50 +1327,50 @@ impl Opcode {
             Opcode::Txa => (Instruction::Txa, OpMode::Implied),
             Opcode::Txs => (Instruction::Txs, OpMode::Implied),
             Opcode::Tya => (Instruction::Tya, OpMode::Implied),
-            Opcode::_04 => (Instruction::Nop, OpMode::Zero),
+            Opcode::_04 => (Instruction::UnofficialNop, OpMode::Zero),
             Opcode::_07 => (Instruction::UnofficialSlo, OpMode::Zero),
             Opcode::_0B => (Instruction::UnofficialAnc, OpMode::Imm),
-            Opcode::_0C => (Instruction::Nop, OpMode::Abs),
+            Opcode::_0C => (Instruction::UnofficialNop, OpMode::Abs),
             Opcode::_0F => (Instruction::UnofficialSlo, OpMode::Abs),
-            Opcode::_14 => (Instruction::Nop, OpMode::ZeroX),
+            Opcode::_14 => (Instruction::UnofficialNop, OpMode::ZeroX),
             Opcode::_17 => (Instruction::UnofficialSlo, OpMode::ZeroX),
-            Opcode::_1A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_1A => (Instruction::UnofficialNop, OpMode::Implied),
             Opcode::_1B => (Instruction::UnofficialSlo, OpMode::AbsY),
-            Opcode::_1C => (Instruction::Nop, OpMode::AbsX),
+            Opcode::_1C => (Instruction::UnofficialNop, OpMode::AbsX),
             Opcode::_1F => (Instruction::UnofficialSlo, OpMode::AbsX),
             Opcode::_27 => (Instruction::UnofficialRla, OpMode::Zero),
             Opcode::_2B => (Instruction::UnofficialAnc, OpMode::Imm),
             Opcode::_2F => (Instruction::UnofficialRla, OpMode::Abs),
-            Opcode::_34 => (Instruction::Nop, OpMode::ZeroX),
+            Opcode::_34 => (Instruction::UnofficialNop, OpMode::ZeroX),
             Opcode::_37 => (Instruction::UnofficialRla, OpMode::ZeroX),
-            Opcode::_3A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_3A => (Instruction::UnofficialNop, OpMode::Implied),
             Opcode::_3B => (Instruction::UnofficialRla, OpMode::AbsY),
-            Opcode::_3C => (Instruction::Nop, OpMode::AbsX),
+            Opcode::_3C => (Instruction::UnofficialNop, OpMode::AbsX),
             Opcode::_3F => (Instruction::UnofficialRla, OpMode::AbsX),
-            Opcode::_44 => (Instruction::Nop, OpMode::Zero),
+            Opcode::_44 => (Instruction::UnofficialNop, OpMode::Zero),
             Opcode::_47 => (Instruction::UnofficialSre, OpMode::Zero),
             Opcode::_4B => (Instruction::UnofficialAlr, OpMode::Imm),
             Opcode::_4F => (Instruction::UnofficialSre, OpMode::Abs),
-            Opcode::_54 => (Instruction::Nop, OpMode::ZeroX),
+            Opcode::_54 => (Instruction::UnofficialNop, OpMode::ZeroX),
             Opcode::_57 => (Instruction::UnofficialSre, OpMode::ZeroX),
-            Opcode::_5A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_5A => (Instruction::UnofficialNop, OpMode::Implied),
             Opcode::_5B => (Instruction::UnofficialSre, OpMode::AbsY),
-            Opcode::_5C => (Instruction::Nop, OpMode::AbsX),
+            Opcode::_5C => (Instruction::UnofficialNop, OpMode::AbsX),
             Opcode::_5F => (Instruction::UnofficialSre, OpMode::AbsX),
-            Opcode::_64 => (Instruction::Nop, OpMode::Zero),
+            Opcode::_64 => (Instruction::UnofficialNop, OpMode::Zero),
             Opcode::_67 => (Instruction::UnofficialRra, OpMode::Zero),
             Opcode::_6B => (Instruction::UnofficialArr, OpMode::Imm),
             Opcode::_6F => (Instruction::UnofficialRra, OpMode::Abs),
-            Opcode::_74 => (Instruction::Nop, OpMode::ZeroX),
+            Opcode::_74 => (Instruction::UnofficialNop, OpMode::ZeroX),
             Opcode::_77 => (Instruction::UnofficialRra, OpMode::ZeroX),
-            Opcode::_7A => (Instruction::Nop, OpMode::Implied),
+            Opcode::_7A => (Instruction::UnofficialNop, OpMode::Implied),
             Opcode::_7B => (Instruction::UnofficialRra, OpMode::AbsY),
-            Opcode::_7C => (Instruction::Nop, OpMode::AbsX),
+            Opcode::_7C => (Instruction::UnofficialNop, OpMode::AbsX),
             Opcode::_7F => (Instruction::UnofficialRra, OpMode::AbsX),
-            Opcode::_80 => (Instruction::Nop, OpMode::Imm),
-            Opcode::_82 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_80 => (Instruction::UnofficialNop, OpMode::Imm),
+            Opcode::_82 => (Instruction::UnofficialNop, OpMode::Imm),
             Opcode::_87 => (Instruction::UnofficialSax, OpMode::Zero),
-            Opcode::_89 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_89 => (Instruction::UnofficialNop, OpMode::Imm),
             Opcode::_8F => (Instruction::UnofficialSax, OpMode::Abs),
             Opcode::_97 => (Instruction::UnofficialSax, OpMode::ZeroY),
             Opcode::_9C => (Instruction::UnofficialShy, OpMode::AbsX),
@@ -1378,25 +1380,25 @@ impl Opcode {
             Opcode::_AF => (Instruction::UnofficialLax, OpMode::Abs),
             Opcode::_B7 => (Instruction::UnofficialLax, OpMode::ZeroY),
             Opcode::_BF => (Instruction::UnofficialLax, OpMode::AbsY),
-            Opcode::_C2 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_C2 => (Instruction::UnofficialNop, OpMode::Imm),
             Opcode::_C7 => (Instruction::UnofficialDcp, OpMode::Zero),
             Opcode::_CB => (Instruction::UnofficialAxs, OpMode::Imm),
             Opcode::_CF => (Instruction::UnofficialDcp, OpMode::Abs),
-            Opcode::_D4 => (Instruction::Nop, OpMode::ZeroX),
+            Opcode::_D4 => (Instruction::UnofficialNop, OpMode::ZeroX),
             Opcode::_D7 => (Instruction::UnofficialDcp, OpMode::ZeroX),
-            Opcode::_DA => (Instruction::Nop, OpMode::Implied),
+            Opcode::_DA => (Instruction::UnofficialNop, OpMode::Implied),
             Opcode::_DB => (Instruction::UnofficialDcp, OpMode::AbsY),
-            Opcode::_DC => (Instruction::Nop, OpMode::AbsX),
+            Opcode::_DC => (Instruction::UnofficialNop, OpMode::AbsX),
             Opcode::_DF => (Instruction::UnofficialDcp, OpMode::AbsX),
-            Opcode::_E2 => (Instruction::Nop, OpMode::Imm),
+            Opcode::_E2 => (Instruction::UnofficialNop, OpMode::Imm),
             Opcode::_E7 => (Instruction::UnofficialIsc, OpMode::Zero),
-            Opcode::_EB => (Instruction::Sbc, OpMode::Imm),
+            Opcode::_EB => (Instruction::UnofficialSbc, OpMode::Imm),
             Opcode::_EF => (Instruction::UnofficialIsc, OpMode::Abs),
-            Opcode::_F4 => (Instruction::Nop, OpMode::ZeroX),
+            Opcode::_F4 => (Instruction::UnofficialNop, OpMode::ZeroX),
             Opcode::_F7 => (Instruction::UnofficialIsc, OpMode::ZeroX),
-            Opcode::_FA => (Instruction::Nop, OpMode::Implied),
+            Opcode::_FA => (Instruction::UnofficialNop, OpMode::Implied),
             Opcode::_FB => (Instruction::UnofficialIsc, OpMode::AbsY),
-            Opcode::_FC => (Instruction::Nop, OpMode::AbsX),
+            Opcode::_FC => (Instruction::UnofficialNop, OpMode::AbsX),
             Opcode::_FF => (Instruction::UnofficialIsc, OpMode::AbsX),
         }
     }
@@ -2772,18 +2774,8 @@ impl ModifyOperation for LsrOperation {
 }
 
 struct NopOperation;
-
 impl ImpliedOperation for NopOperation {
     fn operate(&self, _cpu: &Cpu) { }
-
-    fn instruction(&self) -> Instruction {
-        Instruction::Nop
-    }
-}
-
-// NOTE: Some undocumented opcodes do nothing, but still perform a memory read
-impl ReadOperation for NopOperation {
-    fn read(&self, _cpu: &Cpu, _value: u8) { }
 
     fn instruction(&self) -> Instruction {
         Instruction::Nop
@@ -3200,6 +3192,25 @@ impl ReadOperation for UnofficialLaxOperation {
     }
 }
 
+struct UnofficialNopOperation;
+
+impl ImpliedOperation for UnofficialNopOperation {
+    fn operate(&self, _cpu: &Cpu) { }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialNop
+    }
+}
+
+// NOTE: Some undocumented opcodes do nothing, but still perform a memory read
+impl ReadOperation for UnofficialNopOperation {
+    fn read(&self, _cpu: &Cpu, _value: u8) { }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialNop
+    }
+}
+
 struct UnofficialRlaOperation;
 impl ModifyOperation for UnofficialRlaOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
@@ -3239,6 +3250,17 @@ impl WriteOperation for UnofficialSaxOperation {
 
     fn instruction(&self) -> Instruction {
         Instruction::UnofficialSax
+    }
+}
+
+struct UnofficialSbcOperation;
+impl ReadOperation for UnofficialSbcOperation {
+    fn read(&self, cpu: &Cpu, value: u8) {
+        SbcOperation.read(cpu, value);
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::UnofficialSbc
     }
 }
 
