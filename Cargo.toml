@@ -8,8 +8,6 @@ bitflags = "1.0.4"
 enum-kinds = "0.4.1"
 structopt = "0.2.15"
 sdl2 = "0.32.1"
-num-derive = "0.2.4"
-num-traits = "0.2.6"
 [profile.dev]
 opt-level = 2
 [profile.release]
