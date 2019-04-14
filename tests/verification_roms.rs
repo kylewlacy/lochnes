@@ -130,3 +130,13 @@ fn rom_blargg_instr_test_indirect_indexed() {
 fn rom_blargg_instr_test_branching() {
     run_blargg_instr_test("09-branches", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/09-branches.nes"));
 }
+
+#[test]
+fn rom_blargg_instr_test_stack() {
+    run_blargg_instr_test("10-stack", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/10-stack.nes"));
+}
+
+#[test]
+fn rom_blargg_instr_test_special() {
+    run_blargg_instr_test("11-special", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/11-special.nes"));
+}
