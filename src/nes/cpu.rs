@@ -180,6 +180,12 @@ impl Cpu {
                 (Instruction::Bpl, OpMode::Branch) => {
                     yield_all! { branch(&nes, BplOperation) }
                 }
+                (Instruction::Bvc, OpMode::Branch) => {
+                    yield_all! { branch(&nes, BvcOperation) }
+                }
+                (Instruction::Bvs, OpMode::Branch) => {
+                    yield_all! { branch(&nes, BvsOperation) }
+                }
                 (Instruction::Clc, OpMode::Implied) => {
                     yield_all! { implied(nes, ClcOperation) }
                 }
@@ -796,6 +802,8 @@ enum Instruction {
     Bmi,
     Bne,
     Bpl,
+    Bvc,
+    Bvs,
     Clc,
     Cld,
     Cli,
@@ -870,6 +878,8 @@ impl fmt::Display for Instruction {
             Instruction::Bmi => "BMI",
             Instruction::Bne => "BNE",
             Instruction::Bpl => "BPL",
+            Instruction::Bvc => "BVC",
+            Instruction::Bvs => "BVS",
             Instruction::Clc => "CLC",
             Instruction::Cld => "CLD",
             Instruction::Cli => "CLI",
@@ -1072,6 +1082,7 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x4D => (Instruction::Eor, OpMode::Abs),
         0x4E => (Instruction::Lsr, OpMode::Abs),
         0x4F => (Instruction::UnofficialSre, OpMode::Abs),
+        0x50 => (Instruction::Bvc, OpMode::Branch),
         0x51 => (Instruction::Eor, OpMode::IndY),
         0x53 => (Instruction::UnofficialSre, OpMode::IndY),
         0x54 => (Instruction::UnofficialNop, OpMode::ZeroX),
@@ -1100,6 +1111,7 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x6D => (Instruction::Adc, OpMode::Abs),
         0x6E => (Instruction::Ror, OpMode::Abs),
         0x6F => (Instruction::UnofficialRra, OpMode::Abs),
+        0x70 => (Instruction::Bvs, OpMode::Branch),
         0x71 => (Instruction::Adc, OpMode::IndY),
         0x73 => (Instruction::UnofficialRra, OpMode::IndY),
         0x74 => (Instruction::UnofficialNop, OpMode::ZeroX),
@@ -2507,6 +2519,28 @@ impl BranchOperation for BplOperation {
 
     fn instruction(&self) -> Instruction {
         Instruction::Bpl
+    }
+}
+
+struct BvcOperation;
+impl BranchOperation for BvcOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        !cpu.contains_flags(CpuFlags::V)
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Bvc
+    }
+}
+
+struct BvsOperation;
+impl BranchOperation for BvsOperation {
+    fn branch(&self, cpu: &Cpu) -> bool {
+        cpu.contains_flags(CpuFlags::V)
+    }
+
+    fn instruction(&self) -> Instruction {
+        Instruction::Bvs
     }
 }
 
