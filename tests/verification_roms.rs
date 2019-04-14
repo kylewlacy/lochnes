@@ -125,3 +125,8 @@ fn rom_blargg_instr_test_indexed_indirect() {
 fn rom_blargg_instr_test_indirect_indexed() {
     run_blargg_instr_test("08-ind_y", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/08-ind_y.nes"));
 }
+
+#[test]
+fn rom_blargg_instr_test_branching() {
+    run_blargg_instr_test("09-branches", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/09-branches.nes"));
+}
