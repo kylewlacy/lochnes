@@ -180,6 +180,9 @@ impl Cpu {
                 (Instruction::Bpl, OpMode::Branch) => {
                     yield_all! { branch(&nes, BplOperation) }
                 }
+                (Instruction::Brk, OpMode::Implied) => {
+                    yield_all! { brk(&nes) }
+                }
                 (Instruction::Bvc, OpMode::Branch) => {
                     yield_all! { branch(&nes, BvcOperation) }
                 }
@@ -805,6 +808,7 @@ enum Instruction {
     Bmi,
     Bne,
     Bpl,
+    Brk,
     Bvc,
     Bvs,
     Clc,
@@ -881,6 +885,7 @@ impl fmt::Display for Instruction {
             Instruction::Bmi => "BMI",
             Instruction::Bne => "BNE",
             Instruction::Bpl => "BPL",
+            Instruction::Brk => "BRK",
             Instruction::Bvc => "BVC",
             Instruction::Bvs => "BVS",
             Instruction::Clc => "CLC",
@@ -1014,6 +1019,7 @@ impl Op {
 
 fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
     match opcode {
+        0x00 => (Instruction::Brk, OpMode::Implied),
         0x01 => (Instruction::Ora, OpMode::IndX),
         0x03 => (Instruction::UnofficialSlo, OpMode::IndX),
         0x04 => (Instruction::UnofficialNop, OpMode::Zero),
@@ -1372,6 +1378,40 @@ fn implied<'a>(
 
         Op {
             instruction: op.instruction(),
+            arg: OpArg::Implied,
+        }
+    }
+}
+
+fn brk<'a>(nes: &'a Nes) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let _garbage = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let pc = nes.cpu.pc.get();
+        nes.push_u8(((pc & 0xFF00) >> 8) as u8);
+        yield CpuStep::Cycle;
+
+        nes.push_u8((pc & 0x00FF) as u8);
+        yield CpuStep::Cycle;
+
+        let p = nes.cpu.p.get().bits | 0b_0011_0000;
+        nes.push_u8(p);
+        yield CpuStep::Cycle;
+
+        let pc_hi = nes.read_u8(0xFFFE);
+        yield CpuStep::Cycle;
+
+        let pc_lo = nes.read_u8(0xFFFF);
+        let pc = u16_from(pc_hi, pc_lo);
+        nes.cpu.pc.set(pc);
+        yield CpuStep::Cycle;
+
+        Op {
+            instruction: Instruction::Brk,
             arg: OpArg::Implied,
         }
     }
