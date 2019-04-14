@@ -108,6 +108,9 @@ impl Cpu {
                 (Instruction::Adc, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, AdcOperation) }
                 }
+                (Instruction::Adc, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, AdcOperation) }
+                }
                 (Instruction::Adc, OpMode::Zero) => {
                     yield_all! { zero_read(nes, AdcOperation) }
                 }
@@ -128,6 +131,9 @@ impl Cpu {
                 }
                 (Instruction::And, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, AndOperation) }
+                }
+                (Instruction::And, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, AndOperation) }
                 }
                 (Instruction::And, OpMode::Zero) => {
                     yield_all! { zero_read(nes, AndOperation) }
@@ -201,6 +207,9 @@ impl Cpu {
                 (Instruction::Cmp, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, CmpOperation) }
                 }
+                (Instruction::Cmp, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, CmpOperation) }
+                }
                 (Instruction::Cmp, OpMode::Zero) => {
                     yield_all! { zero_read(nes, CmpOperation) }
                 }
@@ -257,6 +266,9 @@ impl Cpu {
                 }
                 (Instruction::Eor, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, EorOperation) }
+                }
+                (Instruction::Eor, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, EorOperation) }
                 }
                 (Instruction::Eor, OpMode::Zero) => {
                     yield_all! { zero_read(nes, EorOperation) }
@@ -375,6 +387,9 @@ impl Cpu {
                 (Instruction::Ora, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, OraOperation) }
                 }
+                (Instruction::Ora, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, OraOperation) }
+                }
                 (Instruction::Ora, OpMode::Zero) => {
                     yield_all! { zero_read(nes, OraOperation) }
                 }
@@ -443,6 +458,9 @@ impl Cpu {
                 }
                 (Instruction::Sbc, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, SbcOperation) }
+                }
+                (Instruction::Sbc, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, SbcOperation) }
                 }
                 (Instruction::Sbc, OpMode::Zero) => {
                     yield_all! { zero_read(nes, SbcOperation) }
@@ -540,6 +558,9 @@ impl Cpu {
                 (Instruction::UnofficialDcp, OpMode::IndX) => {
                     yield_all! { ind_x_modify(nes, UnofficialDcpOperation) }
                 }
+                (Instruction::UnofficialDcp, OpMode::IndY) => {
+                    yield_all! { ind_y_modify(nes, UnofficialDcpOperation) }
+                }
                 (Instruction::UnofficialDcp, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, UnofficialDcpOperation) }
                 }
@@ -558,6 +579,9 @@ impl Cpu {
                 (Instruction::UnofficialIsc, OpMode::IndX) => {
                     yield_all! { ind_x_modify(nes, UnofficialIscOperation) }
                 }
+                (Instruction::UnofficialIsc, OpMode::IndY) => {
+                    yield_all! { ind_y_modify(nes, UnofficialIscOperation) }
+                }
                 (Instruction::UnofficialIsc, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, UnofficialIscOperation) }
                 }
@@ -575,6 +599,9 @@ impl Cpu {
                 }
                 (Instruction::UnofficialLax, OpMode::IndX) => {
                     yield_all! { ind_x_read(nes, UnofficialLaxOperation) }
+                }
+                (Instruction::UnofficialLax, OpMode::IndY) => {
+                    yield_all! { ind_y_read(nes, UnofficialLaxOperation) }
                 }
                 (Instruction::UnofficialLax, OpMode::Zero) => {
                     yield_all! { zero_read(nes, UnofficialLaxOperation) }
@@ -612,6 +639,9 @@ impl Cpu {
                 (Instruction::UnofficialRla, OpMode::IndX) => {
                     yield_all! { ind_x_modify(nes, UnofficialRlaOperation) }
                 }
+                (Instruction::UnofficialRla, OpMode::IndY) => {
+                    yield_all! { ind_y_modify(nes, UnofficialRlaOperation) }
+                }
                 (Instruction::UnofficialRla, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, UnofficialRlaOperation) }
                 }
@@ -626,6 +656,9 @@ impl Cpu {
                 }
                 (Instruction::UnofficialRra, OpMode::IndX) => {
                     yield_all! { ind_x_modify(nes, UnofficialRraOperation) }
+                }
+                (Instruction::UnofficialRra, OpMode::IndY) => {
+                    yield_all! { ind_y_modify(nes, UnofficialRraOperation) }
                 }
                 (Instruction::UnofficialRra, OpMode::AbsY) => {
                     yield_all! { abs_y_modify(nes, UnofficialRraOperation) }
@@ -669,6 +702,9 @@ impl Cpu {
                 (Instruction::UnofficialSlo, OpMode::IndX) => {
                     yield_all! { ind_x_modify(nes, UnofficialSloOperation) }
                 }
+                (Instruction::UnofficialSlo, OpMode::IndY) => {
+                    yield_all! { ind_y_modify(nes, UnofficialSloOperation) }
+                }
                 (Instruction::UnofficialSlo, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, UnofficialSloOperation) }
                 }
@@ -686,6 +722,9 @@ impl Cpu {
                 }
                 (Instruction::UnofficialSre, OpMode::IndX) => {
                     yield_all! { ind_x_modify(nes, UnofficialSreOperation) }
+                }
+                (Instruction::UnofficialSre, OpMode::IndY) => {
+                    yield_all! { ind_y_modify(nes, UnofficialSreOperation) }
                 }
                 (Instruction::UnofficialSre, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, UnofficialSreOperation) }
@@ -974,6 +1013,8 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x0E => (Instruction::Asl, OpMode::Abs),
         0x0F => (Instruction::UnofficialSlo, OpMode::Abs),
         0x10 => (Instruction::Bpl, OpMode::Branch),
+        0x11 => (Instruction::Ora, OpMode::IndY),
+        0x13 => (Instruction::UnofficialSlo, OpMode::IndY),
         0x14 => (Instruction::UnofficialNop, OpMode::ZeroX),
         0x15 => (Instruction::Ora, OpMode::ZeroX),
         0x16 => (Instruction::Asl, OpMode::ZeroX),
@@ -1002,6 +1043,8 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x2E => (Instruction::Rol, OpMode::Abs),
         0x2F => (Instruction::UnofficialRla, OpMode::Abs),
         0x30 => (Instruction::Bmi, OpMode::Branch),
+        0x31 => (Instruction::And, OpMode::IndY),
+        0x33 => (Instruction::UnofficialRla, OpMode::IndY),
         0x34 => (Instruction::UnofficialNop, OpMode::ZeroX),
         0x35 => (Instruction::And, OpMode::ZeroX),
         0x36 => (Instruction::Rol, OpMode::ZeroX),
@@ -1029,6 +1072,8 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x4D => (Instruction::Eor, OpMode::Abs),
         0x4E => (Instruction::Lsr, OpMode::Abs),
         0x4F => (Instruction::UnofficialSre, OpMode::Abs),
+        0x51 => (Instruction::Eor, OpMode::IndY),
+        0x53 => (Instruction::UnofficialSre, OpMode::IndY),
         0x54 => (Instruction::UnofficialNop, OpMode::ZeroX),
         0x55 => (Instruction::Eor, OpMode::ZeroX),
         0x56 => (Instruction::Lsr, OpMode::ZeroX),
@@ -1055,6 +1100,8 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x6D => (Instruction::Adc, OpMode::Abs),
         0x6E => (Instruction::Ror, OpMode::Abs),
         0x6F => (Instruction::UnofficialRra, OpMode::Abs),
+        0x71 => (Instruction::Adc, OpMode::IndY),
+        0x73 => (Instruction::UnofficialRra, OpMode::IndY),
         0x74 => (Instruction::UnofficialNop, OpMode::ZeroX),
         0x75 => (Instruction::Adc, OpMode::ZeroX),
         0x76 => (Instruction::Ror, OpMode::ZeroX),
@@ -1112,6 +1159,7 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0xAF => (Instruction::UnofficialLax, OpMode::Abs),
         0xB0 => (Instruction::Bcs, OpMode::Branch),
         0xB1 => (Instruction::Lda, OpMode::IndY),
+        0xB3 => (Instruction::UnofficialLax, OpMode::IndY),
         0xB4 => (Instruction::Ldy, OpMode::ZeroX),
         0xB5 => (Instruction::Lda, OpMode::ZeroX),
         0xB6 => (Instruction::Ldx, OpMode::ZeroY),
@@ -1140,6 +1188,8 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0xCE => (Instruction::Dec, OpMode::Abs),
         0xCF => (Instruction::UnofficialDcp, OpMode::Abs),
         0xD0 => (Instruction::Bne, OpMode::Branch),
+        0xD1 => (Instruction::Cmp, OpMode::IndY),
+        0xD3 => (Instruction::UnofficialDcp, OpMode::IndY),
         0xD4 => (Instruction::UnofficialNop, OpMode::ZeroX),
         0xD5 => (Instruction::Cmp, OpMode::ZeroX),
         0xD6 => (Instruction::Dec, OpMode::ZeroX),
@@ -1169,6 +1219,8 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0xEE => (Instruction::Inc, OpMode::Abs),
         0xEF => (Instruction::UnofficialIsc, OpMode::Abs),
         0xF0 => (Instruction::Beq, OpMode::Branch),
+        0xF1 => (Instruction::Sbc, OpMode::IndY),
+        0xF3 => (Instruction::UnofficialIsc, OpMode::IndY),
         0xF4 => (Instruction::UnofficialNop, OpMode::ZeroX),
         0xF5 => (Instruction::Sbc, OpMode::ZeroX),
         0xF6 => (Instruction::Inc, OpMode::ZeroX),
@@ -2043,6 +2095,49 @@ fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
             };
 
         op.read(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        Op {
+            instruction: op.instruction(),
+            arg: OpArg::IndY { target_addr_base },
+        }
+    }
+}
+
+fn ind_y_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(&nes);
+        yield CpuStep::Cycle;
+
+        let target_addr_base = Cpu::pc_fetch_inc(&nes);
+        let target_addr_base_lo = target_addr_base as u16;
+        let target_addr_base_hi = target_addr_base.wrapping_add(1) as u16;
+        yield CpuStep::Cycle;
+
+        let addr_base_lo = nes.read_u8(target_addr_base_lo);
+        yield CpuStep::Cycle;
+
+        let addr_base_hi = nes.read_u8(target_addr_base_hi);
+        let y = nes.cpu.y.get();
+
+        let addr_unfixed = u16_from(addr_base_lo.wrapping_add(y), addr_base_hi);
+        yield CpuStep::Cycle;
+
+        let _garbage = nes.read_u8(addr_unfixed);
+        yield CpuStep::Cycle;
+
+        let addr_base = u16_from(addr_base_lo, addr_base_hi);
+        let addr = addr_base.wrapping_add(y as u16);
+        let value = nes.read_u8(addr);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, value);
+        let new_value = op.modify(&nes.cpu, value);
+        yield CpuStep::Cycle;
+
+        nes.write_u8(addr, new_value);
         yield CpuStep::Cycle;
 
         Op {
