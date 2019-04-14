@@ -93,624 +93,561 @@ impl Cpu {
             let opcode = nes.read_u8(pc);
             let opcode = Opcode::from_u8(opcode);
 
-            let op = match opcode {
-                Opcode::AdcAbs => {
+            let op = match opcode.instruction_with_mode() {
+                (Instruction::Adc, OpMode::Abs) => {
                     yield_all! { abs_read(nes, AdcOperation) }
                 }
-                Opcode::AdcAbsX => {
+                (Instruction::Adc, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, AdcOperation) }
                 }
-                Opcode::AdcAbsY => {
+                (Instruction::Adc, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, AdcOperation) }
                 }
-                Opcode::AdcImm => {
+                (Instruction::Adc, OpMode::Imm) => {
                     yield_all! { imm_read(nes, AdcOperation) }
                 }
-                Opcode::AdcZero => {
+                (Instruction::Adc, OpMode::Zero) => {
                     yield_all! { zero_read(nes, AdcOperation) }
                 }
-                Opcode::AdcZeroX => {
+                (Instruction::Adc, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, AdcOperation) }
                 }
-                Opcode::AndAbs => {
+                (Instruction::And, OpMode::Abs) => {
                     yield_all! { abs_read(nes, AndOperation) }
                 }
-                Opcode::AndAbsX => {
+                (Instruction::And, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, AndOperation) }
                 }
-                Opcode::AndAbsY => {
+                (Instruction::And, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, AndOperation) }
                 }
-                Opcode::AndImm => {
+                (Instruction::And, OpMode::Imm) => {
                     yield_all! { imm_read(nes, AndOperation) }
                 }
-                Opcode::AndZero => {
+                (Instruction::And, OpMode::Zero) => {
                     yield_all! { zero_read(nes, AndOperation) }
                 }
-                Opcode::AndZeroX => {
+                (Instruction::And, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, AndOperation) }
                 }
-                Opcode::AslA => {
+                (Instruction::Asl, OpMode::Accum) => {
                     yield_all! { accum_modify(nes, AslOperation) }
                 }
-                Opcode::AslAbs => {
+                (Instruction::Asl, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, AslOperation) }
                 }
-                Opcode::AslAbsX => {
+                (Instruction::Asl, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, AslOperation) }
                 }
-                Opcode::AslZero => {
+                (Instruction::Asl, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, AslOperation) }
                 }
-                Opcode::AslZeroX => {
+                (Instruction::Asl, OpMode::ZeroX) => {
                     yield_all! { zero_x_modify(nes, AslOperation) }
                 }
-                Opcode::Bcc => {
+                (Instruction::Bcc, OpMode::Branch) => {
                     yield_all! { branch(&nes, BccOperation) }
                 }
-                Opcode::Bcs => {
+                (Instruction::Bcs, OpMode::Branch) => {
                     yield_all! { branch(&nes, BcsOperation) }
                 }
-                Opcode::Beq => {
+                (Instruction::Beq, OpMode::Branch) => {
                     yield_all! { branch(&nes, BeqOperation) }
                 }
-                Opcode::BitZero => {
+                (Instruction::Bit, OpMode::Zero) => {
                     yield_all! { zero_read(&nes, BitOperation) }
                 }
-                Opcode::BitAbs => {
+                (Instruction::Bit, OpMode::Abs) => {
                     yield_all! { abs_read(&nes, BitOperation) }
                 }
-                Opcode::Bmi => {
+                (Instruction::Bmi, OpMode::Branch) => {
                     yield_all! { branch(&nes, BmiOperation) }
                 }
-                Opcode::Bne => {
+                (Instruction::Bne, OpMode::Branch) => {
                     yield_all! { branch(&nes, BneOperation) }
                 }
-                Opcode::Bpl => {
+                (Instruction::Bpl, OpMode::Branch) => {
                     yield_all! { branch(&nes, BplOperation) }
                 }
-                Opcode::Clc => {
+                (Instruction::Clc, OpMode::Implied) => {
                     yield_all! { implied(nes, ClcOperation) }
                 }
-                Opcode::Cld => {
+                (Instruction::Cld, OpMode::Implied) => {
                     yield_all! { implied(nes, CldOperation) }
                 }
-                Opcode::Cli => {
+                (Instruction::Cli, OpMode::Implied) => {
                     yield_all! { implied(nes, CliOperation) }
                 }
-                Opcode::Clv => {
+                (Instruction::Clv, OpMode::Implied) => {
                     yield_all! { implied(nes, ClvOperation) }
                 }
-                Opcode::CmpAbs => {
+                (Instruction::Cmp, OpMode::Abs) => {
                     yield_all! { abs_read(nes, CmpOperation) }
                 }
-                Opcode::CmpAbsX => {
+                (Instruction::Cmp, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, CmpOperation) }
                 }
-                Opcode::CmpAbsY => {
+                (Instruction::Cmp, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, CmpOperation) }
                 }
-                Opcode::CmpImm => {
+                (Instruction::Cmp, OpMode::Imm) => {
                     yield_all! { imm_read(nes, CmpOperation) }
                 }
-                Opcode::CmpZero => {
+                (Instruction::Cmp, OpMode::Zero) => {
                     yield_all! { zero_read(nes, CmpOperation) }
                 }
-                Opcode::CmpZeroX => {
+                (Instruction::Cmp, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, CmpOperation) }
                 }
-                Opcode::CpxAbs => {
+                (Instruction::Cpx, OpMode::Abs) => {
                     yield_all! { abs_read(nes, CpxOperation) }
                 }
-                Opcode::CpxImm => {
+                (Instruction::Cpx, OpMode::Imm) => {
                     yield_all! { imm_read(nes, CpxOperation) }
                 }
-                Opcode::CpxZero => {
+                (Instruction::Cpx, OpMode::Zero) => {
                     yield_all! { zero_read(nes, CpxOperation) }
                 }
-                Opcode::CpyAbs => {
+                (Instruction::Cpy, OpMode::Abs) => {
                     yield_all! { abs_read(nes, CpyOperation) }
                 }
-                Opcode::CpyImm => {
+                (Instruction::Cpy, OpMode::Imm) => {
                     yield_all! { imm_read(nes, CpyOperation) }
                 }
-                Opcode::CpyZero => {
+                (Instruction::Cpy, OpMode::Zero) => {
                     yield_all! { zero_read(nes, CpyOperation) }
                 }
-                Opcode::DecAbs => {
+                (Instruction::Dec, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, DecOperation) }
                 }
-                Opcode::DecAbsX => {
+                (Instruction::Dec, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, DecOperation) }
                 }
-                Opcode::DecZero => {
+                (Instruction::Dec, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, DecOperation) }
                 }
-                Opcode::DecZeroX => {
+                (Instruction::Dec, OpMode::ZeroX) => {
                     yield_all! { zero_x_modify(nes, DecOperation) }
                 }
-                Opcode::Dex => {
+                (Instruction::Dex, OpMode::Implied) => {
                     yield_all! { implied(nes, DexOperation) }
                 }
-                Opcode::Dey => {
+                (Instruction::Dey, OpMode::Implied) => {
                     yield_all! { implied(nes, DeyOperation) }
                 }
-                Opcode::EorAbs => {
+                (Instruction::Eor, OpMode::Abs) => {
                     yield_all! { abs_read(nes, EorOperation) }
                 }
-                Opcode::EorAbsX => {
+                (Instruction::Eor, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, EorOperation) }
                 }
-                Opcode::EorAbsY => {
+                (Instruction::Eor, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, EorOperation) }
                 }
-                Opcode::EorImm => {
+                (Instruction::Eor, OpMode::Imm) => {
                     yield_all! { imm_read(nes, EorOperation) }
                 }
-                Opcode::EorZero => {
+                (Instruction::Eor, OpMode::Zero) => {
                     yield_all! { zero_read(nes, EorOperation) }
                 }
-                Opcode::EorZeroX => {
+                (Instruction::Eor, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, EorOperation) }
                 }
-                Opcode::IncAbs => {
+                (Instruction::Inc, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, IncOperation) }
                 }
-                Opcode::IncAbsX => {
+                (Instruction::Inc, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, IncOperation) }
                 }
-                Opcode::IncZero => {
+                (Instruction::Inc, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, IncOperation) }
                 }
-                Opcode::IncZeroX => {
+                (Instruction::Inc, OpMode::ZeroX) => {
                     yield_all! { zero_x_modify(nes, IncOperation) }
                 }
-                Opcode::Inx => {
+                (Instruction::Inx, OpMode::Implied) => {
                     yield_all! { implied(nes, InxOperation) }
                 }
-                Opcode::Iny => {
+                (Instruction::Iny, OpMode::Implied) => {
                     yield_all! { implied(nes, InyOperation) }
                 }
-                Opcode::JmpAbs => {
+                (Instruction::Jmp, OpMode::Abs) => {
                     yield_all! { abs_jmp(nes) }
                 }
-                Opcode::Jsr => {
+                (Instruction::Jsr, OpMode::Abs) => {
                     yield_all! { jsr(nes) }
                 }
-                Opcode::LdaAbs => {
+                (Instruction::Lda, OpMode::Abs) => {
                     yield_all! { abs_read(nes, LdaOperation) }
                 }
-                Opcode::LdaAbsX => {
+                (Instruction::Lda, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, LdaOperation) }
                 }
-                Opcode::LdaAbsY => {
+                (Instruction::Lda, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, LdaOperation) }
                 }
-                Opcode::LdaImm => {
+                (Instruction::Lda, OpMode::Imm) => {
                     yield_all! { imm_read(nes, LdaOperation) }
                 }
-                Opcode::LdaIndY => {
+                (Instruction::Lda, OpMode::IndY) => {
                     yield_all! { ind_y_read(nes, LdaOperation) }
                 }
-                Opcode::LdaZero => {
+                (Instruction::Lda, OpMode::Zero) => {
                     yield_all! { zero_read(nes, LdaOperation) }
                 }
-                Opcode::LdaZeroX => {
+                (Instruction::Lda, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, LdaOperation) }
                 }
-                Opcode::LdxAbs => {
+                (Instruction::Ldx, OpMode::Abs) => {
                     yield_all! { abs_read(nes, LdxOperation) }
                 }
-                Opcode::LdxImm => {
+                (Instruction::Ldx, OpMode::Imm) => {
                     yield_all! { imm_read(nes, LdxOperation) }
                 }
-                Opcode::LdxZero => {
+                (Instruction::Ldx, OpMode::Zero) => {
                     yield_all! { zero_read(nes, LdxOperation) }
                 }
-                Opcode::LdxZeroY => {
+                (Instruction::Ldx, OpMode::ZeroY) => {
                     yield_all! { zero_y_read(nes, LdxOperation) }
                 }
-                Opcode::LdyAbs => {
+                (Instruction::Ldy, OpMode::Abs) => {
                     yield_all! { abs_read(nes, LdyOperation) }
                 }
-                Opcode::LdyAbsX => {
+                (Instruction::Ldy, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, LdyOperation) }
                 }
-                Opcode::LdxAbsY => {
+                (Instruction::Ldx, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, LdxOperation) }
                 }
-                Opcode::LdyImm => {
+                (Instruction::Ldy, OpMode::Imm) => {
                     yield_all! { imm_read(nes, LdyOperation) }
                 }
-                Opcode::LdyZero => {
+                (Instruction::Ldy, OpMode::Zero) => {
                     yield_all! { zero_read(nes, LdyOperation) }
                 }
-                Opcode::LdyZeroX => {
+                (Instruction::Ldy, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, LdyOperation) }
                 }
-                Opcode::LsrA => {
+                (Instruction::Lsr, OpMode::Accum) => {
                     yield_all! { accum_modify(nes, LsrOperation) }
                 }
-                Opcode::LsrAbs => {
+                (Instruction::Lsr, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, LsrOperation) }
                 }
-                Opcode::LsrAbsX => {
+                (Instruction::Lsr, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, LsrOperation) }
                 }
-                Opcode::LsrZero => {
+                (Instruction::Lsr, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, LsrOperation) }
                 }
-                Opcode::LsrZeroX => {
+                (Instruction::Lsr, OpMode::ZeroX) => {
                     yield_all! { zero_x_modify(nes, LsrOperation) }
                 }
-                Opcode::Nop => {
+                (Instruction::Nop, OpMode::Implied) => {
                     yield_all! { implied(nes, NopOperation) }
                 }
-                Opcode::OraAbs => {
+                (Instruction::Ora, OpMode::Abs) => {
                     yield_all! { abs_read(nes, OraOperation) }
                 }
-                Opcode::OraAbsX => {
+                (Instruction::Ora, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, OraOperation) }
                 }
-                Opcode::OraAbsY => {
+                (Instruction::Ora, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, OraOperation) }
                 }
-                Opcode::OraImm => {
+                (Instruction::Ora, OpMode::Imm) => {
                     yield_all! { imm_read(nes, OraOperation) }
                 }
-                Opcode::OraZero => {
+                (Instruction::Ora, OpMode::Zero) => {
                     yield_all! { zero_read(nes, OraOperation) }
                 }
-                Opcode::OraZeroX => {
+                (Instruction::Ora, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, OraOperation) }
                 }
-                Opcode::Pha => {
+                (Instruction::Pha, OpMode::Implied) => {
                     yield_all! { stack_push(nes, PhaOperation) }
                 }
-                Opcode::Php => {
+                (Instruction::Php, OpMode::Implied) => {
                     yield_all! { stack_push(nes, PhpOperation) }
                 }
-                Opcode::Pla => {
+                (Instruction::Pla, OpMode::Implied) => {
                     yield_all! { stack_pull(nes, PlaOperation) }
                 }
-                Opcode::Plp => {
+                (Instruction::Plp, OpMode::Implied) => {
                     yield_all! { stack_pull(nes, PlpOperation) }
                 }
-                Opcode::RolA => {
+                (Instruction::Rol, OpMode::Accum) => {
                     yield_all! { accum_modify(nes, RolOperation) }
                 }
-                Opcode::RolAbs => {
+                (Instruction::Rol, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, RolOperation) }
                 }
-                Opcode::RolAbsX => {
+                (Instruction::Rol, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, RolOperation) }
                 }
-                Opcode::RolZero => {
+                (Instruction::Rol, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, RolOperation) }
                 }
-                Opcode::RolZeroX => {
+                (Instruction::Rol, OpMode::ZeroX) => {
                     yield_all! { zero_x_modify(nes, RolOperation) }
                 }
-                Opcode::RorA => {
+                (Instruction::Ror, OpMode::Accum) => {
                     yield_all! { accum_modify(nes, RorOperation) }
                 }
-                Opcode::RorAbs => {
+                (Instruction::Ror, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, RorOperation) }
                 }
-                Opcode::RorAbsX => {
+                (Instruction::Ror, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, RorOperation) }
                 }
-                Opcode::RorZero => {
+                (Instruction::Ror, OpMode::Zero) => {
                     yield_all! { zero_modify(nes, RorOperation) }
                 }
-                Opcode::RorZeroX => {
+                (Instruction::Ror, OpMode::ZeroX) => {
                     yield_all! { zero_x_modify(nes, RorOperation) }
                 }
-                Opcode::Rti => {
+                (Instruction::Rti, OpMode::Implied) => {
                     yield_all! { rti(nes) }
                 }
-                Opcode::Rts => {
+                (Instruction::Rts, OpMode::Implied) => {
                     yield_all! { rts(nes) }
                 }
-                Opcode::SbcAbs => {
+                (Instruction::Sbc, OpMode::Abs) => {
                     yield_all! { abs_read(nes, SbcOperation) }
                 }
-                Opcode::SbcAbsX => {
+                (Instruction::Sbc, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, SbcOperation) }
                 }
-                Opcode::SbcAbsY => {
+                (Instruction::Sbc, OpMode::AbsY) => {
                     yield_all! { abs_y_read(nes, SbcOperation) }
                 }
-                Opcode::SbcImm => {
+                (Instruction::Sbc, OpMode::Imm) => {
                     yield_all! { imm_read(nes, SbcOperation) }
                 }
-                Opcode::SbcZero => {
+                (Instruction::Sbc, OpMode::Zero) => {
                     yield_all! { zero_read(nes, SbcOperation) }
                 }
-                Opcode::SbcZeroX => {
+                (Instruction::Sbc, OpMode::ZeroX) => {
                     yield_all! { zero_x_read(nes, SbcOperation) }
                 }
-                Opcode::Sec => {
+                (Instruction::Sec, OpMode::Implied) => {
                     yield_all! { implied(nes, SecOperation) }
                 }
-                Opcode::Sed => {
+                (Instruction::Sed, OpMode::Implied) => {
                     yield_all! { implied(nes, SedOperation) }
                 }
-                Opcode::Sei => {
+                (Instruction::Sei, OpMode::Implied) => {
                     yield_all! { implied(nes, SeiOperation) }
                 }
-                Opcode::StaAbs => {
+                (Instruction::Sta, OpMode::Abs) => {
                     yield_all! { abs_write(nes, StaOperation) }
                 }
-                Opcode::StaAbsX => {
+                (Instruction::Sta, OpMode::AbsX) => {
                     yield_all! { abs_x_write(nes, StaOperation) }
                 }
-                Opcode::StaAbsY => {
+                (Instruction::Sta, OpMode::AbsY) => {
                     yield_all! { abs_y_write(nes, StaOperation) }
                 }
-                Opcode::StaIndY => {
+                (Instruction::Sta, OpMode::IndY) => {
                     yield_all! { ind_y_write(nes, StaOperation) }
                 }
-                Opcode::StaZero => {
+                (Instruction::Sta, OpMode::Zero) => {
                     yield_all! { zero_write(nes, StaOperation) }
                 }
-                Opcode::StaZeroX => {
+                (Instruction::Sta, OpMode::ZeroX) => {
                     yield_all! { zero_x_write(nes, StaOperation) }
                 }
-                Opcode::StxAbs => {
+                (Instruction::Stx, OpMode::Abs) => {
                     yield_all! { abs_write(nes, StxOperation) }
                 }
-                Opcode::StxZero => {
+                (Instruction::Stx, OpMode::Zero) => {
                     yield_all! { zero_write(nes, StxOperation) }
                 }
-                Opcode::StxZeroY => {
+                (Instruction::Stx, OpMode::ZeroY) => {
                     yield_all! { zero_y_write(nes, StxOperation) }
                 }
-                Opcode::StyAbs => {
+                (Instruction::Sty, OpMode::Abs) => {
                     yield_all! { abs_write(nes, StyOperation) }
                 }
-                Opcode::StyZero => {
+                (Instruction::Sty, OpMode::Zero) => {
                     yield_all! { zero_write(nes, StyOperation) }
                 }
-                Opcode::StyZeroX => {
+                (Instruction::Sty, OpMode::ZeroX) => {
                     yield_all! { zero_x_write(nes, StyOperation) }
                 }
-                Opcode::Tax => {
+                (Instruction::Tax, OpMode::Implied) => {
                     yield_all! { implied(nes, TaxOperation) }
                 }
-                Opcode::Tay => {
+                (Instruction::Tay, OpMode::Implied) => {
                     yield_all! { implied(nes, TayOperation) }
                 }
-                Opcode::Tsx => {
+                (Instruction::Tsx, OpMode::Implied) => {
                     yield_all! { implied(nes, TsxOperation) }
                 }
-                Opcode::Txa => {
+                (Instruction::Txa, OpMode::Implied) => {
                     yield_all! { implied(nes, TxaOperation) }
                 }
-                Opcode::Txs => {
+                (Instruction::Txs, OpMode::Implied) => {
                     yield_all! { implied(nes, TxsOperation) }
                 }
-                Opcode::Tya => {
+                (Instruction::Tya, OpMode::Implied) => {
                     yield_all! { implied(nes, TyaOperation) }
                 }
-                Opcode::_04 => {
-                    yield_all! { zero_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_07 => {
-                    yield_all! { zero_modify(nes, UnofficialSloOperation) }
-                }
-                Opcode::_0B => {
+                (Instruction::UnofficialAnc, OpMode::Imm) => {
                     yield_all! { imm_read(nes, UnofficialAncOperation) }
                 }
-                Opcode::_0C => {
-                    yield_all! { abs_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_0F => {
-                    yield_all! { abs_modify(nes, UnofficialSloOperation) }
-                }
-                Opcode::_14 => {
-                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_17 => {
-                    yield_all! { zero_x_modify(nes, UnofficialSloOperation) }
-                }
-                Opcode::_1A => {
-                    yield_all! { implied(nes, UnofficialNopOperation) }
-                }
-                Opcode::_1B => {
-                    yield_all! { abs_y_modify(nes, UnofficialSloOperation) }
-                }
-                Opcode::_1C => {
-                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_1F => {
-                    yield_all! { abs_x_modify(nes, UnofficialSloOperation) }
-                }
-                Opcode::_27 => {
-                    yield_all! { zero_modify(nes, UnofficialRlaOperation) }
-                }
-                Opcode::_2B => {
-                    yield_all! { imm_read(nes, UnofficialAncOperation) }
-                }
-                Opcode::_2F => {
-                    yield_all! { abs_modify(nes, UnofficialRlaOperation) }
-                }
-                Opcode::_34 => {
-                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_37 => {
-                    yield_all! { zero_x_modify(nes, UnofficialRlaOperation) }
-                }
-                Opcode::_3A => {
-                    yield_all! { implied(nes, UnofficialNopOperation) }
-                }
-                Opcode::_3B => {
-                    yield_all! { abs_y_modify(nes, UnofficialRlaOperation) }
-                }
-                Opcode::_3C => {
-                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_3F => {
-                    yield_all! { abs_x_modify(nes, UnofficialRlaOperation) }
-                }
-                Opcode::_44 => {
-                    yield_all! { zero_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_47 => {
-                    yield_all! { zero_modify(nes, UnofficialSreOperation) }
-                }
-                Opcode::_4B => {
+                (Instruction::UnofficialAlr, OpMode::Imm) => {
                     yield_all! { imm_read(nes, UnofficialAlrOperation) }
                 }
-                Opcode::_4F => {
-                    yield_all! { abs_modify(nes, UnofficialSreOperation) }
-                }
-                Opcode::_54 => {
-                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_57 => {
-                    yield_all! { zero_x_modify(nes, UnofficialSreOperation) }
-                }
-                Opcode::_5A => {
-                    yield_all! { implied(nes, UnofficialNopOperation) }
-                }
-                Opcode::_5B => {
-                    yield_all! { abs_y_modify(nes, UnofficialSreOperation) }
-                }
-                Opcode::_5C => {
-                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_5F => {
-                    yield_all! { abs_x_modify(nes, UnofficialSreOperation) }
-                }
-                Opcode::_64 => {
-                    yield_all! { zero_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_67 => {
-                    yield_all! { zero_modify(nes, UnofficialRraOperation) }
-                }
-                Opcode::_6B => {
+                (Instruction::UnofficialArr, OpMode::Imm) => {
                     yield_all! { imm_read(nes, UnofficialArrOperation) }
                 }
-                Opcode::_6F => {
-                    yield_all! { abs_modify(nes, UnofficialRraOperation) }
-                }
-                Opcode::_74 => {
-                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_77 => {
-                    yield_all! { zero_x_modify(nes, UnofficialRraOperation) }
-                }
-                Opcode::_7A => {
-                    yield_all! { implied(nes, UnofficialNopOperation) }
-                }
-                Opcode::_7B => {
-                    yield_all! { abs_y_modify(nes, UnofficialRraOperation) }
-                }
-                Opcode::_7C => {
-                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_7F => {
-                    yield_all! { abs_x_modify(nes, UnofficialRraOperation) }
-                }
-                Opcode::_80 => {
-                    yield_all! { imm_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_82 => {
-                    yield_all! { imm_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_87 => {
-                    yield_all! { zero_write(nes, UnofficialSaxOperation) }
-                }
-                Opcode::_89 => {
-                    yield_all! { imm_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_8F => {
-                    yield_all! { abs_write(nes, UnofficialSaxOperation) }
-                }
-                Opcode::_97 => {
-                    yield_all! { zero_y_write(nes, UnofficialSaxOperation) }
-                }
-                Opcode::_9C => {
-                    yield_all! { abs_x_modify(nes, UnofficialShyOperation) }
-                }
-                Opcode::_9E => {
-                    yield_all! { abs_y_modify(nes, UnofficialShxOperation) }
-                }
-                Opcode::_A7 => {
-                    yield_all! { zero_read(nes, UnofficialLaxOperation) }
-                }
-                Opcode::_AB => {
-                    yield_all! { imm_read(nes, UnofficialLaxOperation) }
-                }
-                Opcode::_AF => {
-                    yield_all! { abs_read(nes, UnofficialLaxOperation) }
-                }
-                Opcode::_B7 => {
-                    yield_all! { zero_y_read(nes, UnofficialLaxOperation) }
-                }
-                Opcode::_BF => {
-                    yield_all! { abs_y_read(nes, UnofficialLaxOperation) }
-                }
-                Opcode::_C2 => {
-                    yield_all! { imm_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_C7 => {
-                    yield_all! { zero_modify(nes, UnofficialDcpOperation) }
-                }
-                Opcode::_CB => {
+                (Instruction::UnofficialAxs, OpMode::Imm) => {
                     yield_all! { imm_read(nes, UnofficialAxsOperation) }
                 }
-                Opcode::_CF => {
+                (Instruction::UnofficialDcp, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, UnofficialDcpOperation) }
                 }
-                Opcode::_D4 => {
-                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_D7 => {
-                    yield_all! { zero_x_modify(nes, UnofficialDcpOperation) }
-                }
-                Opcode::_DA => {
-                    yield_all! { implied(nes, UnofficialNopOperation) }
-                }
-                Opcode::_DB => {
-                    yield_all! { abs_y_modify(nes, UnofficialDcpOperation) }
-                }
-                Opcode::_DC => {
-                    yield_all! { abs_x_read(nes, UnofficialNopOperation) }
-                }
-                Opcode::_DF => {
+                (Instruction::UnofficialDcp, OpMode::AbsX) => {
                     yield_all! { abs_x_modify(nes, UnofficialDcpOperation) }
                 }
-                Opcode::_E2 => {
-                    yield_all! { imm_read(nes, UnofficialNopOperation) }
+                (Instruction::UnofficialDcp, OpMode::AbsY) => {
+                    yield_all! { abs_y_modify(nes, UnofficialDcpOperation) }
                 }
-                Opcode::_E7 => {
-                    yield_all! { zero_modify(nes, UnofficialIscOperation) }
+                (Instruction::UnofficialDcp, OpMode::Zero) => {
+                    yield_all! { zero_modify(nes, UnofficialDcpOperation) }
                 }
-                Opcode::_EB => {
-                    yield_all! { imm_read(nes, UnofficialSbcOperation) }
+                (Instruction::UnofficialDcp, OpMode::ZeroX) => {
+                    yield_all! { zero_x_modify(nes, UnofficialDcpOperation) }
                 }
-                Opcode::_EF => {
+                (Instruction::UnofficialIsc, OpMode::Abs) => {
                     yield_all! { abs_modify(nes, UnofficialIscOperation) }
                 }
-                Opcode::_F4 => {
-                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
+                (Instruction::UnofficialIsc, OpMode::AbsX) => {
+                    yield_all! { abs_x_modify(nes, UnofficialIscOperation) }
                 }
-                Opcode::_F7 => {
-                    yield_all! { zero_x_modify(nes, UnofficialIscOperation) }
-                }
-                Opcode::_FA => {
-                    yield_all! { implied(nes, UnofficialNopOperation) }
-                }
-                Opcode::_FB => {
+                (Instruction::UnofficialIsc, OpMode::AbsY) => {
                     yield_all! { abs_y_modify(nes, UnofficialIscOperation) }
                 }
-                Opcode::_FC => {
+                (Instruction::UnofficialIsc, OpMode::Zero) => {
+                    yield_all! { zero_modify(nes, UnofficialIscOperation) }
+                }
+                (Instruction::UnofficialIsc, OpMode::ZeroX) => {
+                    yield_all! { zero_x_modify(nes, UnofficialIscOperation) }
+                }
+                (Instruction::UnofficialLax, OpMode::Abs) => {
+                    yield_all! { abs_read(nes, UnofficialLaxOperation) }
+                }
+                (Instruction::UnofficialLax, OpMode::AbsY) => {
+                    yield_all! { abs_y_read(nes, UnofficialLaxOperation) }
+                }
+                (Instruction::UnofficialLax, OpMode::Imm) => {
+                    yield_all! { imm_read(nes, UnofficialLaxOperation) }
+                }
+                (Instruction::UnofficialLax, OpMode::Zero) => {
+                    yield_all! { zero_read(nes, UnofficialLaxOperation) }
+                }
+                (Instruction::UnofficialLax, OpMode::ZeroY) => {
+                    yield_all! { zero_y_read(nes, UnofficialLaxOperation) }
+                }
+                (Instruction::UnofficialNop, OpMode::Abs) => {
+                    yield_all! { abs_read(nes, UnofficialNopOperation) }
+                }
+                (Instruction::UnofficialNop, OpMode::AbsX) => {
                     yield_all! { abs_x_read(nes, UnofficialNopOperation) }
                 }
-                Opcode::_FF => {
-                    yield_all! { abs_x_modify(nes, UnofficialIscOperation) }
+                (Instruction::UnofficialNop, OpMode::Imm) => {
+                    yield_all! { imm_read(nes, UnofficialNopOperation) }
+                }
+                (Instruction::UnofficialNop, OpMode::Implied) => {
+                    yield_all! { implied(nes, UnofficialNopOperation) }
+                }
+                (Instruction::UnofficialNop, OpMode::Zero) => {
+                    yield_all! { zero_read(nes, UnofficialNopOperation) }
+                }
+                (Instruction::UnofficialNop, OpMode::ZeroX) => {
+                    yield_all! { zero_x_read(nes, UnofficialNopOperation) }
+                }
+                (Instruction::UnofficialRla, OpMode::Abs) => {
+                    yield_all! { abs_modify(nes, UnofficialRlaOperation) }
+                }
+                (Instruction::UnofficialRla, OpMode::AbsX) => {
+                    yield_all! { abs_x_modify(nes, UnofficialRlaOperation) }
+                }
+                (Instruction::UnofficialRla, OpMode::AbsY) => {
+                    yield_all! { abs_y_modify(nes, UnofficialRlaOperation) }
+                }
+                (Instruction::UnofficialRla, OpMode::Zero) => {
+                    yield_all! { zero_modify(nes, UnofficialRlaOperation) }
+                }
+                (Instruction::UnofficialRla, OpMode::ZeroX) => {
+                    yield_all! { zero_x_modify(nes, UnofficialRlaOperation) }
+                }
+                (Instruction::UnofficialRra, OpMode::Abs) => {
+                    yield_all! { abs_modify(nes, UnofficialRraOperation) }
+                }
+                (Instruction::UnofficialRra, OpMode::AbsX) => {
+                    yield_all! { abs_x_modify(nes, UnofficialRraOperation) }
+                }
+                (Instruction::UnofficialRra, OpMode::AbsY) => {
+                    yield_all! { abs_y_modify(nes, UnofficialRraOperation) }
+                }
+                (Instruction::UnofficialRra, OpMode::Zero) => {
+                    yield_all! { zero_modify(nes, UnofficialRraOperation) }
+                }
+                (Instruction::UnofficialRra, OpMode::ZeroX) => {
+                    yield_all! { zero_x_modify(nes, UnofficialRraOperation) }
+                }
+                (Instruction::UnofficialSax, OpMode::Abs) => {
+                    yield_all! { abs_write(nes, UnofficialSaxOperation) }
+                }
+                (Instruction::UnofficialSax, OpMode::Zero) => {
+                    yield_all! { zero_write(nes, UnofficialSaxOperation) }
+                }
+                (Instruction::UnofficialSax, OpMode::ZeroY) => {
+                    yield_all! { zero_y_write(nes, UnofficialSaxOperation) }
+                }
+                (Instruction::UnofficialSbc, OpMode::Imm) => {
+                    yield_all! { imm_read(nes, UnofficialSbcOperation) }
+                }
+                (Instruction::UnofficialShx, OpMode::AbsY) => {
+                    yield_all! { abs_y_modify(nes, UnofficialShxOperation) }
+                }
+                (Instruction::UnofficialShy, OpMode::AbsX) => {
+                    yield_all! { abs_x_modify(nes, UnofficialShyOperation) }
+                }
+                (Instruction::UnofficialSlo, OpMode::Abs) => {
+                    yield_all! { abs_modify(nes, UnofficialSloOperation) }
+                }
+                (Instruction::UnofficialSlo, OpMode::AbsX) => {
+                    yield_all! { abs_x_modify(nes, UnofficialSloOperation) }
+                }
+                (Instruction::UnofficialSlo, OpMode::AbsY) => {
+                    yield_all! { abs_y_modify(nes, UnofficialSloOperation) }
+                }
+                (Instruction::UnofficialSlo, OpMode::Zero) => {
+                    yield_all! { zero_modify(nes, UnofficialSloOperation) }
+                }
+                (Instruction::UnofficialSlo, OpMode::ZeroX) => {
+                    yield_all! { zero_x_modify(nes, UnofficialSloOperation) }
+                }
+                (Instruction::UnofficialSre, OpMode::Abs) => {
+                    yield_all! { abs_modify(nes, UnofficialSreOperation) }
+                }
+                (Instruction::UnofficialSre, OpMode::AbsX) => {
+                    yield_all! { abs_x_modify(nes, UnofficialSreOperation) }
+                }
+                (Instruction::UnofficialSre, OpMode::AbsY) => {
+                    yield_all! { abs_y_modify(nes, UnofficialSreOperation) }
+                }
+                (Instruction::UnofficialSre, OpMode::Zero) => {
+                    yield_all! { zero_modify(nes, UnofficialSreOperation) }
+                }
+                (Instruction::UnofficialSre, OpMode::ZeroX) => {
+                    yield_all! { zero_x_modify(nes, UnofficialSreOperation) }
+                }
+                insn_with_mode => {
+                    unimplemented!("Unhandled instruction/mode: {:?}", insn_with_mode);
                 }
             };
 
