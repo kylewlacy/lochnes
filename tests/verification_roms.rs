@@ -7,7 +7,12 @@ use lochnes::{nes, rom, video};
 use lochnes::nes::NesStep;
 use lochnes::nes::ppu::PpuStep;
 
-fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
+fn run_blargg_instr_test_with_expected_result(
+    test_name: &str,
+    rom_bytes: &[u8],
+    expected_status: u8,
+    expected_output: &str
+) {
     let rom = rom::Rom::from_bytes(rom_bytes.into_iter().cloned())
         .expect(&format!("Failed to parse test ROM {:?}", test_name));
 
@@ -51,10 +56,19 @@ fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
 
     let test_output = String::from_utf8_lossy(&test_output);
     println!("{}", test_output);
-    assert_eq!(status, 0);
+    assert_eq!(status, expected_status);
 
-    let expected_output = format!("\n{}\n\nPassed\n", test_name);
     assert_eq!(test_output, expected_output);
+}
+
+fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
+    let expected_output = format!("\n{}\n\nPassed\n", test_name);
+    run_blargg_instr_test_with_expected_result(
+        test_name,
+        rom_bytes,
+        0,
+        &expected_output
+    );
 }
 
 #[test]
@@ -80,4 +94,24 @@ fn rom_blargg_instr_test_zero_page_indexed() {
 #[test]
 fn rom_blargg_instr_test_abs() {
     run_blargg_instr_test("05-absolute", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/05-absolute.nes"));
+}
+
+// NOTE: The absolute-indexed test ROM fails with the below message in other
+// emulators. For now, we assume that the test is wrong, and verify that we
+// also see the below message.
+const ABS_XY_EXPECTED_FAILURE: &str = r##"9C SYA abs,X
+9E SXA abs,Y
+
+06-abs_xy
+
+Failed
+"##;
+
+#[test]
+fn rom_blargg_instr_test_abs_indexed() {
+    run_blargg_instr_test_with_expected_result(
+        "06-abs_xy",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/06-abs_xy.nes"),
+        1,
+        &ABS_XY_EXPECTED_FAILURE);
 }
