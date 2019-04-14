@@ -1728,24 +1728,27 @@ fn abs_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         let addr_lo_x = addr_lo.wrapping_add(x);
         yield CpuStep::Cycle;
 
+        // Speculatively load from memory based on the
+        // incomplete address calculation
         let addr_unfixed = u16_from(addr_lo_x, addr_hi);
         let value_unfixed = nes.read_u8(addr_unfixed);
 
-        // Speculatively execute the operation based on the
-        // incomplete address calculation
-        op.read(&nes.cpu, value_unfixed);
-        yield CpuStep::Cycle;
-
         // Calculate the actual address to use
         let addr = addr_base.wrapping_add(x as u16);
-        if addr != addr_unfixed {
-            // Re-run the operation if the original calculation
-            // was incorrect (i.e. a page boundary was crossed)
-            let value = nes.read_u8(addr);
-            op.read(&nes.cpu, value);
-            yield CpuStep::Cycle;
-        }
+        let value =
+            if addr == addr_unfixed {
+                value_unfixed
+            }
+            else {
+                // If the speculative load was incorrect, read the from
+                // the correct address (at the cost of an extra cycle)
+                let fixed_value = nes.read_u8(addr);
+                yield CpuStep::Cycle;
 
+                fixed_value
+            };
+
+        op.read(&nes.cpu, value);
         Op {
             instruction: op.instruction(),
             arg: OpArg::AbsX { addr_base },
@@ -1839,24 +1842,27 @@ fn abs_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
         let addr_lo_y = addr_lo.wrapping_add(y);
         yield CpuStep::Cycle;
 
+        // Speculatively load from memory based on the
+        // incomplete address calculation
         let addr_unfixed = u16_from(addr_lo_y, addr_hi);
         let value_unfixed = nes.read_u8(addr_unfixed);
 
-        // Speculatively execute the operation based on the
-        // incomplete address calculation
-        op.read(&nes.cpu, value_unfixed);
-        yield CpuStep::Cycle;
-
         // Calculate the actual address to use
         let addr = addr_base.wrapping_add(y as u16);
-        if addr != addr_unfixed {
-            // Re-run the operation if the original calculation
-            // was incorrect (i.e. a page boundary was crossed)
-            let value = nes.read_u8(addr);
-            op.read(&nes.cpu, value);
-            yield CpuStep::Cycle;
-        }
+        let value =
+            if addr == addr_unfixed {
+                value_unfixed
+            }
+            else {
+                // If the speculative load was incorrect, read the from
+                // the correct address (at the cost of an extra cycle)
+                let fixed_value = nes.read_u8(addr);
+                yield CpuStep::Cycle;
 
+                fixed_value
+            };
+
+        op.read(&nes.cpu, value);
         Op {
             instruction: op.instruction(),
             arg: OpArg::AbsY { addr_base },
