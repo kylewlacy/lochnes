@@ -303,6 +303,9 @@ impl Cpu {
                 (Instruction::Jmp, OpMode::Abs) => {
                     yield_all! { abs_jmp(nes) }
                 }
+                (Instruction::Jmp, OpMode::Ind) => {
+                    yield_all! { ind_jmp(nes) }
+                }
                 (Instruction::Jsr, OpMode::Abs) => {
                     yield_all! { jsr(nes) }
                 }
@@ -952,6 +955,7 @@ enum OpMode {
     AbsY,
     Branch,
     Imm,
+    Ind,
     IndX,
     IndY,
     Zero,
@@ -967,6 +971,7 @@ enum OpArg {
     AbsX { addr_base: u16 },
     AbsY { addr_base: u16 },
     Branch { addr_offset: i8 },
+    Ind { target_addr: u16 },
     Imm { value: u8 },
     IndX { target_addr_base: u8 },
     IndY { target_addr_base: u8 },
@@ -985,6 +990,7 @@ impl From<OpArg> for OpMode {
             OpArg::AbsY { .. } => OpMode::AbsY,
             OpArg::Branch { .. } => OpMode::Branch,
             OpArg::Imm { .. } => OpMode::Imm,
+            OpArg::Ind { .. } => OpMode::Ind,
             OpArg::IndX { .. } => OpMode::IndX,
             OpArg::IndY { .. } => OpMode::IndY,
             OpArg::Zero { .. } => OpMode::Zero,
@@ -1108,6 +1114,7 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0x69 => (Instruction::Adc, OpMode::Imm),
         0x6A => (Instruction::Ror, OpMode::Accum),
         0x6B => (Instruction::UnofficialArr, OpMode::Imm),
+        0x6C => (Instruction::Jmp, OpMode::Ind),
         0x6D => (Instruction::Adc, OpMode::Abs),
         0x6E => (Instruction::Ror, OpMode::Abs),
         0x6F => (Instruction::UnofficialRra, OpMode::Abs),
@@ -1275,6 +1282,9 @@ impl fmt::Display for Op {
             }
             OpArg::ZeroY { zero_page_base } => {
                 write!(f, "{} ${:02X},Y", self.instruction, zero_page_base)?;
+            }
+            OpArg::Ind { target_addr } => {
+                write!(f, "{} (${:04X})", self.instruction, target_addr)?;
             }
             OpArg::IndX { target_addr_base } => {
                 write!(f, "{} (${:02X},X)", self.instruction, target_addr_base)?;
@@ -1727,6 +1737,36 @@ fn abs_jmp<'a>(nes: &'a Nes)
         Op {
             instruction: Instruction::Jmp,
             arg: OpArg::Abs { addr },
+        }
+    }
+}
+
+fn ind_jmp<'a>(nes: &'a Nes)
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
+{
+    move || {
+        let _opcode = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let target_lo = Cpu::pc_fetch_inc(nes);
+        yield CpuStep::Cycle;
+
+        let target_hi = Cpu::pc_fetch(nes);
+        let addr_lo = u16_from(target_lo, target_hi);
+        let addr_hi = u16_from(target_lo.wrapping_add(1), target_hi);
+        yield CpuStep::Cycle;
+
+        let pc_lo = nes.read_u8(addr_lo);
+        yield CpuStep::Cycle;
+
+        let pc_hi = nes.read_u8(addr_hi);
+        let addr = u16_from(pc_lo, pc_hi);
+        nes.cpu.pc.set(addr);
+        yield CpuStep::Cycle;
+
+        Op {
+            instruction: Instruction::Jmp,
+            arg: OpArg::Ind { target_addr: addr_lo },
         }
     }
 }
