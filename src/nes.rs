@@ -57,7 +57,7 @@ impl Nes {
                 self.ppu.ppustatus()
             }
             0x2007 => {
-                self.ppu.read_ppudata()
+                self.ppu.read_ppudata(self)
             }
             0x4000..=0x4007 => {
                 // TODO: Return APU pulse
@@ -117,7 +117,7 @@ impl Nes {
                 self.ppu.write_ppuaddr(value);
             }
             0x2007 => {
-                self.ppu.write_ppudata(value);
+                self.ppu.write_ppudata(self, value);
             }
             0x4000..=0x4007 => {
                 // TODO: APU pulse
@@ -167,6 +167,40 @@ impl Nes {
 
         self.push_u8(value_hi);
         self.push_u8(value_lo);
+    }
+
+    pub fn read_ppu_u8(&self, addr: u16) -> u8 {
+        let palette_ram = self.ppu.palette_ram();
+
+        match addr {
+            0x0000..=0x3EFF => {
+                self.mapper.read_ppu_u8(self, addr)
+            }
+            0x3F00..=0x3FFF => {
+                let offset = (addr - 0x3F00) as usize % palette_ram.len();
+                palette_ram[offset].get()
+            }
+            0x4000..=0xFFFF => {
+                unimplemented!("Tried to read from PPU address ${:04X}", addr);
+            }
+        }
+    }
+
+    pub fn write_ppu_u8(&self, addr: u16, value: u8) {
+        let palette_ram = self.ppu.palette_ram();
+
+        match addr {
+            0x0000..=0x3EFF => {
+                self.mapper.write_ppu_u8(self, addr, value);
+            }
+            0x3F00..=0x3FFF => {
+                let offset = (addr - 0x3F00) as usize % palette_ram.len();
+                palette_ram[offset].set(value);
+            }
+            0x4000..=0xFFFF => {
+                unimplemented!("Tried to write to PPU address ${:04X}", addr);
+            }
+        }
     }
 
     fn copy_oam_dma(&self, page: u8) {

@@ -39,7 +39,7 @@ impl Ppu {
         }
     }
 
-    fn ppu_ram(&self) -> &[Cell<u8>] {
+    pub fn ppu_ram(&self) -> &[Cell<u8>] {
         let ppu_ram: &Cell<[u8]> = &self.ppu_ram;
         ppu_ram.as_slice_of_cells()
     }
@@ -49,7 +49,7 @@ impl Ppu {
         oam.as_slice_of_cells()
     }
 
-    fn palette_ram(&self) -> &[Cell<u8>] {
+    pub fn palette_ram(&self) -> &[Cell<u8>] {
         let palette_ram: &Cell<[u8]> = &self.palette_ram;
         palette_ram.as_slice_of_cells()
     }
@@ -60,47 +60,6 @@ impl Ppu {
 
     pub fn set_ppumask(&self, value: u8) {
         self.mask.set(PpuMaskFlags::from_bits_truncate(value));
-    }
-
-    fn read_addr(&self, addr: u16) -> u8 {
-        let ppu_ram = self.ppu_ram();
-        let palette_ram = self.palette_ram();
-
-        match addr {
-            0x2000..=0x2FFF => {
-                let offset = addr as usize - 0x2000;
-                ppu_ram[offset].get()
-            }
-            0x3F00..=0x3F1F => {
-                let offset = addr as usize - 0x3F00;
-                palette_ram[offset].get()
-            }
-            _ => {
-                unimplemented!("Unimplemented read from VRAM address ${:04X}", addr)
-            }
-        }
-    }
-
-    pub fn write_addr(&self, addr: u16, value: u8) {
-        let ppu_ram = self.ppu_ram();
-        let palette_ram = self.palette_ram();
-
-        match addr {
-            0x0000..=0x0FFF => {
-                unimplemented!();
-            }
-            0x2000..=0x2FFF => {
-                let offset = addr as usize - 0x2000;
-                ppu_ram[offset].set(value);
-            }
-            0x3F00..=0x3F1F => {
-                let offset = addr as usize - 0x3F00;
-                palette_ram[offset].set(value);
-            }
-            _ => {
-                unimplemented!("Unimplemented write to VRAM address ${:04X}", addr)
-            }
-        }
     }
 
     pub fn write_oamaddr(&self, value: u8) {
@@ -151,7 +110,7 @@ impl Ppu {
         self.scroll_addr_latch.set(!latch);
     }
 
-    pub fn read_ppudata(&self) -> u8 {
+    pub fn read_ppudata(&self, nes: &Nes) -> u8 {
         let addr = self.addr.get();
         let ctrl = self.ctrl.get();
         let stride =
@@ -162,13 +121,13 @@ impl Ppu {
                 true => 32
             };
 
-        let value = self.read_addr(addr);
+        let value = nes.read_ppu_u8(addr);
         self.addr.update(|addr| addr.wrapping_add(stride));
 
         value
     }
 
-    pub fn write_ppudata(&self, value: u8) {
+    pub fn write_ppudata(&self, nes: &Nes, value: u8) {
         let addr = self.addr.get();
         let ctrl = self.ctrl.get();
         let stride =
@@ -179,7 +138,7 @@ impl Ppu {
                 true => 32
             };
 
-        self.write_addr(addr, value);
+        nes.write_ppu_u8(addr, value);
         self.addr.update(|addr| addr.wrapping_add(stride));
     }
 
