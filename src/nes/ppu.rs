@@ -62,6 +62,25 @@ impl Ppu {
         self.mask.set(PpuMaskFlags::from_bits_truncate(value));
     }
 
+    fn read_addr(&self, addr: u16) -> u8 {
+        let nametables = self.nametables();
+        let palette_ram = self.palette_ram();
+
+        match addr {
+            0x2000..=0x2FFF => {
+                let offset = addr as usize - 0x2000;
+                nametables[offset].get()
+            }
+            0x3F00..=0x3F1F => {
+                let offset = addr as usize - 0x3F00;
+                palette_ram[offset].get()
+            }
+            _ => {
+                unimplemented!("Unimplemented read from VRAM address ${:04X}", addr)
+            }
+        }
+    }
+
     pub fn write_addr(&self, addr: u16, value: u8) {
         let nametables = self.nametables();
         let palette_ram = self.palette_ram();
@@ -130,6 +149,23 @@ impl Ppu {
         }
 
         self.scroll_addr_latch.set(!latch);
+    }
+
+    pub fn read_ppudata(&self) -> u8 {
+        let addr = self.addr.get();
+        let ctrl = self.ctrl.get();
+        let stride =
+            // Add 1 to the PPU address if the I flag is clear, add 32 if
+            // it is set
+            match ctrl.contains(PpuCtrlFlags::VRAM_ADDR_INCREMENT) {
+                false => 1,
+                true => 32
+            };
+
+        let value = self.read_addr(addr);
+        self.addr.update(|addr| addr.wrapping_add(stride));
+
+        value
     }
 
     pub fn write_ppudata(&self, value: u8) {

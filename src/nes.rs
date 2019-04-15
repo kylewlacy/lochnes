@@ -67,6 +67,9 @@ impl Nes {
             0x2002 => {
                 self.ppu.ppustatus()
             }
+            0x2007 => {
+                self.ppu.read_ppudata()
+            }
             0x4000..=0x4007 => {
                 // TODO: Return APU pulse
                 0x00
