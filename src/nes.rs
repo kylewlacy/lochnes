@@ -146,6 +146,12 @@ impl Nes {
             0x4008..=0x400B => {
                 // TODO: APU triangle
             }
+            0x400C..=0x400F => {
+                // TODO: APU noise
+            }
+            0x4010..=0x4013 => {
+                // TODO: APU DMC
+            }
             0x4014 => {
                 self.copy_oam_dma(value);
             }
