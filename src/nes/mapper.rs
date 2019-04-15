@@ -1,4 +1,5 @@
 use std::cell::Cell;
+use crate::nes::Nes;
 use crate::rom::Rom;
 
 #[derive(Clone)]
@@ -45,6 +46,46 @@ impl Mapper {
                 work_ram[offset].set(value);
             }
             0x8000..=0xFFFF => { }
+        }
+    }
+
+    pub fn read_ppu_u8(&self, nes: &Nes, addr: u16) -> u8 {
+        let chr_rom = &self.rom.chr_rom;
+        let ppu_ram = nes.ppu.ppu_ram();
+        match addr {
+            0x0000..=0x1FFF => {
+                let offset = (addr as usize) % chr_rom.len();
+                chr_rom[offset]
+            }
+            0x2000..=0x2FFF => {
+                let offset = ((addr - 0x2000) as usize) % ppu_ram.len();
+                ppu_ram[offset].get()
+            }
+            0x3000..=0x3EFF => {
+                let offset = (addr - 0x3000) % 0x0FFF;
+                self.read_ppu_u8(nes, offset + 0x2000)
+            }
+            0x3F00..=0xFFFF => {
+                unreachable!();
+            }
+        }
+    }
+
+    pub fn write_ppu_u8(&self, nes: &Nes, addr: u16, value: u8) {
+        let ppu_ram = nes.ppu.ppu_ram();
+        match addr {
+            0x0000..=0x1FFF => { }
+            0x2000..=0x2FFF => {
+                let offset = ((addr - 0x2000) as usize) % ppu_ram.len();
+                ppu_ram[offset].set(value)
+            }
+            0x3000..=0x3EFF => {
+                let offset = (addr - 0x3000) % 0x0FFF;
+                self.write_ppu_u8(nes, offset + 0x2000, value)
+            }
+            0x3F00..=0xFFFF => {
+                unreachable!();
+            }
         }
     }
 
