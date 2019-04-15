@@ -18,7 +18,7 @@ pub struct Ppu {
     // to each, used to determine if the high bit or low bit is being written).
     pub scroll_addr_latch: Cell<bool>,
 
-    pub nametables: Cell<[u8; 4 * 0x0400]>,
+    pub ppu_ram: Cell<[u8; 0x0800]>,
     pub oam: Cell<[u8; 0x0100]>,
     pub palette_ram: Cell<[u8; 0x20]>,
 }
@@ -33,15 +33,15 @@ impl Ppu {
             scroll: Cell::new(0x0000),
             addr: Cell::new(0x0000),
             scroll_addr_latch: Cell::new(false),
-            nametables: Cell::new([0; 4 * 0x0400]),
+            ppu_ram: Cell::new([0; 0x0800]),
             oam: Cell::new([0; 0x0100]),
             palette_ram: Cell::new([0; 0x20]),
         }
     }
 
-    fn nametables(&self) -> &[Cell<u8>] {
-        let nametables: &Cell<[u8]> = &self.nametables;
-        nametables.as_slice_of_cells()
+    fn ppu_ram(&self) -> &[Cell<u8>] {
+        let ppu_ram: &Cell<[u8]> = &self.ppu_ram;
+        ppu_ram.as_slice_of_cells()
     }
 
     fn oam(&self) -> &[Cell<u8>] {
@@ -63,13 +63,13 @@ impl Ppu {
     }
 
     fn read_addr(&self, addr: u16) -> u8 {
-        let nametables = self.nametables();
+        let ppu_ram = self.ppu_ram();
         let palette_ram = self.palette_ram();
 
         match addr {
             0x2000..=0x2FFF => {
                 let offset = addr as usize - 0x2000;
-                nametables[offset].get()
+                ppu_ram[offset].get()
             }
             0x3F00..=0x3F1F => {
                 let offset = addr as usize - 0x3F00;
@@ -82,7 +82,7 @@ impl Ppu {
     }
 
     pub fn write_addr(&self, addr: u16, value: u8) {
-        let nametables = self.nametables();
+        let ppu_ram = self.ppu_ram();
         let palette_ram = self.palette_ram();
 
         match addr {
@@ -91,7 +91,7 @@ impl Ppu {
             }
             0x2000..=0x2FFF => {
                 let offset = addr as usize - 0x2000;
-                nametables[offset].set(value);
+                ppu_ram[offset].set(value);
             }
             0x3F00..=0x3F1F => {
                 let offset = addr as usize - 0x3F00;
@@ -230,7 +230,7 @@ impl Ppu {
                             let x = cycle;
                             let y = scanline - 1;
 
-                            let nametables = nes.ppu.nametables();
+                            let ppu_ram = nes.ppu.ppu_ram();
                             let palette_ram = nes.ppu.palette_ram();
                             let palette_ram_indices = [
                                 [0x00, 0x01, 0x02, 0x03],
@@ -307,7 +307,7 @@ impl Ppu {
                                 let attr_is_left = ((x / 16) % 2) == 0;
                                 let attr_is_top = ((y / 16) % 2) == 0;
 
-                                let nametable = &nametables[0x000..0x400];
+                                let nametable = &ppu_ram[0x000..0x400];
                                 let tile_index = (tile_y * 32 + tile_x) as usize;
                                 let tile = nametable[tile_index].get();
 
