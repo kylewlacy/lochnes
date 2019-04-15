@@ -292,7 +292,7 @@ impl Ppu {
                                     palette_ram[palette_ram_indices[7][3]].get(),
                                 ],
                             ];
-                            let pattern_tables = &nes.rom.chr_rom;
+                            let pattern_tables = &nes.mapper.rom.chr_rom;
                             let ppu_ctrl = nes.ppu.ctrl.get();
 
                             let bg_color_code = {
