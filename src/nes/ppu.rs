@@ -189,7 +189,6 @@ impl Ppu {
                             let x = cycle;
                             let y = scanline - 1;
 
-                            let ppu_ram = nes.ppu.ppu_ram();
                             let palette_ram = nes.ppu.palette_ram();
                             let palette_ram_indices = [
                                 [0x00, 0x01, 0x02, 0x03],
@@ -251,7 +250,6 @@ impl Ppu {
                                     palette_ram[palette_ram_indices[7][3]].get(),
                                 ],
                             ];
-                            let pattern_tables = &nes.mapper.rom.chr_rom;
                             let ppu_ctrl = nes.ppu.ctrl.get();
 
                             let bg_color_code = {
@@ -266,12 +264,11 @@ impl Ppu {
                                 let attr_is_left = ((x / 16) % 2) == 0;
                                 let attr_is_top = ((y / 16) % 2) == 0;
 
-                                let nametable = &ppu_ram[0x000..0x400];
-                                let tile_index = (tile_y * 32 + tile_x) as usize;
-                                let tile = nametable[tile_index].get();
+                                let tile_index = tile_y * 32 + tile_x;
+                                let tile = nes.read_ppu_u8(0x2000 + tile_index);
 
-                                let attr_index = (attr_y * 8 + attr_x) as usize;
-                                let attr = nametable[0x3C0 + attr_index].get();
+                                let attr_index = attr_y * 8 + attr_x;
+                                let attr = nes.read_ppu_u8(0x23C0 + attr_index);
                                 let palette_index = match (attr_is_top, attr_is_left) {
                                     (true, true)   =>  attr & 0b_0000_0011,
                                     (true, false)  => (attr & 0b_0000_1100) >> 2,
@@ -288,10 +285,9 @@ impl Ppu {
                                     else {
                                         0x0000
                                     };
-                                let pattern_offset = pattern_table_offset + tile as usize * 16;
-                                let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
-                                let pattern_lo_byte = pattern[tile_y_pixel as usize];
-                                let pattern_hi_byte = pattern[tile_y_pixel as usize + 8];
+                                let pattern_offset = pattern_table_offset + tile as u16 * 16;
+                                let pattern_lo_byte = nes.read_ppu_u8(pattern_offset + tile_y_pixel);
+                                let pattern_hi_byte = nes.read_ppu_u8(pattern_offset + tile_y_pixel + 8);
                                 let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
                                 let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
 
@@ -357,10 +353,9 @@ impl Ppu {
                                         else {
                                             0x0000
                                         };
-                                    let pattern_offset = pattern_table_offset + tile_index as usize * 16;
-                                    let pattern = &pattern_tables[pattern_offset..pattern_offset + 16];
-                                    let pattern_lo_byte = pattern[object_y_pixel as usize];
-                                    let pattern_hi_byte = pattern[object_y_pixel as usize + 8];
+                                    let pattern_offset = pattern_table_offset as u16 + tile_index as u16 * 16;
+                                    let pattern_lo_byte = nes.read_ppu_u8(pattern_offset + object_y_pixel);
+                                    let pattern_hi_byte = nes.read_ppu_u8(pattern_offset + object_y_pixel + 8);
                                     let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
                                     let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
 
