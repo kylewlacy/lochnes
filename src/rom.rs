@@ -17,6 +17,7 @@ impl Rom {
             RomHeader {
                 prg_rom_size_bytes: _,
                 chr_rom_size_bytes: _,
+                chr_ram_size_bytes: _,
                 mirror_mode: _,
                 mapper: _,
                 prg_ram_size_bytes: 0,
@@ -71,6 +72,7 @@ pub struct RomHeader {
     prg_rom_size_bytes: usize,
     chr_rom_size_bytes: usize,
     prg_ram_size_bytes: usize,
+    pub chr_ram_size_bytes: usize,
     pub mirror_mode: MirrorMode,
     pub has_persistence: bool,
     has_trainer: bool,
@@ -137,12 +139,18 @@ impl RomHeader {
 
         let prg_rom_size_bytes = prg_rom_size_field as usize * 16_384;
 
-        let chr_rom_size_bytes =
-            if chr_rom_size_field > 0 {
-                chr_rom_size_field as usize * 8_192
-            }
-            else {
-                unimplemented!("ROM uses CHR RAM!");
+        let chr_rom_size_bytes = chr_rom_size_field as usize * 8_192;
+        let chr_ram_size_bytes =
+            match chr_rom_size_field {
+                0 => {
+                    // We assume a ROM only has CHR RAM if it has no CHR ROM.
+                    // Because the iNES 1.0 format doesn't include the size
+                    // of the CHR RAM, we always assume it has 8KiB
+                    8_192
+                }
+                _ => {
+                    0
+                }
             };
 
         let prg_ram_size_bytes =
@@ -187,6 +195,7 @@ impl RomHeader {
             prg_rom_size_bytes,
             chr_rom_size_bytes,
             prg_ram_size_bytes,
+            chr_ram_size_bytes,
             mirror_mode,
             has_persistence,
             has_trainer,
