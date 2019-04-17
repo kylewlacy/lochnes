@@ -67,6 +67,18 @@ impl Nes {
                 // TODO: Return APU triangle
                 0x00
             }
+            0x400C..=0x400F => {
+                // TODO: Return APU noise
+                0x00
+            }
+            0x4010..=0x4013 => {
+                // TODO: Return APU DMC
+                0x00
+            }
+            0x4015 => {
+                // TODO: Return APU status
+                0x00
+            }
             0x4016 => {
                 // TODO: Return joystick state
                 0x40
