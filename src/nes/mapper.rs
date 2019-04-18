@@ -11,6 +11,13 @@ pub struct Mapper {
 
 impl Mapper {
     pub fn from_rom(rom: Rom) -> Self {
+        match rom.header.mapper {
+            0 => { }
+            mapper => {
+                unimplemented!("Mapper number {}", mapper);
+            }
+        }
+
         let work_ram = Cell::new([0; 0x2000]);
         let chr_ram = vec![Cell::new(0); rom.header.chr_ram_size_bytes];
 
