@@ -173,7 +173,7 @@ impl RomHeader {
         };
         let has_persistence = flag_persistent_bit;
         let has_trainer = flag_trainer_bit;
-        let mapper = flag_mapper_lo & (flag_mapper_hi << 4);
+        let mapper = flag_mapper_lo | (flag_mapper_hi << 4);
 
         let is_vs_unisystem = flag_vs_unisystem;
         let is_playchoice_10 = flag_playchoice_10;
