@@ -3,25 +3,62 @@ use crate::nes::Nes;
 use crate::rom::Rom;
 
 #[derive(Clone)]
-pub struct Mapper {
-    pub rom: Rom,
-    work_ram: Cell<[u8; 0x2000]>,
-    chr_ram: Vec<Cell<u8>>,
+pub enum Mapper {
+    Nrom(NromMapper),
 }
 
 impl Mapper {
     pub fn from_rom(rom: Rom) -> Self {
         match rom.header.mapper {
-            0 => { }
+            0 => {
+                Mapper::Nrom(NromMapper::from_rom(rom))
+            }
             mapper => {
                 unimplemented!("Mapper number {}", mapper);
             }
         }
+    }
 
+    pub fn read_u8(&self, addr: u16) -> u8 {
+        match self {
+            Mapper::Nrom(mapper) => mapper.read_u8(addr),
+        }
+    }
+
+    pub fn write_u8(&self, addr: u16, value: u8) {
+        match self {
+            Mapper::Nrom(mapper) => mapper.write_u8(addr, value),
+        }
+    }
+
+    pub fn read_ppu_u8(&self, nes: &Nes, addr: u16) -> u8 {
+        match self {
+            Mapper::Nrom(mapper) => mapper.read_ppu_u8(nes, addr),
+        }
+    }
+
+    pub fn write_ppu_u8(&self, nes: &Nes, addr: u16, value: u8) {
+        match self {
+            Mapper::Nrom(mapper) => mapper.write_ppu_u8(nes, addr, value),
+        }
+    }
+}
+
+
+
+#[derive(Clone)]
+pub struct NromMapper {
+    rom: Rom,
+    work_ram: Cell<[u8; 0x2000]>,
+    chr_ram: Vec<Cell<u8>>,
+}
+
+impl NromMapper {
+    pub fn from_rom(rom: Rom) -> Self {
         let work_ram = Cell::new([0; 0x2000]);
         let chr_ram = vec![Cell::new(0); rom.header.chr_ram_size_bytes];
 
-        Mapper { rom, work_ram, chr_ram }
+        NromMapper { rom, work_ram, chr_ram }
     }
 
     pub fn read_u8(&self, addr: u16) -> u8 {
