@@ -97,3 +97,18 @@ impl<'a, 'b> Video for &'a TextureBufferedVideo<'b> {
     fn clear(&mut self) { }
 }
 
+impl<'a, V> Video for &'a mut V
+    where V: Video
+{
+    fn draw_point(&mut self, point: Point, color: Color) {
+        (*self).draw_point(point, color);
+    }
+
+    fn present(&mut self) {
+        (*self).present();
+    }
+
+    fn clear(&mut self) {
+        (*self).clear();
+    }
+}
