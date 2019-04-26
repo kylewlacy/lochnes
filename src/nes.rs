@@ -229,7 +229,7 @@ impl Nes {
         self.ppu.oam.set(oam);
     }
 
-    pub fn run<'a>(&'a self, video: &'a mut impl Video)
+    pub fn run<'a>(&'a self, video: impl Video + 'a)
         -> impl Generator<Yield = NesStep, Return = !> + 'a
     {
         let mut run_cpu = Cpu::run(&self);
