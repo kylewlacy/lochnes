@@ -19,9 +19,9 @@ fn bench_frames(b: &mut Bencher) {
     let rom = rom::Rom::from_bytes(rom_bytes.into_iter()).expect("Failed to parse BENCH_ROM into a valid ROM");
 
     b.iter(|| {
-        let nes = nes::Nes::new_from_rom(rom.clone());
         let video = video::NullVideo;
-        let mut run_nes = nes.run(video);
+        let nes = nes::Nes::new(video, rom.clone());
+        let mut run_nes = nes.run();
 
         for _ in 0..10 {
             loop {

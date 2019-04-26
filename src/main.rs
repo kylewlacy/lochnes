@@ -49,7 +49,6 @@ fn run(opts: Options) -> Result<(), LochnesError> {
 
     let bytes = fs::read(opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
-    let nes = nes::Nes::new_from_rom(rom);
     let scale = opts.scale.unwrap_or(1);
 
     let window_width = NES_WIDTH * scale;
@@ -70,7 +69,9 @@ fn run(opts: Options) -> Result<(), LochnesError> {
         NES_WIDTH,
         NES_HEIGHT
     )?;
-    let mut run_nes = nes.run(&video);
+
+    let nes = nes::Nes::new(&video, rom);
+    let mut run_nes = nes.run();
 
     'running: loop {
         let frame_start = Instant::now();

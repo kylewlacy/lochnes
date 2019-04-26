@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::ops::Generator;
 use bitflags::bitflags;
 use crate::nes::Nes;
+use crate::video::Video;
 
 #[derive(Debug, Clone)]
 pub struct Cpu {
@@ -49,12 +50,12 @@ impl Cpu {
         pc
     }
 
-    fn pc_fetch(nes: &Nes) -> u8 {
+    fn pc_fetch(nes: &Nes<impl Video>) -> u8 {
         let pc = nes.cpu.pc.get();
         nes.read_u8(pc)
     }
 
-    fn pc_fetch_inc(nes: &Nes) -> u8 {
+    fn pc_fetch_inc(nes: &Nes<impl Video>) -> u8 {
         let pc = nes.cpu.pc_inc();
         nes.read_u8(pc)
     }
@@ -71,7 +72,7 @@ impl Cpu {
         self.s.update(|s| s.wrapping_sub(1));
     }
 
-    pub fn run<'a>(nes: &'a Nes)
+    pub fn run<'a>(nes: &'a Nes<impl Video>)
         -> impl Generator<Yield = CpuStep, Return = !> + 'a
     {
         move || loop {
@@ -1363,7 +1364,7 @@ trait StackPullOperation {
 }
 
 fn implied<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl ImpliedOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -1383,7 +1384,9 @@ fn implied<'a>(
     }
 }
 
-fn brk<'a>(nes: &'a Nes) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
+fn brk<'a>(nes: &'a Nes<impl Video>)
+    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
+{
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1418,7 +1421,7 @@ fn brk<'a>(nes: &'a Nes) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
 }
 
 fn accum_modify<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -1442,7 +1445,7 @@ fn accum_modify<'a>(
 }
 
 fn imm_read<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl ReadOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -1463,7 +1466,7 @@ fn imm_read<'a>(
     }
 }
 
-fn zero_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn zero_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1487,7 +1490,7 @@ fn zero_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
 }
 
 fn zero_modify<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -1517,7 +1520,7 @@ fn zero_modify<'a>(
     }
 }
 
-fn zero_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn zero_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1540,7 +1543,7 @@ fn zero_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn zero_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn zero_x_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1566,7 +1569,7 @@ fn zero_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
 }
 
 fn zero_x_modify<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -1599,7 +1602,7 @@ fn zero_x_modify<'a>(
     }
 }
 
-fn zero_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn zero_x_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1624,7 +1627,7 @@ fn zero_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn zero_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn zero_y_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1649,7 +1652,7 @@ fn zero_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn zero_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn zero_y_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1674,7 +1677,7 @@ fn zero_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn abs_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn abs_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1701,7 +1704,7 @@ fn abs_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
 }
 
 fn abs_modify<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl ModifyOperation + 'a
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -1733,7 +1736,7 @@ fn abs_modify<'a>(
     }
 }
 
-fn abs_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn abs_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1759,7 +1762,7 @@ fn abs_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn abs_jmp<'a>(nes: &'a Nes)
+fn abs_jmp<'a>(nes: &'a Nes<impl Video>)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1781,7 +1784,7 @@ fn abs_jmp<'a>(nes: &'a Nes)
     }
 }
 
-fn ind_jmp<'a>(nes: &'a Nes)
+fn ind_jmp<'a>(nes: &'a Nes<impl Video>)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1811,7 +1814,7 @@ fn ind_jmp<'a>(nes: &'a Nes)
     }
 }
 
-fn abs_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn abs_x_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1855,7 +1858,7 @@ fn abs_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn abs_x_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
+fn abs_x_modify<'a>(nes: &'a Nes<impl Video>, op: impl ModifyOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1893,7 +1896,7 @@ fn abs_x_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
     }
 }
 
-fn abs_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn abs_x_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1925,7 +1928,7 @@ fn abs_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn abs_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn abs_y_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -1969,7 +1972,7 @@ fn abs_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn abs_y_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
+fn abs_y_modify<'a>(nes: &'a Nes<impl Video>, op: impl ModifyOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2007,7 +2010,7 @@ fn abs_y_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
     }
 }
 
-fn abs_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn abs_y_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2039,7 +2042,7 @@ fn abs_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn ind_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn ind_x_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2072,7 +2075,7 @@ fn ind_x_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn ind_x_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
+fn ind_x_modify<'a>(nes: &'a Nes<impl Video>, op: impl ModifyOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2111,7 +2114,7 @@ fn ind_x_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
     }
 }
 
-fn ind_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn ind_x_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2144,7 +2147,7 @@ fn ind_x_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
+fn ind_y_read<'a>(nes: &'a Nes<impl Video>, op: impl ReadOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2196,7 +2199,7 @@ fn ind_y_read<'a>(nes: &'a Nes, op: impl ReadOperation + 'a)
     }
 }
 
-fn ind_y_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
+fn ind_y_modify<'a>(nes: &'a Nes<impl Video>, op: impl ModifyOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2239,7 +2242,7 @@ fn ind_y_modify<'a>(nes: &'a Nes, op: impl ModifyOperation + 'a)
     }
 }
 
-fn ind_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
+fn ind_y_write<'a>(nes: &'a Nes<impl Video>, op: impl WriteOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2278,7 +2281,7 @@ fn ind_y_write<'a>(nes: &'a Nes, op: impl WriteOperation + 'a)
     }
 }
 
-fn branch<'a>(nes: &'a Nes, op: impl BranchOperation + 'a)
+fn branch<'a>(nes: &'a Nes<impl Video>, op: impl BranchOperation + 'a)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2314,7 +2317,7 @@ fn branch<'a>(nes: &'a Nes, op: impl BranchOperation + 'a)
 }
 
 fn stack_push<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl StackPushOperation + 'a,
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -2338,7 +2341,7 @@ fn stack_push<'a>(
 }
 
 fn stack_pull<'a>(
-    nes: &'a Nes,
+    nes: &'a Nes<impl Video>,
     op: impl StackPullOperation + 'a,
 )
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
@@ -2364,7 +2367,7 @@ fn stack_pull<'a>(
     }
 }
 
-fn jsr<'a>(nes: &'a Nes)
+fn jsr<'a>(nes: &'a Nes<impl Video>)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2403,7 +2406,7 @@ fn jsr<'a>(nes: &'a Nes)
     }
 }
 
-fn rti<'a>(nes: &'a Nes)
+fn rti<'a>(nes: &'a Nes<impl Video>)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {
@@ -2436,7 +2439,7 @@ fn rti<'a>(nes: &'a Nes)
     }
 }
 
-fn rts<'a>(nes: &'a Nes)
+fn rts<'a>(nes: &'a Nes<impl Video>)
     -> impl Generator<Yield = CpuStep, Return = Op> + 'a
 {
     move || {

@@ -13,21 +13,27 @@ pub mod ppu;
 pub mod mapper;
 
 #[derive(Clone)]
-pub struct Nes {
+pub struct Nes<V>
+    where V: Video
+{
+    pub video: V,
     pub mapper: Mapper,
     pub ram: Cell<[u8; 0x0800]>,
     pub cpu: Cpu,
     pub ppu: Ppu,
 }
 
-impl Nes {
-    pub fn new_from_rom(rom: Rom) -> Self {
+impl<V> Nes<V>
+    where V: Video
+{
+    pub fn new(video: V, rom: Rom) -> Self {
         let ram = Cell::new([0; 0x0800]);
         let cpu = Cpu::new();
         let ppu = Ppu::new();
         let mapper = Mapper::from_rom(rom);
 
         let nes = Nes {
+            video,
             mapper,
             ram,
             cpu,
@@ -229,12 +235,12 @@ impl Nes {
         self.ppu.oam.set(oam);
     }
 
-    pub fn run<'a>(&'a self, video: impl Video + 'a)
+    pub fn run<'a>(&'a self)
         -> impl Generator<Yield = NesStep, Return = !> + 'a
     {
         let mut run_cpu = Cpu::run(&self);
 
-        let mut run_ppu = Ppu::run(&self, video);
+        let mut run_ppu = Ppu::run(&self);
 
         move || loop {
             // TODO: Clean this up

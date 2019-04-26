@@ -110,7 +110,7 @@ impl Ppu {
         self.scroll_addr_latch.set(!latch);
     }
 
-    pub fn read_ppudata(&self, nes: &Nes) -> u8 {
+    pub fn read_ppudata(&self, nes: &Nes<impl Video>) -> u8 {
         let addr = self.addr.get();
         let ctrl = self.ctrl.get();
         let stride =
@@ -127,7 +127,7 @@ impl Ppu {
         value
     }
 
-    pub fn write_ppudata(&self, nes: &Nes, value: u8) {
+    pub fn write_ppudata(&self, nes: &Nes<impl Video>, value: u8) {
         let addr = self.addr.get();
         let ctrl = self.ctrl.get();
         let stride =
@@ -146,7 +146,7 @@ impl Ppu {
         self.status.get().bits()
     }
 
-    pub fn run<'a>(nes: &'a Nes, video: impl Video + 'a)
+    pub fn run<'a>(nes: &'a Nes<impl Video>)
         -> impl Generator<Yield = PpuStep, Return = !> + 'a
     {
         move || {
@@ -174,7 +174,7 @@ impl Ppu {
                                 // VBLANK_INTERRUPT is toggled during vblank
                                 nes.cpu.nmi.set(true);
                             }
-                            video.present();
+                            nes.video.present();
                             yield PpuStep::Vblank;
                         }
                         else if scanline == 0 && cycle == 1 {
@@ -182,7 +182,7 @@ impl Ppu {
                                 status.set(PpuStatusFlags::VBLANK_STARTED, false);
                                 status
                             });
-                            video.clear();
+                            nes.video.clear();
                         }
 
                         if 1 <= scanline && scanline < 241 && cycle < 256 {
@@ -389,7 +389,7 @@ impl Ppu {
                             };
                             let color = nes_color_code_to_rgb(color_code);
                             let point = Point { x, y };
-                            video.draw_point(point, color);
+                            nes.video.draw_point(point, color);
                         }
 
                         yield PpuStep::Cycle;

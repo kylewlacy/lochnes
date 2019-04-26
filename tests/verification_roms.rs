@@ -16,9 +16,9 @@ fn run_blargg_instr_test_with_expected_result(
     let rom = rom::Rom::from_bytes(rom_bytes.into_iter().cloned())
         .expect(&format!("Failed to parse test ROM {:?}", test_name));
 
-    let nes = nes::Nes::new_from_rom(rom.clone());
     let video = video::NullVideo;
-    let mut run_nes = nes.run(video);
+    let nes = nes::Nes::new(video, rom.clone());
+    let mut run_nes = nes.run();
 
     // Run for a max of 240 frames, just in case the test ROM never completes
     for frame in 0..240 {

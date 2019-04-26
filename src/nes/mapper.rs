@@ -1,6 +1,7 @@
 use std::cell::Cell;
 use crate::nes::Nes;
 use crate::rom::Rom;
+use crate::video::Video;
 
 #[derive(Clone)]
 pub enum Mapper {
@@ -33,14 +34,14 @@ impl Mapper {
         }
     }
 
-    pub fn read_ppu_u8(&self, nes: &Nes, addr: u16) -> u8 {
+    pub fn read_ppu_u8(&self, nes: &Nes<impl Video>, addr: u16) -> u8 {
         match self {
             Mapper::Nrom(mapper) => mapper.read_ppu_u8(nes, addr),
             Mapper::Uxrom(mapper) => mapper.read_ppu_u8(nes, addr),
         }
     }
 
-    pub fn write_ppu_u8(&self, nes: &Nes, addr: u16, value: u8) {
+    pub fn write_ppu_u8(&self, nes: &Nes<impl Video>, addr: u16, value: u8) {
         match self {
             Mapper::Nrom(mapper) => mapper.write_ppu_u8(nes, addr, value),
             Mapper::Uxrom(mapper) => mapper.write_ppu_u8(nes, addr, value),
@@ -99,7 +100,7 @@ impl NromMapper {
         }
     }
 
-    pub fn read_ppu_u8(&self, nes: &Nes, addr: u16) -> u8 {
+    pub fn read_ppu_u8(&self, nes: &Nes<impl Video>, addr: u16) -> u8 {
         let chr_rom = &self.rom.chr_rom;
         let chr_ram = &self.chr_ram;
         let ppu_ram = nes.ppu.ppu_ram();
@@ -128,7 +129,7 @@ impl NromMapper {
         }
     }
 
-    pub fn write_ppu_u8(&self, nes: &Nes, addr: u16, value: u8) {
+    pub fn write_ppu_u8(&self, nes: &Nes<impl Video>, addr: u16, value: u8) {
         let ppu_ram = nes.ppu.ppu_ram();
         let chr_rom = &self.rom.chr_rom;
         let chr_ram = &self.chr_ram;
@@ -232,7 +233,7 @@ impl UxromMapper {
         }
     }
 
-    pub fn read_ppu_u8(&self, nes: &Nes, addr: u16) -> u8 {
+    pub fn read_ppu_u8(&self, nes: &Nes<impl Video>, addr: u16) -> u8 {
         let chr_rom = &self.rom.chr_rom;
         let chr_ram = &self.chr_ram;
         let ppu_ram = nes.ppu.ppu_ram();
@@ -261,7 +262,7 @@ impl UxromMapper {
         }
     }
 
-    pub fn write_ppu_u8(&self, nes: &Nes, addr: u16, value: u8) {
+    pub fn write_ppu_u8(&self, nes: &Nes<impl Video>, addr: u16, value: u8) {
         let ppu_ram = nes.ppu.ppu_ram();
         let chr_rom = &self.rom.chr_rom;
         let chr_ram = &self.chr_ram;
