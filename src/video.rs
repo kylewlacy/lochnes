@@ -16,17 +16,17 @@ pub struct Color {
 }
 
 pub trait Video {
-    fn draw_point(&mut self, point: Point, color: Color);
-    fn present(&mut self);
-    fn clear(&mut self);
+    fn draw_point(&self, point: Point, color: Color);
+    fn present(&self);
+    fn clear(&self);
 }
 
 pub struct NullVideo;
 
 impl Video for NullVideo {
-    fn draw_point(&mut self, _point: Point, _color: Color) { }
-    fn present(&mut self) { }
-    fn clear(&mut self) { }
+    fn draw_point(&self, _point: Point, _color: Color) { }
+    fn present(&self) { }
+    fn clear(&self) { }
 }
 
 pub struct TextureBufferedVideo<'a> {
@@ -69,14 +69,14 @@ impl<'a> TextureBufferedVideo<'a> {
     }
 }
 
-impl<'a, 'b> Video for &'a TextureBufferedVideo<'b> {
-    fn draw_point(&mut self, point: Point, color: Color) {
+impl<'a, 'b> Video for TextureBufferedVideo<'b> {
+    fn draw_point(&self, point: Point, color: Color) {
         let mut buffer = self.buffer.write().unwrap();
         let offset = point.y as usize * self.width as usize + point.x as usize;
         buffer[offset] = color;
     }
 
-    fn present(&mut self) {
+    fn present(&self) {
         let buffer = self.buffer.read().unwrap();
         let mut frame = self.frame.write().unwrap();
         frame.with_lock(None, |frame_buffer, pitch| {
@@ -94,21 +94,21 @@ impl<'a, 'b> Video for &'a TextureBufferedVideo<'b> {
         }).unwrap();
     }
 
-    fn clear(&mut self) { }
+    fn clear(&self) { }
 }
 
-impl<'a, V> Video for &'a mut V
+impl<'a, V> Video for &'a V
     where V: Video
 {
-    fn draw_point(&mut self, point: Point, color: Color) {
+    fn draw_point(&self, point: Point, color: Color) {
         (*self).draw_point(point, color);
     }
 
-    fn present(&mut self) {
+    fn present(&self) {
         (*self).present();
     }
 
-    fn clear(&mut self) {
+    fn clear(&self) {
         (*self).clear();
     }
 }

@@ -65,13 +65,12 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let sdl_texture_creator = sdl_canvas.texture_creator();
     let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
 
-    let texture_buffer_video = video::TextureBufferedVideo::new(
+    let video = video::TextureBufferedVideo::new(
         &sdl_texture_creator,
         NES_WIDTH,
         NES_HEIGHT
     )?;
-    let mut video = &texture_buffer_video;
-    let mut run_nes = nes.run(&mut video);
+    let mut run_nes = nes.run(&video);
 
     'running: loop {
         let frame_start = Instant::now();
@@ -101,8 +100,7 @@ fn run(opts: Options) -> Result<(), LochnesError> {
             }
         }
 
-        texture_buffer_video.copy_to(&mut sdl_canvas)
-            .map_err(LochnesError::Sdl2Error)?;
+        video.copy_to(&mut sdl_canvas).map_err(LochnesError::Sdl2Error)?;
         sdl_canvas.present();
 
         let elapsed = frame_start.elapsed();

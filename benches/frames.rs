@@ -20,8 +20,8 @@ fn bench_frames(b: &mut Bencher) {
 
     b.iter(|| {
         let nes = nes::Nes::new_from_rom(rom.clone());
-        let mut video = video::NullVideo;
-        let mut run_nes = nes.run(&mut video);
+        let video = video::NullVideo;
+        let mut run_nes = nes.run(video);
 
         for _ in 0..10 {
             loop {
