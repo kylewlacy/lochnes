@@ -64,13 +64,13 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let sdl_texture_creator = sdl_canvas.texture_creator();
     let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
 
-    let video = video::TextureBufferedVideo::new(
+    let video = &video::TextureBufferedVideo::new(
         &sdl_texture_creator,
         NES_WIDTH,
         NES_HEIGHT
     )?;
-
-    let nes = nes::Nes::new(&video, rom);
+    let io = nes::NesIoWith { video };
+    let nes = nes::Nes::new(&io, rom);
     let mut run_nes = nes.run();
 
     'running: loop {

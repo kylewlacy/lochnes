@@ -13,27 +13,27 @@ pub mod ppu;
 pub mod mapper;
 
 #[derive(Clone)]
-pub struct Nes<V>
-    where V: Video
+pub struct Nes<'a, I>
+    where I: NesIo
 {
-    pub video: V,
+    pub io: &'a I,
     pub mapper: Mapper,
     pub ram: Cell<[u8; 0x0800]>,
     pub cpu: Cpu,
     pub ppu: Ppu,
 }
 
-impl<V> Nes<V>
-    where V: Video
+impl<'a, I> Nes<'a, I>
+    where I: NesIo
 {
-    pub fn new(video: V, rom: Rom) -> Self {
+    pub fn new(io: &'a I, rom: Rom) -> Self {
         let ram = Cell::new([0; 0x0800]);
         let cpu = Cpu::new();
         let ppu = Ppu::new();
         let mapper = Mapper::from_rom(rom);
 
         let nes = Nes {
-            video,
+            io,
             mapper,
             ram,
             cpu,
@@ -235,7 +235,7 @@ impl<V> Nes<V>
         self.ppu.oam.set(oam);
     }
 
-    pub fn run<'a>(&'a self)
+    pub fn run(&'a self)
         -> impl Generator<Yield = NesStep, Return = !> + 'a
     {
         let mut run_cpu = Cpu::run(&self);
@@ -276,4 +276,38 @@ impl<V> Nes<V>
 pub enum NesStep {
     Cpu(CpuStep),
     Ppu(PpuStep),
+}
+
+// A trait that encapsulates NES I/O traits (namely just `Video`), allowing
+// code that uses `Nes` to only take or return a single generic parameter.
+pub trait NesIo {
+    type Video: Video;
+
+    fn video(&self) -> &Self::Video;
+}
+
+pub struct NesIoWith<V>
+    where V: Video
+{
+    pub video: V
+}
+
+impl<V> NesIo for NesIoWith<V>
+    where V: Video
+{
+    type Video = V;
+
+    fn video(&self) -> &Self::Video {
+        &self.video
+    }
+}
+
+impl<'a, I> NesIo for &'a I
+    where I: NesIo
+{
+    type Video = I::Video;
+
+    fn video(&self) -> &Self::Video {
+        (*self).video()
+    }
 }
