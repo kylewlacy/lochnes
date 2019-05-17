@@ -1,6 +1,7 @@
 use std::u8;
 use std::cell::Cell;
-use std::ops::Generator;
+use std::pin::Pin;
+use std::ops::{Generator, GeneratorState};
 use bitflags::bitflags;
 use crate::nes::{Nes, NesIo};
 use crate::video::{Video, Point, Color};
@@ -21,6 +22,11 @@ pub struct Ppu {
     pub ppu_ram: Cell<[u8; 0x0800]>,
     pub oam: Cell<[u8; 0x0100]>,
     pub palette_ram: Cell<[u8; 0x20]>,
+
+    // Internal "cache" indexed by an X coordinate, returning the sprite
+    // to render for that pixel, if any. `None` indicates the cache is not
+    // initialized.
+    scanline_sprite_indices: Cell<[Option<u8>; 256]>,
 }
 
 impl Ppu {
@@ -36,6 +42,7 @@ impl Ppu {
             ppu_ram: Cell::new([0; 0x0800]),
             oam: Cell::new([0; 0x0100]),
             palette_ram: Cell::new([0; 0x20]),
+            scanline_sprite_indices: Cell::new([None; 256]),
         }
     }
 
@@ -149,213 +156,240 @@ impl Ppu {
     pub fn run<'a>(nes: &'a Nes<impl NesIo>)
         -> impl Generator<Yield = PpuStep, Return = !> + 'a
     {
-        move || {
-            // TODO: Disable registers on startup until enough cycles
-            // have elapsed
+        let mut run_sprite_evaluation = Ppu::run_sprite_evaluation(nes);
+        let mut run_renderer = Ppu::run_renderer(nes);
+
+        move || loop {
+            loop {
+                match Pin::new(&mut run_sprite_evaluation).resume() {
+                    GeneratorState::Yielded(PpuStep::Cycle) => {
+                        break;
+                    }
+                    GeneratorState::Yielded(step) => {
+                        yield step;
+                    }
+                }
+            }
+            loop {
+                match Pin::new(&mut run_renderer).resume() {
+                    GeneratorState::Yielded(PpuStep::Cycle) => {
+                        break;
+                    }
+                    GeneratorState::Yielded(step) => {
+                        yield step;
+                    }
+                }
+            }
+
+            yield PpuStep::Cycle;
+        }
+    }
+
+    fn run_sprite_evaluation<'a>(nes: &'a Nes<impl NesIo>)
+        -> impl Generator<Yield = PpuStep, Return = !> + 'a
+    {
+        move || loop {
             for frame in 0_u64.. {
-                let is_even_frame = frame % 2 == 0;
-                for scanline in 0_u16..262 {
-                    let cycles: u16 = match (scanline, is_even_frame) {
-                        // All scanlines render in 341 cycles, except for the
-                        // first scanline during odd frames
-                        (0, false) => 340,
-                        _ => 341,
-                    };
+                let frame_is_odd = frame % 2 != 0;
+                for scanline in 0_u16..=261 {
+                    let y = scanline;
+                    let should_skip_first_cycle = frame_is_odd && scanline == 0;
+                    if !should_skip_first_cycle {
+                        // The first cycle of each scanline is idle (except
+                        // for the first cycle of the pre-render scanline
+                        // for odd frames, which is skipped)
+                        yield PpuStep::Cycle;
+                    }
 
-                    for cycle in 0..cycles {
-                        if scanline == 240 && cycle == 1 {
-                            let _ = nes.ppu.status.update(|mut status| {
-                                status.set(PpuStatusFlags::VBLANK_STARTED, true);
-                                status
-                            });
-                            let ctrl = nes.ppu.ctrl.get();
-                            if ctrl.contains(PpuCtrlFlags::VBLANK_INTERRUPT) {
-                                // TODO: Generate NMI immediately if
-                                // VBLANK_INTERRUPT is toggled during vblank
-                                nes.cpu.nmi.set(true);
-                            }
-                            nes.io.video().present();
-                            yield PpuStep::Vblank;
-                        }
-                        else if scanline == 0 && cycle == 1 {
-                            let _ = nes.ppu.status.update(|mut status| {
-                                status.set(PpuStatusFlags::VBLANK_STARTED, false);
-                                status
-                            });
-                            nes.io.video().clear();
-                        }
+                    // TODO: Implement sprite evaluation with secondary OAM!
 
-                        if 1 <= scanline && scanline < 241 && cycle < 256 {
-                            let x = cycle;
-                            let y = scanline - 1;
+                    let oam = nes.ppu.oam();
+                    for _ in 0_u16..340 {
+                        // Here, secondary OAM would be filled with sprite data
+                        yield PpuStep::Cycle;
+                    }
 
-                            let palette_ram = nes.ppu.palette_ram();
-                            let palette_ram_indices = [
-                                [0x00, 0x01, 0x02, 0x03],
-                                [0x00, 0x05, 0x06, 0x07],
-                                [0x00, 0x09, 0x0A, 0x0B],
-                                [0x00, 0x0D, 0x0E, 0x0F],
-                                [0x00, 0x11, 0x12, 0x13],
-                                [0x00, 0x15, 0x16, 0x17],
-                                [0x00, 0x19, 0x1A, 0x1B],
-                                [0x00, 0x1D, 0x1E, 0x1F],
-                            ];
-                            let palettes = [
-                                [
-                                    palette_ram[palette_ram_indices[0][0]].get(),
-                                    palette_ram[palette_ram_indices[0][1]].get(),
-                                    palette_ram[palette_ram_indices[0][2]].get(),
-                                    palette_ram[palette_ram_indices[0][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[1][0]].get(),
-                                    palette_ram[palette_ram_indices[1][1]].get(),
-                                    palette_ram[palette_ram_indices[1][2]].get(),
-                                    palette_ram[palette_ram_indices[1][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[2][0]].get(),
-                                    palette_ram[palette_ram_indices[2][1]].get(),
-                                    palette_ram[palette_ram_indices[2][2]].get(),
-                                    palette_ram[palette_ram_indices[2][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[3][0]].get(),
-                                    palette_ram[palette_ram_indices[3][1]].get(),
-                                    palette_ram[palette_ram_indices[3][2]].get(),
-                                    palette_ram[palette_ram_indices[3][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[4][0]].get(),
-                                    palette_ram[palette_ram_indices[4][1]].get(),
-                                    palette_ram[palette_ram_indices[4][2]].get(),
-                                    palette_ram[palette_ram_indices[4][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[5][0]].get(),
-                                    palette_ram[palette_ram_indices[5][1]].get(),
-                                    palette_ram[palette_ram_indices[5][2]].get(),
-                                    palette_ram[palette_ram_indices[5][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[6][0]].get(),
-                                    palette_ram[palette_ram_indices[6][1]].get(),
-                                    palette_ram[palette_ram_indices[6][2]].get(),
-                                    palette_ram[palette_ram_indices[6][3]].get(),
-                                ],
-                                [
-                                    palette_ram[palette_ram_indices[7][0]].get(),
-                                    palette_ram[palette_ram_indices[7][1]].get(),
-                                    palette_ram[palette_ram_indices[7][2]].get(),
-                                    palette_ram[palette_ram_indices[7][3]].get(),
-                                ],
-                            ];
-                            let ppu_ctrl = nes.ppu.ctrl.get();
+                    if scanline < 240 {
+                        let mut new_sprite_indices = [None; 256];
+                        for sprite_index in 0_u8..64 {
+                            let oam_index = sprite_index as usize * 4;
+                            let sprite_y = oam[oam_index].get() as u16;
+                            if sprite_y <= y && y < sprite_y + 8 {
+                                let sprite_x = oam[oam_index + 3].get() as u16;
 
-                            let bg_color_code = {
-                                let tile_x = x / 8;
-                                let tile_y = y / 8;
-
-                                let tile_x_pixel = x % 8;
-                                let tile_y_pixel = y % 8;
-
-                                let attr_x = x / 32;
-                                let attr_y = y / 32;
-                                let attr_is_left = ((x / 16) % 2) == 0;
-                                let attr_is_top = ((y / 16) % 2) == 0;
-
-                                let tile_index = tile_y * 32 + tile_x;
-                                let tile = nes.read_ppu_u8(0x2000 + tile_index);
-
-                                let attr_index = attr_y * 8 + attr_x;
-                                let attr = nes.read_ppu_u8(0x23C0 + attr_index);
-                                let palette_index = match (attr_is_top, attr_is_left) {
-                                    (true, true)   =>  attr & 0b_0000_0011,
-                                    (true, false)  => (attr & 0b_0000_1100) >> 2,
-                                    (false, true)  => (attr & 0b_0011_0000) >> 4,
-                                    (false, false) => (attr & 0b_1100_0000) >> 6
-                                };
-                                let palette = palettes[palette_index as usize];
-
-                                let pattern_bitmask = 0b_1000_0000 >> tile_x_pixel;
-                                let pattern_table_offset =
-                                    if ppu_ctrl.contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
-                                        0x1000
+                                for sprite_x_offset in 0_u16..8 {
+                                    let x = (sprite_x + sprite_x_offset) as usize;
+                                    if x < 256 {
+                                        new_sprite_indices[x].get_or_insert_with(|| {
+                                            sprite_index
+                                        });
                                     }
-                                    else {
-                                        0x0000
-                                    };
-                                let pattern_offset = pattern_table_offset + tile as u16 * 16;
-                                let pattern_lo_byte = nes.read_ppu_u8(pattern_offset + tile_y_pixel);
-                                let pattern_hi_byte = nes.read_ppu_u8(pattern_offset + tile_y_pixel + 8);
-                                let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
-                                let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
+                                }
+                            }
+                        }
 
-                                let palette_index = match (pattern_hi_bit, pattern_lo_bit) {
+                        nes.ppu.scanline_sprite_indices.set(new_sprite_indices);
+                    }
+                    else {
+                        let new_sprite_indices = [None; 256];
+                        nes.ppu.scanline_sprite_indices.set(new_sprite_indices);
+                    }
+                }
+            }
+        }
+    }
+
+    fn run_renderer<'a>(nes: &'a Nes<impl NesIo>)
+        -> impl Generator<Yield = PpuStep, Return = !> + 'a
+    {
+        move || loop {
+            for frame in 0_u64.. {
+                let frame_is_odd = frame % 2 != 0;
+                for scanline in 0_u16..=261 {
+                    let tile_y = scanline / 8;
+                    let tile_y_pixel = scanline % 8;
+                    let y = scanline;
+
+                    let sprite_indices = nes.ppu.scanline_sprite_indices.get();
+                    let oam = nes.ppu.oam();
+
+                    let should_skip_first_cycle = frame_is_odd && scanline == 0;
+                    if !should_skip_first_cycle {
+                        // The first cycle of each scanline is idle (except
+                        // for the first cycle of the pre-render scanline
+                        // for odd frames, which is skipped)
+                        yield PpuStep::Cycle;
+                    }
+
+                    if scanline == 240 {
+                        let _ = nes.ppu.status.update(|mut status| {
+                            status.set(PpuStatusFlags::VBLANK_STARTED, true);
+                            status
+                        });
+                        let ctrl = nes.ppu.ctrl.get();
+                        if ctrl.contains(PpuCtrlFlags::VBLANK_INTERRUPT) {
+                            // TODO: Generate NMI immediately if
+                            // VBLANK_INTERRUPT is toggled during vblank
+                            nes.cpu.nmi.set(true);
+                        }
+                        nes.io.video().present();
+                        yield PpuStep::Vblank;
+                    }
+                    else if scanline == 0 {
+                        let _ = nes.ppu.status.update(|mut status| {
+                            status.set(PpuStatusFlags::VBLANK_STARTED, false);
+                            status
+                        });
+                        nes.io.video().clear();
+                    }
+
+                    for tile_x in 0_u16..42 {
+                        if tile_x >= 32 || scanline >= 240 {
+                            // TODO: Implement sprite tile fetching here
+
+                            for _cycle in 0..8 {
+                                yield PpuStep::Cycle;
+                            }
+
+                            continue;
+                        }
+
+                        yield PpuStep::Cycle;
+                        yield PpuStep::Cycle;
+                        let nametable_index = tile_y * 32 + tile_x;
+                        let nametable_byte = nes.read_ppu_u8(0x2000 + nametable_index);
+
+                        yield PpuStep::Cycle;
+                        yield PpuStep::Cycle;
+                        let attr_x = tile_x / 4;
+                        let attr_y = tile_y / 4;
+                        let attr_is_left = ((tile_x / 2) % 2) == 0;
+                        let attr_is_top = ((tile_y / 2) % 2) == 0;
+
+                        let attr_index = attr_y * 8 + attr_x;
+                        let attr = nes.read_ppu_u8(0x23C0 + attr_index);
+                        let background_palette_index = match (attr_is_top, attr_is_left) {
+                            (true, true)   =>  attr & 0b_0000_0011,
+                            (true, false)  => (attr & 0b_0000_1100) >> 2,
+                            (false, true)  => (attr & 0b_0011_0000) >> 4,
+                            (false, false) => (attr & 0b_1100_0000) >> 6
+                        };
+
+                        let pattern_table_offset =
+                            if nes.ppu.ctrl.get().contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
+                                0x1000
+                            }
+                            else {
+                                0x0000
+                            };
+                        let bitmap_offset = pattern_table_offset + nametable_byte as u16 * 16;
+                        let bitmap_lo_byte = nes.read_ppu_u8(bitmap_offset + tile_y_pixel);
+
+                        yield PpuStep::Cycle;
+                        yield PpuStep::Cycle;
+                        let bitmap_hi_byte = nes.read_ppu_u8(bitmap_offset + tile_y_pixel + 8);
+
+                        yield PpuStep::Cycle;
+                        yield PpuStep::Cycle;
+                        for tile_x_pixel in 0..8 {
+                            let x = (tile_x * 8) + tile_x_pixel;
+
+                            let background_color_index = {
+                                let bitmap_bitmask = 0b_1000_0000 >> tile_x_pixel;
+                                let bitmap_lo_bit = (bitmap_lo_byte & bitmap_bitmask) != 0;
+                                let bitmap_hi_bit = (bitmap_hi_byte & bitmap_bitmask) != 0;
+
+                                let color_index = match (bitmap_hi_bit, bitmap_lo_bit) {
                                     (false, false) => 0,
                                     (false, true) => 1,
                                     (true, false) => 2,
                                     (true, true) => 3,
                                 };
-                                let color_code = palette[palette_index];
-
-                                color_code
+                                color_index
                             };
 
-                            let sprite_index_with_color_code = {
-                                let oam = nes.ppu.oam();
-                                let mut objects = oam.chunks(4);
-                                let object = objects.find(|object| {
-                                    let object_y = object[0].get() as u16;
-                                    let object_x = object[3].get() as u16;
+                            let sprite_palette_and_color_index = {
+                                let sprite_index = sprite_indices[x as usize];
 
-                                    // Check if (x, y - 1) is in the bounding
-                                    // box of {x=object_x, y=object_y, w=8, h=8}
-                                    object_x <= x
-                                        && x < object_x + 8
-                                        && y >= 1
-                                        && object_y <= y - 1
-                                        && y - 1 < object_y + 8
-                                });
-
-                                object.map(|object| {
-                                    let object_y = object[0].get() as u16;
-                                    let tile_index = object[1].get();
-                                    let attrs = object[2].get();
-                                    let object_x = object[3].get() as u16;
+                                sprite_index.map(|sprite_index| {
+                                    let oam_index = (sprite_index * 4) as usize;
+                                    let sprite_y = oam[oam_index].get() as u16;
+                                    let tile_index = oam[oam_index + 1].get();
+                                    let attrs = oam[oam_index + 2].get();
+                                    let sprite_x = oam[oam_index + 3].get() as u16;
 
                                     let flip_horizontal = (attrs & 0b_0100_0000) != 0;
                                     let flip_vertical = (attrs & 0b_1000_0000) != 0;
 
-                                    let object_x_pixel = x - object_x;
-                                    let object_y_pixel = y - 1 - object_y;
+                                    let sprite_x_pixel = x.wrapping_sub(sprite_x) % 256;
+                                    let sprite_y_pixel = y.wrapping_sub(1).wrapping_sub(sprite_y) % 256;
 
-                                    let object_x_pixel =
+                                    let sprite_x_pixel =
                                         if flip_horizontal {
-                                            7 - object_x_pixel
+                                            7 - sprite_x_pixel
                                         }
                                         else {
-                                            object_x_pixel
+                                            sprite_x_pixel
                                         };
-                                    let object_y_pixel =
+                                    let sprite_y_pixel =
                                         if flip_vertical {
-                                            7 - object_y_pixel
+                                            7 - sprite_y_pixel
                                         }
                                         else {
-                                            object_y_pixel
+                                            sprite_y_pixel
                                         };
 
-                                    let pattern_bitmask = 0b_1000_0000 >> object_x_pixel;
+                                    let pattern_bitmask = 0b_1000_0000 >> sprite_x_pixel;
                                     let pattern_table_offset =
-                                        if ppu_ctrl.contains(PpuCtrlFlags::SPRITE_PATTERN_TABLE_ADDR) {
+                                        if nes.ppu.ctrl.get().contains(PpuCtrlFlags::SPRITE_PATTERN_TABLE_ADDR) {
                                             0x1000
                                         }
                                         else {
                                             0x0000
                                         };
                                     let pattern_offset = pattern_table_offset as u16 + tile_index as u16 * 16;
-                                    let pattern_lo_byte = nes.read_ppu_u8(pattern_offset + object_y_pixel);
-                                    let pattern_hi_byte = nes.read_ppu_u8(pattern_offset + object_y_pixel + 8);
+                                    let pattern_lo_byte = nes.read_ppu_u8(pattern_offset + sprite_y_pixel);
+                                    let pattern_hi_byte = nes.read_ppu_u8(pattern_offset + sprite_y_pixel + 8);
                                     let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
                                     let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
 
@@ -368,37 +402,111 @@ impl Ppu {
                                         (true, false) => 6,
                                         (true, true) => 7,
                                     };
-                                    let palette = palettes[palette_index as usize];
 
-                                    let pattern_index = match (pattern_hi_bit, pattern_lo_bit) {
+                                    let color_index = match (pattern_hi_bit, pattern_lo_bit) {
                                         (false, false) => 0,
                                         (false, true) => 1,
                                         (true, false) => 2,
                                         (true, true) => 3,
                                     };
 
-                                    let color_code = palette[pattern_index];
-
-                                    (pattern_index, color_code)
+                                    (palette_index, color_index)
                                 })
                             };
 
-                            let color_code = match sprite_index_with_color_code {
-                                None | Some((0, _)) => bg_color_code,
-                                Some((_, sprite_color_code)) => sprite_color_code,
+                            let color_code = match sprite_palette_and_color_index {
+                                None | Some((_, 0)) => {
+                                    nes.ppu.palette_index_to_nes_color_code(background_palette_index, background_color_index)
+                                }
+                                Some((sprite_palette_index, sprite_color_index)) => {
+                                    nes.ppu.palette_index_to_nes_color_code(sprite_palette_index, sprite_color_index)
+                                }
                             };
                             let color = nes_color_code_to_rgb(color_code);
                             let point = Point { x, y };
                             nes.io.video().draw_point(point, color);
                         }
+                    };
 
+                    for _ in 0..4 {
+                        // TODO: Implement PPU garbage reads
                         yield PpuStep::Cycle;
                     }
                 }
             }
-
-            unreachable!();
         }
+    }
+
+    fn palette_index_to_nes_color_code(
+        &self,
+        palette_index: u8,
+        color_index: u8
+    )
+        -> u8
+    {
+        let palette_ram = self.palette_ram();
+        let palette_ram_indices = [
+            [0x00, 0x01, 0x02, 0x03],
+            [0x00, 0x05, 0x06, 0x07],
+            [0x00, 0x09, 0x0A, 0x0B],
+            [0x00, 0x0D, 0x0E, 0x0F],
+            [0x00, 0x11, 0x12, 0x13],
+            [0x00, 0x15, 0x16, 0x17],
+            [0x00, 0x19, 0x1A, 0x1B],
+            [0x00, 0x1D, 0x1E, 0x1F],
+        ];
+        let palettes = [
+            [
+                palette_ram[palette_ram_indices[0][0]].get(),
+                palette_ram[palette_ram_indices[0][1]].get(),
+                palette_ram[palette_ram_indices[0][2]].get(),
+                palette_ram[palette_ram_indices[0][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[1][0]].get(),
+                palette_ram[palette_ram_indices[1][1]].get(),
+                palette_ram[palette_ram_indices[1][2]].get(),
+                palette_ram[palette_ram_indices[1][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[2][0]].get(),
+                palette_ram[palette_ram_indices[2][1]].get(),
+                palette_ram[palette_ram_indices[2][2]].get(),
+                palette_ram[palette_ram_indices[2][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[3][0]].get(),
+                palette_ram[palette_ram_indices[3][1]].get(),
+                palette_ram[palette_ram_indices[3][2]].get(),
+                palette_ram[palette_ram_indices[3][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[4][0]].get(),
+                palette_ram[palette_ram_indices[4][1]].get(),
+                palette_ram[palette_ram_indices[4][2]].get(),
+                palette_ram[palette_ram_indices[4][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[5][0]].get(),
+                palette_ram[palette_ram_indices[5][1]].get(),
+                palette_ram[palette_ram_indices[5][2]].get(),
+                palette_ram[palette_ram_indices[5][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[6][0]].get(),
+                palette_ram[palette_ram_indices[6][1]].get(),
+                palette_ram[palette_ram_indices[6][2]].get(),
+                palette_ram[palette_ram_indices[6][3]].get(),
+            ],
+            [
+                palette_ram[palette_ram_indices[7][0]].get(),
+                palette_ram[palette_ram_indices[7][1]].get(),
+                palette_ram[palette_ram_indices[7][2]].get(),
+                palette_ram[palette_ram_indices[7][3]].get(),
+            ],
+        ];
+        let palette = palettes[palette_index as usize];
+        palette[color_index as usize]
     }
 }
 
