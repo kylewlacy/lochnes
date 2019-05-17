@@ -69,7 +69,8 @@ fn run(opts: Options) -> Result<(), LochnesError> {
         NES_WIDTH,
         NES_HEIGHT
     )?;
-    let input = input::NullInput;
+    let mut input_state = input::InputState::default();
+    let input = &input::SampledInput::new(input_state);
     let io = nes::NesIoWith { video, input };
     let nes = nes::Nes::new(&io, rom);
     let mut run_nes = nes.run();
@@ -79,14 +80,96 @@ fn run(opts: Options) -> Result<(), LochnesError> {
         for event in sdl_event_pump.poll_iter() {
             match event {
                 SdlEvent::Quit { .. }
-                | SdlEvent::KeyDown {
-                    keycode: Some(SdlKeycode::Escape), ..
-                } => {
+                | SdlEvent::KeyDown { keycode: Some(SdlKeycode::Escape), .. }
+                    =>
+                {
                     break 'running;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Z), .. }
+                    =>
+                {
+                    input_state.joypad_1.a = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Z), .. }
+                    =>
+                {
+                    input_state.joypad_1.a = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::X), .. }
+                    =>
+                {
+                    input_state.joypad_1.b = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::X), .. }
+                    =>
+                {
+                    input_state.joypad_1.b = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Return), .. }
+                    =>
+                {
+                    input_state.joypad_1.start = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Return), .. }
+                    =>
+                {
+                    input_state.joypad_1.start = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Backslash), .. }
+                    =>
+                {
+                    input_state.joypad_1.select = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Backslash), .. }
+                    =>
+                {
+                    input_state.joypad_1.select = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Up), .. }
+                    =>
+                {
+                    input_state.joypad_1.up = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Up), .. }
+                    =>
+                {
+                    input_state.joypad_1.up = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Down), .. }
+                    =>
+                {
+                    input_state.joypad_1.down = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Down), .. }
+                    =>
+                {
+                    input_state.joypad_1.down = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Left), .. }
+                    =>
+                {
+                    input_state.joypad_1.left = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Left), .. }
+                    =>
+                {
+                    input_state.joypad_1.left = false;
+                }
+                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Right), .. }
+                    =>
+                {
+                    input_state.joypad_1.right = true;
+                }
+                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Right), .. }
+                    =>
+                {
+                    input_state.joypad_1.right = false;
                 }
                 _ => { }
             }
         }
+
+        input.set_state(input_state);
 
         loop {
             match Pin::new(&mut run_nes).resume() {
