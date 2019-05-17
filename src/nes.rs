@@ -4,7 +4,7 @@ use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
 use crate::rom::Rom;
 use crate::video::Video;
-use crate::input::Input;
+use crate::input::{Input, InputState};
 use cpu::{Cpu, CpuStep};
 use ppu::{Ppu, PpuStep};
 use mapper::Mapper;
@@ -18,6 +18,7 @@ pub struct Nes<'a, I>
     where I: NesIo
 {
     pub io: &'a I,
+    input_reader: InputReader<&'a I::Input>,
     pub mapper: Mapper,
     pub ram: Cell<[u8; 0x0800]>,
     pub cpu: Cpu,
@@ -32,9 +33,11 @@ impl<'a, I> Nes<'a, I>
         let cpu = Cpu::new();
         let ppu = Ppu::new();
         let mapper = Mapper::from_rom(rom);
+        let input_reader = InputReader::new(io.input());
 
         let nes = Nes {
             io,
+            input_reader,
             mapper,
             ram,
             cpu,
@@ -87,8 +90,11 @@ impl<'a, I> Nes<'a, I>
                 0x00
             }
             0x4016 => {
-                // TODO: Return joystick state
-                0x40
+                // TODO: Handle open bus behavior!
+                match self.input_reader.read_port_1_data() {
+                    true => 0b_0000_0001,
+                    false => 0b_0000_0000,
+                }
             }
             0x4017 => {
                 // TODO: Return joystick state
@@ -157,7 +163,13 @@ impl<'a, I> Nes<'a, I>
                 // TODO: APU sound channel control
             }
             0x4016 => {
-                // TODO: Joystick strobe
+                let strobe = (value & 0b_0000_0001) != 0;
+                if strobe {
+                    self.input_reader.start_strobe();
+                }
+                else {
+                    self.input_reader.stop_strobe();
+                }
             }
             0x4017 => {
                 // TODO: Implement APU frame counter
@@ -324,4 +336,70 @@ impl<'a, I> NesIo for &'a I
     fn input(&self) -> &Self::Input {
         (*self).input()
     }
+}
+
+#[derive(Clone)]
+struct InputReader<I>
+    where I: Input
+{
+    input: I,
+    strobe: Cell<InputStrobe>
+}
+
+impl<I> InputReader<I>
+    where I: Input
+{
+    fn new(input: I) -> Self {
+        let strobe = Cell::new(InputStrobe::Live);
+        InputReader { input, strobe }
+    }
+
+    fn start_strobe(&self) {
+        self.strobe.set(InputStrobe::Live);
+    }
+
+    fn stop_strobe(&self) {
+        let state = self.input.input_state();
+        self.strobe.set(InputStrobe::Strobed {
+            state,
+            read_port_1: 0,
+            read_port_2: 0,
+        });
+    }
+
+    fn read_port_1_data(&self) -> bool {
+        match self.strobe.get() {
+            InputStrobe::Live => {
+                let current_state = self.input.input_state();
+                current_state.joypad_1.a
+            }
+            InputStrobe::Strobed { state, read_port_1, read_port_2 } => {
+                let data = match read_port_1 {
+                    0 => state.joypad_1.a,
+                    1 => state.joypad_1.b,
+                    2 => state.joypad_1.select,
+                    3 => state.joypad_1.start,
+                    4 => state.joypad_1.up,
+                    5 => state.joypad_1.down,
+                    6 => state.joypad_1.left,
+                    7 => state.joypad_1.right,
+                    _ => true,
+                };
+
+                self.strobe.set(InputStrobe::Strobed {
+                    state,
+                    read_port_1: read_port_1.saturating_add(1),
+                    read_port_2,
+                });
+
+                data
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+enum InputStrobe {
+    Live,
+    Strobed { state: InputState, read_port_1: u8, read_port_2: u8 },
 }
