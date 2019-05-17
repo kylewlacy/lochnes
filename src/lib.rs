@@ -7,3 +7,4 @@
 pub mod rom;
 pub mod nes;
 pub mod video;
+pub mod input;

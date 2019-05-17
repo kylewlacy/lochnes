@@ -3,7 +3,7 @@
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
 
-use lochnes::{nes, rom, video};
+use lochnes::{nes, rom, video, input};
 use lochnes::nes::NesStep;
 use lochnes::nes::ppu::PpuStep;
 
@@ -17,7 +17,8 @@ fn run_blargg_instr_test_with_expected_result(
         .expect(&format!("Failed to parse test ROM {:?}", test_name));
 
     let video = video::NullVideo;
-    let io = nes::NesIoWith { video };
+    let input = input::NullInput;
+    let io = nes::NesIoWith { video, input };
     let nes = nes::Nes::new(&io, rom.clone());
     let mut run_nes = nes.run();
 

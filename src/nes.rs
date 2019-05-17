@@ -4,6 +4,7 @@ use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
 use crate::rom::Rom;
 use crate::video::Video;
+use crate::input::Input;
 use cpu::{Cpu, CpuStep};
 use ppu::{Ppu, PpuStep};
 use mapper::Mapper;
@@ -278,27 +279,35 @@ pub enum NesStep {
     Ppu(PpuStep),
 }
 
-// A trait that encapsulates NES I/O traits (namely just `Video`), allowing
+// A trait that encapsulates NES I/O traits (`Video` and `Input`), allowing
 // code that uses `Nes` to only take or return a single generic parameter.
 pub trait NesIo {
     type Video: Video;
+    type Input: Input;
 
     fn video(&self) -> &Self::Video;
+    fn input(&self) -> &Self::Input;
 }
 
-pub struct NesIoWith<V>
-    where V: Video
+pub struct NesIoWith<V, I>
+    where V: Video, I: Input
 {
-    pub video: V
+    pub video: V,
+    pub input: I,
 }
 
-impl<V> NesIo for NesIoWith<V>
-    where V: Video
+impl<V, I> NesIo for NesIoWith<V, I>
+    where V: Video, I: Input
 {
     type Video = V;
+    type Input = I;
 
     fn video(&self) -> &Self::Video {
         &self.video
+    }
+
+    fn input(&self) -> &Self::Input {
+        &self.input
     }
 }
 
@@ -306,8 +315,13 @@ impl<'a, I> NesIo for &'a I
     where I: NesIo
 {
     type Video = I::Video;
+    type Input = I::Input;
 
     fn video(&self) -> &Self::Video {
         (*self).video()
+    }
+
+    fn input(&self) -> &Self::Input {
+        (*self).input()
     }
 }

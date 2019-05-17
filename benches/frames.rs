@@ -7,7 +7,7 @@ use std::pin::Pin;
 use std::{env, fs};
 use test::Bencher;
 
-use lochnes::{nes, rom, video};
+use lochnes::{nes, rom, video, input};
 use lochnes::nes::NesStep;
 use lochnes::nes::ppu::PpuStep;
 
@@ -20,7 +20,8 @@ fn bench_frames(b: &mut Bencher) {
 
     b.iter(|| {
         let video = video::NullVideo;
-        let io = nes::NesIoWith { video };
+        let input = input::NullInput;
+        let io = nes::NesIoWith { video, input };
         let nes = nes::Nes::new(&io, rom.clone());
         let mut run_nes = nes.run();
 

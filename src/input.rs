@@ -1,5 +1,3 @@
-use std::cell::Cell;
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct InputState {
     pub joypad_1: JoypadState,

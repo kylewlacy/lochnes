@@ -17,7 +17,7 @@ use sdl2::keyboard::Keycode as SdlKeycode;
 use nes::NesStep;
 use nes::ppu::PpuStep;
 
-use lochnes::{rom, nes, video};
+use lochnes::{rom, nes, video, input};
 
 fn main() {
     let opts = Options::from_args();
@@ -69,7 +69,8 @@ fn run(opts: Options) -> Result<(), LochnesError> {
         NES_WIDTH,
         NES_HEIGHT
     )?;
-    let io = nes::NesIoWith { video };
+    let input = input::NullInput;
+    let io = nes::NesIoWith { video, input };
     let nes = nes::Nes::new(&io, rom);
     let mut run_nes = nes.run();
 
