@@ -14,6 +14,7 @@ use std::thread;
 use structopt::StructOpt;
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::Keycode as SdlKeycode;
+use sdl2::controller::Button as SdlButton;
 use nes::NesStep;
 use nes::ppu::PpuStep;
 
@@ -62,6 +63,24 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let mut sdl_canvas = sdl_window.into_canvas()
         .build()?;
     let sdl_texture_creator = sdl_canvas.texture_creator();
+    let sdl_controllers = sdl.game_controller()
+        .map_err(LochnesError::Sdl2Error)?;
+
+    let num_sdl_controllers = sdl_controllers.num_joysticks()
+        .map_err(LochnesError::Sdl2Error)?;
+
+    let sdl_controller_index = (0..num_sdl_controllers).find_map(|n| {
+        if sdl_controllers.is_game_controller(n) {
+            Some(n)
+        }
+        else {
+            None
+        }
+    });
+    let _sdl_controller = sdl_controller_index.map(|index| {
+        sdl_controllers.open(index)
+    }).transpose()?;
+
     let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
 
     let video = &video::TextureBufferedVideo::new(
@@ -86,81 +105,99 @@ fn run(opts: Options) -> Result<(), LochnesError> {
                     break 'running;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Z), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::A, .. }
                     =>
                 {
                     input_state.joypad_1.a = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Z), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::A, .. }
                     =>
                 {
                     input_state.joypad_1.a = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::X), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::B, .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::X, .. }
                     =>
                 {
                     input_state.joypad_1.b = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::X), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::B, .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::X, .. }
                     =>
                 {
                     input_state.joypad_1.b = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Return), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::Start, .. }
                     =>
                 {
                     input_state.joypad_1.start = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Return), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::Start, .. }
                     =>
                 {
                     input_state.joypad_1.start = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Backslash), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::Back, .. }
                     =>
                 {
                     input_state.joypad_1.select = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Backslash), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::Back, .. }
                     =>
                 {
                     input_state.joypad_1.select = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Up), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadUp, .. }
                     =>
                 {
                     input_state.joypad_1.up = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Up), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadUp, .. }
                     =>
                 {
                     input_state.joypad_1.up = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Down), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadDown, .. }
                     =>
                 {
                     input_state.joypad_1.down = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Down), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadDown, .. }
                     =>
                 {
                     input_state.joypad_1.down = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Left), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadLeft, .. }
                     =>
                 {
                     input_state.joypad_1.left = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Left), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadLeft, .. }
                     =>
                 {
                     input_state.joypad_1.left = false;
                 }
                 SdlEvent::KeyDown { keycode: Some(SdlKeycode::Right), .. }
+                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadRight, .. }
                     =>
                 {
                     input_state.joypad_1.right = true;
                 }
                 SdlEvent::KeyUp { keycode: Some(SdlKeycode::Right), .. }
+                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadRight, .. }
                     =>
                 {
                     input_state.joypad_1.right = false;
