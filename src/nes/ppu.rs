@@ -23,10 +23,12 @@ pub struct Ppu {
     pub oam: Cell<[u8; 0x0100]>,
     pub palette_ram: Cell<[u8; 0x20]>,
 
-    // Internal "cache" indexed by an X coordinate, returning the sprite
-    // to render for that pixel, if any. `None` indicates the cache is not
-    // initialized.
-    scanline_sprite_indices: Cell<[Option<u8>; 256]>,
+    // Internal "cache" indexed by an X coordinate, returning a bitfield
+    // that represents the sprites that should be rendered for that
+    // X coordinate. For example, a value of 0b_0100_0001 at index 5 means that
+    // the sprites at index 0 and 6 should be rendered at pixel 5 of
+    // the scanline (since bits 0 and 6 are set)
+    scanline_sprite_indices: Cell<[u64; 256]>,
 }
 
 impl Ppu {
@@ -42,7 +44,7 @@ impl Ppu {
             ppu_ram: Cell::new([0; 0x0800]),
             oam: Cell::new([0; 0x0100]),
             palette_ram: Cell::new([0; 0x20]),
-            scanline_sprite_indices: Cell::new([None; 256]),
+            scanline_sprite_indices: Cell::new([0; 256]),
         }
     }
 
@@ -210,7 +212,7 @@ impl Ppu {
                     }
 
                     if scanline < 240 {
-                        let mut new_sprite_indices = [None; 256];
+                        let mut new_sprite_indices = [0; 256];
                         for sprite_index in 0_u8..64 {
                             let oam_index = sprite_index as usize * 4;
                             let sprite_y = oam[oam_index].get() as u16;
@@ -220,9 +222,8 @@ impl Ppu {
                                 for sprite_x_offset in 0_u16..8 {
                                     let x = (sprite_x + sprite_x_offset) as usize;
                                     if x < 256 {
-                                        new_sprite_indices[x].get_or_insert_with(|| {
-                                            sprite_index
-                                        });
+                                        let sprite_bitmask = 1 << sprite_index;
+                                        new_sprite_indices[x] |= sprite_bitmask;
                                     }
                                 }
                             }
@@ -231,7 +232,7 @@ impl Ppu {
                         nes.ppu.scanline_sprite_indices.set(new_sprite_indices);
                     }
                     else {
-                        let new_sprite_indices = [None; 256];
+                        let new_sprite_indices = [0; 256];
                         nes.ppu.scanline_sprite_indices.set(new_sprite_indices);
                     }
                 }
@@ -349,9 +350,12 @@ impl Ppu {
                             };
 
                             let sprite_palette_and_color_index = {
-                                let sprite_index = sprite_indices[x as usize];
+                                let sprite_index_bitmask = sprite_indices[x as usize];
+                                let included_sprites = (0_u64..64).filter(|sprite_index| {
+                                    (sprite_index_bitmask & (1_u64 << sprite_index)) != 0
+                                });
 
-                                sprite_index.map(|sprite_index| {
+                                let mut palette_and_color_indices = included_sprites.map(|sprite_index| {
                                     let oam_index = (sprite_index * 4) as usize;
                                     let sprite_y = oam[oam_index].get() as u16;
                                     let tile_index = oam[oam_index + 1].get();
@@ -411,7 +415,13 @@ impl Ppu {
                                     };
 
                                     (palette_index, color_index)
-                                })
+                                });
+
+                                let palette_and_color_index = palette_and_color_indices.find(|&(_, color_index)| {
+                                    color_index != 0
+                                });
+
+                                palette_and_color_index
                             };
 
                             let color_code = match sprite_palette_and_color_index {
