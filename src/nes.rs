@@ -207,6 +207,18 @@ impl<'a, I> Nes<'a, I>
             0x0000..=0x3EFF => {
                 self.mapper.read_ppu_u8(self, addr)
             }
+            0x3F10 => {
+                self.read_ppu_u8(0x3F00)
+            }
+            0x3F14 => {
+                self.read_ppu_u8(0x3F04)
+            }
+            0x3F18 => {
+                self.read_ppu_u8(0x3F08)
+            }
+            0x3F1C => {
+                self.read_ppu_u8(0x3F0C)
+            }
             0x3F00..=0x3FFF => {
                 let offset = (addr - 0x3F00) as usize % palette_ram.len();
                 palette_ram[offset].get()
@@ -223,6 +235,18 @@ impl<'a, I> Nes<'a, I>
         match addr {
             0x0000..=0x3EFF => {
                 self.mapper.write_ppu_u8(self, addr, value);
+            }
+            0x3F10 => {
+                self.write_ppu_u8(0x3F00, value);
+            }
+            0x3F14 => {
+                self.write_ppu_u8(0x3F04, value);
+            }
+            0x3F18 => {
+                self.write_ppu_u8(0x3F08, value);
+            }
+            0x3F1C => {
+                self.write_ppu_u8(0x3F0C, value);
             }
             0x3F00..=0x3FFF => {
                 let offset = (addr - 0x3F00) as usize % palette_ram.len();

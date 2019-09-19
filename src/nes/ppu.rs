@@ -295,16 +295,22 @@ impl Ppu {
                             continue;
                         }
 
+                        let scroll = nes.ppu.scroll.get();
+                        let scroll_x = scroll & 0x00FF;
+                        let tile_offset = scroll_x / 8;
+                        let tile_x_pixel_offset = scroll_x % 8;
+                        let scroll_tile_x = tile_x + tile_offset;
+
                         yield PpuStep::Cycle;
                         yield PpuStep::Cycle;
-                        let nametable_index = tile_y * 32 + tile_x;
+                        let nametable_index = tile_y * 32 + scroll_tile_x;
                         let nametable_byte = nes.read_ppu_u8(0x2000 + nametable_index);
 
                         yield PpuStep::Cycle;
                         yield PpuStep::Cycle;
-                        let attr_x = tile_x / 4;
+                        let attr_x = scroll_tile_x / 4;
                         let attr_y = tile_y / 4;
-                        let attr_is_left = ((tile_x / 2) % 2) == 0;
+                        let attr_is_left = ((scroll_tile_x / 2) % 2) == 0;
                         let attr_is_top = ((tile_y / 2) % 2) == 0;
 
                         let attr_index = attr_y * 8 + attr_x;
@@ -333,10 +339,11 @@ impl Ppu {
                         yield PpuStep::Cycle;
                         yield PpuStep::Cycle;
                         for tile_x_pixel in 0..8 {
+                            let tile_x_pixel_scroll = tile_x_pixel + tile_x_pixel_offset;
                             let x = (tile_x * 8) + tile_x_pixel;
 
                             let background_color_index = {
-                                let bitmap_bitmask = 0b_1000_0000 >> tile_x_pixel;
+                                let bitmap_bitmask = 0b_1000_0000 >> (tile_x_pixel_scroll % 8);
                                 let bitmap_lo_bit = (bitmap_lo_byte & bitmap_bitmask) != 0;
                                 let bitmap_hi_bit = (bitmap_hi_byte & bitmap_bitmask) != 0;
 
