@@ -3,12 +3,21 @@ authors = ["Kyle Lacy <kylelacy+git@pm.me>"]
 name = "lochnes"
 version = "0.1.0"
 edition = "2018"
+
 [dependencies]
 bitflags = "1.0.4"
 enum-kinds = "0.4.1"
 structopt = "0.2.15"
 sdl2 = "0.32.1"
+log = "0.4.8"
+stderrlog = "0.4.1"
+
+[features]
+default = ["easter-egg"]
+easter-egg = []
+
 [profile.dev]
 opt-level = 2
+
 [profile.release]
 debug = true

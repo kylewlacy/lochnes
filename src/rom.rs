@@ -186,7 +186,7 @@ impl RomHeader {
             0 => { TvSystem::Ntsc },
             2 => { TvSystem::Pal },
             1 | 3 => { TvSystem::Dual },
-            _ => { unreachable!(""); }
+            _ => { unreachable!(); }
         };
 
         let has_bus_conflicts = flag_bus_conflicts_bit;

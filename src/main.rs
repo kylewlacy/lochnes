@@ -11,6 +11,7 @@ use std::process;
 use std::io;
 use std::fs;
 use std::thread;
+use log::{info, debug, trace};
 use structopt::StructOpt;
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::Keycode as SdlKeycode;
@@ -22,6 +23,12 @@ use lochnes::{rom, nes, video, input};
 
 fn main() {
     let opts = Options::from_args();
+    stderrlog::new()
+        .module(module_path!())
+        .quiet(opts.quiet || opts.verbose == 6)
+        .verbosity(opts.verbose as usize)
+        .init()
+        .expect("Failed to set up logging");
     let run_result = run(opts);
 
     match run_result {
@@ -41,11 +48,33 @@ struct Options {
 
     #[structopt(long = "scale")]
     scale: Option<u32>,
+
+    #[structopt(short = "q", long = "quiet")]
+    quiet: bool,
+
+    #[structopt(short = "v", parse(from_occurrences))]
+    verbose: u8,
 }
 
 fn run(opts: Options) -> Result<(), LochnesError> {
+    debug!("Options: {:#?}", opts);
+
+    #[cfg(feature = "easter-egg")] {
+        if opts.verbose == 6 {
+            let bytes = include_bytes!("../tests/fixtures/egg.nes");
+            let mut bytes: Vec<u8> = bytes.to_vec();
+            let nmi = &mut bytes[0x400C];
+            *nmi = nmi.wrapping_add(opts.verbose / 2);
+            let rom = rom::Rom::from_bytes(bytes.into_iter())?;
+            run_rom(opts, rom)?;
+            return Ok(());
+        }
+    }
+
     let bytes = fs::read(&opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
+
+    debug!("ROM header: {:#04X?}", rom.header);
 
     run_rom(opts, rom)?;
 
@@ -214,17 +243,18 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         }
 
         input.set_state(input_state);
+        debug!("Input: {:?}", input_state);
 
         loop {
             match Pin::new(&mut run_nes).resume() {
                 GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
                     break;
                 }
-                // GeneratorState::Yielded(NesStep::Cpu(nes::cpu::CpuStep::Op(op))) => {
-                //     println!("{:X?}", nes.cpu);
-                //     println!("${:04X}: {}", op.pc, op.op);
-                //     println!();
-                // }
+                GeneratorState::Yielded(NesStep::Cpu(nes::cpu::CpuStep::Op(op))) => {
+                    trace!("{:X?}", nes.cpu);
+                    trace!("${:04X}: {}", op.pc, op.op);
+                    trace!("----------");
+                }
                 GeneratorState::Yielded(_) => { }
             }
         }
@@ -233,7 +263,7 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         sdl_canvas.present();
 
         let elapsed = frame_start.elapsed();
-        println!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
+        info!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
         let duration_until_refresh = NES_REFRESH_RATE.checked_sub(elapsed);
         let sleep_duration = duration_until_refresh.unwrap_or_else(|| {
             Duration::from_secs(0)
