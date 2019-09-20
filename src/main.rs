@@ -44,12 +44,19 @@ struct Options {
 }
 
 fn run(opts: Options) -> Result<(), LochnesError> {
+    let bytes = fs::read(&opts.rom)?;
+    let rom = rom::Rom::from_bytes(bytes.into_iter())?;
+
+    run_rom(opts, rom)?;
+
+    Ok(())
+}
+
+fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
     const NES_REFRESH_RATE: Duration = Duration::from_nanos(1_000_000_000 / 60);
     const NES_WIDTH: u32 = 256;
     const NES_HEIGHT: u32 = 240;
 
-    let bytes = fs::read(opts.rom)?;
-    let rom = rom::Rom::from_bytes(bytes.into_iter())?;
     let scale = opts.scale.unwrap_or(1);
 
     let window_width = NES_WIDTH * scale;
