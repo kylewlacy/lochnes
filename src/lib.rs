@@ -1,5 +1,5 @@
 #![feature(
-    as_cell, cell_update, never_type, exhaustive_patterns,
+    cell_update, never_type, exhaustive_patterns,
     generators, generator_trait
 )]
 
