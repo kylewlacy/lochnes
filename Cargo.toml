@@ -3,6 +3,7 @@ authors = ["Kyle Lacy <kylelacy+git@pm.me>"]
 name = "lochnes"
 version = "0.1.0"
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 bitflags = "1.0.4"
