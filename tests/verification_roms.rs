@@ -3,15 +3,15 @@
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
 
-use lochnes::{nes, rom, video, input};
-use lochnes::nes::NesStep;
 use lochnes::nes::ppu::PpuStep;
+use lochnes::nes::NesStep;
+use lochnes::{input, nes, rom, video};
 
 fn run_blargg_instr_test_with_expected_result(
     test_name: &str,
     rom_bytes: &[u8],
     expected_status: u8,
-    expected_output: &str
+    expected_output: &str,
 ) {
     let rom = rom::Rom::from_bytes(rom_bytes.into_iter().cloned())
         .expect(&format!("Failed to parse test ROM {:?}", test_name));
@@ -26,8 +26,10 @@ fn run_blargg_instr_test_with_expected_result(
     for frame in 0..240 {
         loop {
             match Pin::new(&mut run_nes).resume() {
-                GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => { break; }
-                GeneratorState::Yielded(_) => { }
+                GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
+                    break;
+                }
+                GeneratorState::Yielded(_) => {}
             }
         }
 
@@ -36,12 +38,14 @@ fn run_blargg_instr_test_with_expected_result(
 
         let status = nes.read_u8(0x6000);
         match (status, frame) {
-            (_, 0) => { } // Ignore status on first frame
-            (STATUS_TEST_IS_RUNNING, _) => { }
+            (_, 0) => {} // Ignore status on first frame
+            (STATUS_TEST_IS_RUNNING, _) => {}
             (STATUS_TEST_NEEDS_RESET, _) => {
                 unimplemented!("Verification ROM requested a reset!");
             }
-            _ => { break; }
+            _ => {
+                break;
+            }
         }
     }
 
@@ -51,8 +55,12 @@ fn run_blargg_instr_test_with_expected_result(
     for i in 0x6004_u16.. {
         let byte = nes.read_u8(i);
         match byte {
-            0 => { break; }
-            byte => { test_output.push(byte); }
+            0 => {
+                break;
+            }
+            byte => {
+                test_output.push(byte);
+            }
         }
     }
 
@@ -65,37 +73,47 @@ fn run_blargg_instr_test_with_expected_result(
 
 fn run_blargg_instr_test(test_name: &str, rom_bytes: &[u8]) {
     let expected_output = format!("\n{}\n\nPassed\n", test_name);
-    run_blargg_instr_test_with_expected_result(
-        test_name,
-        rom_bytes,
-        0,
-        &expected_output
-    );
+    run_blargg_instr_test_with_expected_result(test_name, rom_bytes, 0, &expected_output);
 }
 
 #[test]
 fn rom_blargg_instr_test_implied() {
-    run_blargg_instr_test("01-implied", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/01-implied.nes"));
+    run_blargg_instr_test(
+        "01-implied",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/01-implied.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_immediate() {
-    run_blargg_instr_test("02-immediate", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/02-immediate.nes"));
+    run_blargg_instr_test(
+        "02-immediate",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/02-immediate.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_zero_page() {
-    run_blargg_instr_test("03-zero_page", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/03-zero_page.nes"));
+    run_blargg_instr_test(
+        "03-zero_page",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/03-zero_page.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_zero_page_indexed() {
-    run_blargg_instr_test("04-zp_xy", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/04-zp_xy.nes"));
+    run_blargg_instr_test(
+        "04-zp_xy",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/04-zp_xy.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_abs() {
-    run_blargg_instr_test("05-absolute", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/05-absolute.nes"));
+    run_blargg_instr_test(
+        "05-absolute",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/05-absolute.nes"),
+    );
 }
 
 // NOTE: The absolute-indexed test ROM fails with the below message in other
@@ -115,30 +133,46 @@ fn rom_blargg_instr_test_abs_indexed() {
         "06-abs_xy",
         include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/06-abs_xy.nes"),
         1,
-        &ABS_XY_EXPECTED_FAILURE);
+        &ABS_XY_EXPECTED_FAILURE,
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_indexed_indirect() {
-    run_blargg_instr_test("07-ind_x", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/07-ind_x.nes"));
+    run_blargg_instr_test(
+        "07-ind_x",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/07-ind_x.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_indirect_indexed() {
-    run_blargg_instr_test("08-ind_y", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/08-ind_y.nes"));
+    run_blargg_instr_test(
+        "08-ind_y",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/08-ind_y.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_branching() {
-    run_blargg_instr_test("09-branches", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/09-branches.nes"));
+    run_blargg_instr_test(
+        "09-branches",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/09-branches.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_stack() {
-    run_blargg_instr_test("10-stack", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/10-stack.nes"));
+    run_blargg_instr_test(
+        "10-stack",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/10-stack.nes"),
+    );
 }
 
 #[test]
 fn rom_blargg_instr_test_special() {
-    run_blargg_instr_test("11-special", include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/11-special.nes"));
+    run_blargg_instr_test(
+        "11-special",
+        include_bytes!("./fixtures/nes-test-roms/nes_instr_test/rom_singles/11-special.nes"),
+    );
 }

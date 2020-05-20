@@ -1,9 +1,9 @@
-use std::u8;
-use std::fmt;
-use std::cell::Cell;
-use std::ops::Generator;
-use bitflags::bitflags;
 use crate::nes::{Nes, NesIo};
+use bitflags::bitflags;
+use std::cell::Cell;
+use std::fmt;
+use std::ops::Generator;
+use std::u8;
 
 #[derive(Debug, Clone)]
 pub struct Cpu {
@@ -71,9 +71,7 @@ impl Cpu {
         self.s.update(|s| s.wrapping_sub(1));
     }
 
-    pub fn run<'a>(nes: &'a Nes<impl NesIo>)
-        -> impl Generator<Yield = CpuStep, Return = !> + 'a
-    {
+    pub fn run<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = !> + 'a {
         move || loop {
             // TODO: Does this properly account for CPU cycles for handling NMI?
             let nmi = nes.cpu.nmi.get();
@@ -1258,7 +1256,9 @@ fn opcode_to_instruction_with_mode(opcode: u8) -> (Instruction, OpMode) {
         0xFD => (Instruction::Sbc, OpMode::AbsX),
         0xFE => (Instruction::Inc, OpMode::AbsX),
         0xFF => (Instruction::UnofficialIsc, OpMode::AbsX),
-        _ => { unimplemented!("Unhandled opcode: 0x{:X}", opcode); },
+        _ => {
+            unimplemented!("Unhandled opcode: 0x{:X}", opcode);
+        }
     }
 }
 
@@ -1304,8 +1304,7 @@ impl fmt::Display for Op {
             OpArg::Branch { addr_offset } => {
                 if addr_offset >= 0 {
                     write!(f, "{} _ + #${:02X}", self.instruction, addr_offset)?;
-                }
-                else {
+                } else {
                     let abs_offset = -(addr_offset as i16);
                     write!(f, "{} _ - #${:02X}", self.instruction, abs_offset)?;
                 }
@@ -1324,8 +1323,6 @@ pub struct CpuStepOp {
     pub pc: u16,
     pub op: Op,
 }
-
-
 
 trait ImpliedOperation {
     fn operate(&self, cpu: &Cpu);
@@ -1364,10 +1361,8 @@ trait StackPullOperation {
 
 fn implied<'a>(
     nes: &'a Nes<impl NesIo>,
-    op: impl ImpliedOperation + 'a
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+    op: impl ImpliedOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1383,9 +1378,7 @@ fn implied<'a>(
     }
 }
 
-fn brk<'a>(nes: &'a Nes<impl NesIo>)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn brk<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1421,10 +1414,8 @@ fn brk<'a>(nes: &'a Nes<impl NesIo>)
 
 fn accum_modify<'a>(
     nes: &'a Nes<impl NesIo>,
-    op: impl ModifyOperation + 'a
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1445,10 +1436,8 @@ fn accum_modify<'a>(
 
 fn imm_read<'a>(
     nes: &'a Nes<impl NesIo>,
-    op: impl ReadOperation + 'a
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1457,7 +1446,6 @@ fn imm_read<'a>(
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
 
-
         Op {
             instruction: op.instruction(),
             arg: OpArg::Imm { value },
@@ -1465,9 +1453,10 @@ fn imm_read<'a>(
     }
 }
 
-fn zero_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn zero_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1490,10 +1479,8 @@ fn zero_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
 
 fn zero_modify<'a>(
     nes: &'a Nes<impl NesIo>,
-    op: impl ModifyOperation + 'a
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1519,9 +1506,10 @@ fn zero_modify<'a>(
     }
 }
 
-fn zero_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn zero_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1542,9 +1530,10 @@ fn zero_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn zero_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn zero_x_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1569,10 +1558,8 @@ fn zero_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
 
 fn zero_x_modify<'a>(
     nes: &'a Nes<impl NesIo>,
-    op: impl ModifyOperation + 'a
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1601,9 +1588,10 @@ fn zero_x_modify<'a>(
     }
 }
 
-fn zero_x_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn zero_x_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1626,9 +1614,10 @@ fn zero_x_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn zero_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn zero_y_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1651,9 +1640,10 @@ fn zero_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
     }
 }
 
-fn zero_y_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn zero_y_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1676,9 +1666,10 @@ fn zero_y_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn abs_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1704,10 +1695,8 @@ fn abs_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
 
 fn abs_modify<'a>(
     nes: &'a Nes<impl NesIo>,
-    op: impl ModifyOperation + 'a
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1735,9 +1724,10 @@ fn abs_modify<'a>(
     }
 }
 
-fn abs_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1761,9 +1751,7 @@ fn abs_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn abs_jmp<'a>(nes: &'a Nes<impl NesIo>)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_jmp<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1783,9 +1771,7 @@ fn abs_jmp<'a>(nes: &'a Nes<impl NesIo>)
     }
 }
 
-fn ind_jmp<'a>(nes: &'a Nes<impl NesIo>)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_jmp<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1808,14 +1794,17 @@ fn ind_jmp<'a>(nes: &'a Nes<impl NesIo>)
 
         Op {
             instruction: Instruction::Jmp,
-            arg: OpArg::Ind { target_addr: addr_lo },
+            arg: OpArg::Ind {
+                target_addr: addr_lo,
+            },
         }
     }
 }
 
-fn abs_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_x_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1836,18 +1825,16 @@ fn abs_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
 
         // Calculate the actual address to use
         let addr = addr_base.wrapping_add(x as u16);
-        let value =
-            if addr == addr_unfixed {
-                value_unfixed
-            }
-            else {
-                // If the speculative load was incorrect, read the from
-                // the correct address (at the cost of an extra cycle)
-                let fixed_value = nes.read_u8(addr);
-                yield CpuStep::Cycle;
+        let value = if addr == addr_unfixed {
+            value_unfixed
+        } else {
+            // If the speculative load was incorrect, read the from
+            // the correct address (at the cost of an extra cycle)
+            let fixed_value = nes.read_u8(addr);
+            yield CpuStep::Cycle;
 
-                fixed_value
-            };
+            fixed_value
+        };
 
         op.read(&nes.cpu, value);
         Op {
@@ -1857,9 +1844,10 @@ fn abs_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
     }
 }
 
-fn abs_x_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_x_modify<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1895,9 +1883,10 @@ fn abs_x_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
     }
 }
 
-fn abs_x_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_x_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1927,9 +1916,10 @@ fn abs_x_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn abs_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_y_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -1950,18 +1940,16 @@ fn abs_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
 
         // Calculate the actual address to use
         let addr = addr_base.wrapping_add(y as u16);
-        let value =
-            if addr == addr_unfixed {
-                value_unfixed
-            }
-            else {
-                // If the speculative load was incorrect, read the from
-                // the correct address (at the cost of an extra cycle)
-                let fixed_value = nes.read_u8(addr);
-                yield CpuStep::Cycle;
+        let value = if addr == addr_unfixed {
+            value_unfixed
+        } else {
+            // If the speculative load was incorrect, read the from
+            // the correct address (at the cost of an extra cycle)
+            let fixed_value = nes.read_u8(addr);
+            yield CpuStep::Cycle;
 
-                fixed_value
-            };
+            fixed_value
+        };
 
         op.read(&nes.cpu, value);
         Op {
@@ -1971,9 +1959,10 @@ fn abs_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
     }
 }
 
-fn abs_y_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_y_modify<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2009,9 +1998,10 @@ fn abs_y_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
     }
 }
 
-fn abs_y_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn abs_y_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2041,9 +2031,10 @@ fn abs_y_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn ind_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_x_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2074,9 +2065,10 @@ fn ind_x_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
     }
 }
 
-fn ind_x_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_x_modify<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2113,9 +2105,10 @@ fn ind_x_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
     }
 }
 
-fn ind_x_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_x_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2146,9 +2139,10 @@ fn ind_x_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn ind_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_y_read<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ReadOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
         yield CpuStep::Cycle;
@@ -2175,18 +2169,16 @@ fn ind_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
         // Calculate the actual address to use
         let addr_base = u16_from(addr_base_lo, addr_base_hi);
         let addr = addr_base.wrapping_add(y as u16);
-        let value =
-            if addr == addr_unfixed {
-                value_unfixed
-            }
-            else {
-                // If the speculative load was incorrect, read the from
-                // the correct address (at the cost of an extra cycle)
-                let fixed_value = nes.read_u8(addr);
-                yield CpuStep::Cycle;
+        let value = if addr == addr_unfixed {
+            value_unfixed
+        } else {
+            // If the speculative load was incorrect, read the from
+            // the correct address (at the cost of an extra cycle)
+            let fixed_value = nes.read_u8(addr);
+            yield CpuStep::Cycle;
 
-                fixed_value
-            };
+            fixed_value
+        };
 
         op.read(&nes.cpu, value);
         yield CpuStep::Cycle;
@@ -2198,9 +2190,10 @@ fn ind_y_read<'a>(nes: &'a Nes<impl NesIo>, op: impl ReadOperation + 'a)
     }
 }
 
-fn ind_y_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_y_modify<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl ModifyOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
         yield CpuStep::Cycle;
@@ -2241,9 +2234,10 @@ fn ind_y_modify<'a>(nes: &'a Nes<impl NesIo>, op: impl ModifyOperation + 'a)
     }
 }
 
-fn ind_y_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn ind_y_write<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl WriteOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
         yield CpuStep::Cycle;
@@ -2280,9 +2274,10 @@ fn ind_y_write<'a>(nes: &'a Nes<impl NesIo>, op: impl WriteOperation + 'a)
     }
 }
 
-fn branch<'a>(nes: &'a Nes<impl NesIo>, op: impl BranchOperation + 'a)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn branch<'a>(
+    nes: &'a Nes<impl NesIo>,
+    op: impl BranchOperation + 'a,
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(&nes);
         yield CpuStep::Cycle;
@@ -2318,9 +2313,7 @@ fn branch<'a>(nes: &'a Nes<impl NesIo>, op: impl BranchOperation + 'a)
 fn stack_push<'a>(
     nes: &'a Nes<impl NesIo>,
     op: impl StackPushOperation + 'a,
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2342,9 +2335,7 @@ fn stack_push<'a>(
 fn stack_pull<'a>(
     nes: &'a Nes<impl NesIo>,
     op: impl StackPullOperation + 'a,
-)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2366,9 +2357,7 @@ fn stack_pull<'a>(
     }
 }
 
-fn jsr<'a>(nes: &'a Nes<impl NesIo>)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn jsr<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let ret_pc = nes.cpu.pc.get().wrapping_add(3);
         let push_pc = ret_pc.wrapping_sub(1);
@@ -2388,7 +2377,6 @@ fn jsr<'a>(nes: &'a Nes<impl NesIo>)
         nes.cpu.dec_s();
         yield CpuStep::Cycle;
 
-
         nes.write_u8(nes.cpu.stack_addr(), push_pc_lo);
         nes.cpu.dec_s();
         yield CpuStep::Cycle;
@@ -2405,9 +2393,7 @@ fn jsr<'a>(nes: &'a Nes<impl NesIo>)
     }
 }
 
-fn rti<'a>(nes: &'a Nes<impl NesIo>)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn rti<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2438,9 +2424,7 @@ fn rti<'a>(nes: &'a Nes<impl NesIo>)
     }
 }
 
-fn rts<'a>(nes: &'a Nes<impl NesIo>)
-    -> impl Generator<Yield = CpuStep, Return = Op> + 'a
-{
+fn rts<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = CpuStep, Return = Op> + 'a {
     move || {
         let _opcode = Cpu::pc_fetch_inc(nes);
         yield CpuStep::Cycle;
@@ -2468,8 +2452,6 @@ fn rts<'a>(nes: &'a Nes<impl NesIo>)
         }
     }
 }
-
-
 
 struct AdcOperation;
 impl ReadOperation for AdcOperation {
@@ -2883,7 +2865,7 @@ impl ModifyOperation for LsrOperation {
 
 struct NopOperation;
 impl ImpliedOperation for NopOperation {
-    fn operate(&self, _cpu: &Cpu) { }
+    fn operate(&self, _cpu: &Cpu) {}
 
     fn instruction(&self) -> Instruction {
         Instruction::Nop
@@ -2956,7 +2938,7 @@ impl ModifyOperation for RolOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let prev_c = cpu.contains_flags(CpuFlags::C);
         let carry_mask = match prev_c {
-            true  => 0b_0000_0001,
+            true => 0b_0000_0001,
             false => 0b_0000_0000,
         };
 
@@ -2979,7 +2961,7 @@ impl ModifyOperation for RorOperation {
     fn modify(&self, cpu: &Cpu, value: u8) -> u8 {
         let prev_c = cpu.contains_flags(CpuFlags::C);
         let carry_mask = match prev_c {
-            true  => 0b_1000_0000,
+            true => 0b_1000_0000,
             false => 0b_0000_0000,
         };
 
@@ -3212,7 +3194,7 @@ impl ReadOperation for UnofficialArrOperation {
         // sets the C and V flags differently
         let prev_c = cpu.contains_flags(CpuFlags::C);
         let carry_mask = match prev_c {
-            true  => 0b_1000_0000,
+            true => 0b_1000_0000,
             false => 0b_0000_0000,
         };
 
@@ -3240,10 +3222,16 @@ impl ReadOperation for UnofficialAxsOperation {
         // This operation sets X to ((A & X) - value), and updates the
         // C, Z, and N flags appropriately.
         let a_and_x = cpu.a.get() & cpu.x.get();
-        let AdcResult { a: result, c, z, v: _, n } = adc(AdcArg {
+        let AdcResult {
+            a: result,
+            c,
+            z,
+            v: _,
+            n,
+        } = adc(AdcArg {
             a: a_and_x,
             c: true,
-            value: !value
+            value: !value,
         });
 
         cpu.x.set(result);
@@ -3303,7 +3291,7 @@ impl ReadOperation for UnofficialLaxOperation {
 struct UnofficialNopOperation;
 
 impl ImpliedOperation for UnofficialNopOperation {
-    fn operate(&self, _cpu: &Cpu) { }
+    fn operate(&self, _cpu: &Cpu) {}
 
     fn instruction(&self) -> Instruction {
         Instruction::UnofficialNop
@@ -3312,7 +3300,7 @@ impl ImpliedOperation for UnofficialNopOperation {
 
 // NOTE: Some undocumented opcodes do nothing, but still perform a memory read
 impl ReadOperation for UnofficialNopOperation {
-    fn read(&self, _cpu: &Cpu, _value: u8) { }
+    fn read(&self, _cpu: &Cpu, _value: u8) {}
 
     fn instruction(&self) -> Instruction {
         Instruction::UnofficialNop
@@ -3426,7 +3414,11 @@ impl ModifyOperation for UnofficialSreOperation {
     }
 }
 
-struct AdcArg { a: u8, value: u8, c: bool }
+struct AdcArg {
+    a: u8,
+    value: u8,
+    c: bool,
+}
 
 struct AdcResult {
     a: u8,
