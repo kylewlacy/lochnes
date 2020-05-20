@@ -246,7 +246,7 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         debug!("Input: {:?}", input_state);
 
         loop {
-            match Pin::new(&mut run_nes).resume() {
+            match Pin::new(&mut run_nes).resume(()) {
                 GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
                     break;
                 }

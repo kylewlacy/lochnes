@@ -282,7 +282,7 @@ impl<'a, I> Nes<'a, I>
         move || loop {
             // TODO: Clean this up
             loop {
-                match Pin::new(&mut run_cpu).resume() {
+                match Pin::new(&mut run_cpu).resume(()) {
                     GeneratorState::Yielded(cpu_step @ CpuStep::Cycle) => {
                         yield NesStep::Cpu(cpu_step);
                         break;
@@ -295,7 +295,7 @@ impl<'a, I> Nes<'a, I>
 
             for _ in 0u8..3 {
                 loop {
-                    match Pin::new(&mut run_ppu).resume() {
+                    match Pin::new(&mut run_ppu).resume(()) {
                         GeneratorState::Yielded(ppu_step @ PpuStep::Cycle) => {
                             yield NesStep::Ppu(ppu_step);
                             break;

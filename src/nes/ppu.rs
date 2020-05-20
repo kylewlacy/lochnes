@@ -163,7 +163,7 @@ impl Ppu {
 
         move || loop {
             loop {
-                match Pin::new(&mut run_sprite_evaluation).resume() {
+                match Pin::new(&mut run_sprite_evaluation).resume(()) {
                     GeneratorState::Yielded(PpuStep::Cycle) => {
                         break;
                     }
@@ -173,7 +173,7 @@ impl Ppu {
                 }
             }
             loop {
-                match Pin::new(&mut run_renderer).resume() {
+                match Pin::new(&mut run_renderer).resume(()) {
                     GeneratorState::Yielded(PpuStep::Cycle) => {
                         break;
                     }

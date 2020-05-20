@@ -7,7 +7,7 @@ macro_rules! yield_all {
 
             let mut gen = $gen;
             loop {
-                match Generator::resume(Pin::new(&mut gen)) {
+                match Pin::new(&mut gen).resume(()) {
                     GeneratorState::Yielded(yielded) => {
                         yield yielded;
                     }
