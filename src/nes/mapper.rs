@@ -1,6 +1,6 @@
-use std::cell::Cell;
 use crate::nes::{Nes, NesIo};
 use crate::rom::Rom;
+use std::cell::Cell;
 
 #[derive(Clone)]
 pub enum Mapper {
@@ -48,8 +48,6 @@ impl Mapper {
     }
 }
 
-
-
 #[derive(Clone)]
 pub struct NromMapper {
     rom: Rom,
@@ -62,7 +60,11 @@ impl NromMapper {
         let work_ram = Cell::new([0; 0x2000]);
         let chr_ram = vec![Cell::new(0); rom.header.chr_ram_size_bytes];
 
-        NromMapper { rom, work_ram, chr_ram }
+        NromMapper {
+            rom,
+            work_ram,
+            chr_ram,
+        }
     }
 
     pub fn read_u8(&self, addr: u16) -> u8 {
@@ -95,7 +97,7 @@ impl NromMapper {
                 let offset = ((addr - 0x6000) as usize) % work_ram.len();
                 work_ram[offset].set(value);
             }
-            0x8000..=0xFFFF => { }
+            0x8000..=0xFFFF => {}
         }
     }
 
@@ -108,8 +110,7 @@ impl NromMapper {
                 if chr_rom.is_empty() {
                     let offset = (addr as usize) % chr_ram.len();
                     chr_ram[offset].get()
-                }
-                else {
+                } else {
                     let offset = (addr as usize) % chr_rom.len();
                     chr_rom[offset]
                 }
@@ -137,8 +138,7 @@ impl NromMapper {
                 if chr_rom.is_empty() {
                     let offset = (addr as usize) % chr_ram.len();
                     chr_ram[offset].set(value);
-                }
-                else {
+                } else {
                     // Do nothing-- tried to write to read-only CHR ROM
                 }
             }
@@ -176,10 +176,15 @@ impl UxromMapper {
         let chr_ram = vec![Cell::new(0); rom.header.chr_ram_size_bytes];
         let bank = Cell::new(5);
 
-        UxromMapper { rom, bank, work_ram, chr_ram }
+        UxromMapper {
+            rom,
+            bank,
+            work_ram,
+            chr_ram,
+        }
     }
 
-    pub fn banks<'a>(&'a self) -> impl ExactSizeIterator<Item=&'a [u8]> + 'a {
+    pub fn banks<'a>(&'a self) -> impl ExactSizeIterator<Item = &'a [u8]> + 'a {
         self.rom.prg_rom.chunks(16_384)
     }
 
@@ -241,8 +246,7 @@ impl UxromMapper {
                 if chr_rom.is_empty() {
                     let offset = (addr as usize) % chr_ram.len();
                     chr_ram[offset].get()
-                }
-                else {
+                } else {
                     let offset = (addr as usize) % chr_rom.len();
                     chr_rom[offset]
                 }
@@ -270,8 +274,7 @@ impl UxromMapper {
                 if chr_rom.is_empty() {
                     let offset = (addr as usize) % chr_ram.len();
                     chr_ram[offset].set(value);
-                }
-                else {
+                } else {
                     // Do nothing-- tried to write to read-only CHR ROM
                 }
             }

@@ -1,21 +1,22 @@
-use std::u8;
+use crate::input::{Input, InputState};
+use crate::rom::Rom;
+use crate::video::Video;
+use cpu::{Cpu, CpuStep};
+use mapper::Mapper;
+use ppu::{Ppu, PpuStep};
 use std::cell::Cell;
 use std::ops::{Generator, GeneratorState};
 use std::pin::Pin;
-use crate::rom::Rom;
-use crate::video::Video;
-use crate::input::{Input, InputState};
-use cpu::{Cpu, CpuStep};
-use ppu::{Ppu, PpuStep};
-use mapper::Mapper;
+use std::u8;
 
 pub mod cpu;
-pub mod ppu;
 pub mod mapper;
+pub mod ppu;
 
 #[derive(Clone)]
 pub struct Nes<'a, I>
-    where I: NesIo
+where
+    I: NesIo,
 {
     pub io: &'a I,
     input_reader: InputReader<&'a I::Input>,
@@ -26,7 +27,8 @@ pub struct Nes<'a, I>
 }
 
 impl<'a, I> Nes<'a, I>
-    where I: NesIo
+where
+    I: NesIo,
 {
     pub fn new(io: &'a I, rom: Rom) -> Self {
         let ram = Cell::new([0; 0x0800]);
@@ -60,15 +62,9 @@ impl<'a, I> Nes<'a, I>
         let ram = self.ram();
 
         match addr {
-            0x0000..=0x07FF => {
-                ram[addr as usize].get()
-            }
-            0x2002 => {
-                self.ppu.ppustatus()
-            }
-            0x2007 => {
-                self.ppu.read_ppudata(self)
-            }
+            0x0000..=0x07FF => ram[addr as usize].get(),
+            0x2002 => self.ppu.ppustatus(),
+            0x2007 => self.ppu.read_ppudata(self),
             0x4000..=0x4007 => {
                 // TODO: Return APU pulse
                 0x00
@@ -100,9 +96,7 @@ impl<'a, I> Nes<'a, I>
                 // TODO: Return joystick state
                 0x40
             }
-            0x6000..=0xFFFF => {
-                self.mapper.read_u8(addr)
-            }
+            0x6000..=0xFFFF => self.mapper.read_u8(addr),
             _ => {
                 unimplemented!("Unhandled read from address: 0x{:X}", addr);
             }
@@ -166,8 +160,7 @@ impl<'a, I> Nes<'a, I>
                 let strobe = (value & 0b_0000_0001) != 0;
                 if strobe {
                     self.input_reader.start_strobe();
-                }
-                else {
+                } else {
                     self.input_reader.stop_strobe();
                 }
             }
@@ -204,21 +197,11 @@ impl<'a, I> Nes<'a, I>
         let palette_ram = self.ppu.palette_ram();
 
         match addr {
-            0x0000..=0x3EFF => {
-                self.mapper.read_ppu_u8(self, addr)
-            }
-            0x3F10 => {
-                self.read_ppu_u8(0x3F00)
-            }
-            0x3F14 => {
-                self.read_ppu_u8(0x3F04)
-            }
-            0x3F18 => {
-                self.read_ppu_u8(0x3F08)
-            }
-            0x3F1C => {
-                self.read_ppu_u8(0x3F0C)
-            }
+            0x0000..=0x3EFF => self.mapper.read_ppu_u8(self, addr),
+            0x3F10 => self.read_ppu_u8(0x3F00),
+            0x3F14 => self.read_ppu_u8(0x3F04),
+            0x3F18 => self.read_ppu_u8(0x3F08),
+            0x3F1C => self.read_ppu_u8(0x3F0C),
             0x3F00..=0x3FFF => {
                 let offset = (addr - 0x3F00) as usize % palette_ram.len();
                 palette_ram[offset].get()
@@ -272,9 +255,7 @@ impl<'a, I> Nes<'a, I>
         self.ppu.oam.set(oam);
     }
 
-    pub fn run(&'a self)
-        -> impl Generator<Yield = NesStep, Return = !> + 'a
-    {
+    pub fn run(&'a self) -> impl Generator<Yield = NesStep, Return = !> + 'a {
         let mut run_cpu = Cpu::run(&self);
 
         let mut run_ppu = Ppu::run(&self);
@@ -282,7 +263,7 @@ impl<'a, I> Nes<'a, I>
         move || loop {
             // TODO: Clean this up
             loop {
-                match Pin::new(&mut run_cpu).resume() {
+                match Pin::new(&mut run_cpu).resume(()) {
                     GeneratorState::Yielded(cpu_step @ CpuStep::Cycle) => {
                         yield NesStep::Cpu(cpu_step);
                         break;
@@ -295,7 +276,7 @@ impl<'a, I> Nes<'a, I>
 
             for _ in 0u8..3 {
                 loop {
-                    match Pin::new(&mut run_ppu).resume() {
+                    match Pin::new(&mut run_ppu).resume(()) {
                         GeneratorState::Yielded(ppu_step @ PpuStep::Cycle) => {
                             yield NesStep::Ppu(ppu_step);
                             break;
@@ -326,14 +307,18 @@ pub trait NesIo {
 }
 
 pub struct NesIoWith<V, I>
-    where V: Video, I: Input
+where
+    V: Video,
+    I: Input,
 {
     pub video: V,
     pub input: I,
 }
 
 impl<V, I> NesIo for NesIoWith<V, I>
-    where V: Video, I: Input
+where
+    V: Video,
+    I: Input,
 {
     type Video = V;
     type Input = I;
@@ -348,7 +333,8 @@ impl<V, I> NesIo for NesIoWith<V, I>
 }
 
 impl<'a, I> NesIo for &'a I
-    where I: NesIo
+where
+    I: NesIo,
 {
     type Video = I::Video;
     type Input = I::Input;
@@ -364,14 +350,16 @@ impl<'a, I> NesIo for &'a I
 
 #[derive(Clone)]
 struct InputReader<I>
-    where I: Input
+where
+    I: Input,
 {
     input: I,
-    strobe: Cell<InputStrobe>
+    strobe: Cell<InputStrobe>,
 }
 
 impl<I> InputReader<I>
-    where I: Input
+where
+    I: Input,
 {
     fn new(input: I) -> Self {
         let strobe = Cell::new(InputStrobe::Live);
@@ -397,7 +385,11 @@ impl<I> InputReader<I>
                 let current_state = self.input.input_state();
                 current_state.joypad_1.a
             }
-            InputStrobe::Strobed { state, read_port_1, read_port_2 } => {
+            InputStrobe::Strobed {
+                state,
+                read_port_1,
+                read_port_2,
+            } => {
                 let data = match read_port_1 {
                     0 => state.joypad_1.a,
                     1 => state.joypad_1.b,
@@ -425,5 +417,9 @@ impl<I> InputReader<I>
 #[derive(Clone, Copy)]
 enum InputStrobe {
     Live,
-    Strobed { state: InputState, read_port_1: u8, read_port_2: u8 },
+    Strobed {
+        state: InputState,
+        read_port_1: u8,
+        read_port_2: u8,
+    },
 }

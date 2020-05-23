@@ -1,10 +1,10 @@
-use std::u8;
-use std::cell::Cell;
-use std::pin::Pin;
-use std::ops::{Generator, GeneratorState};
-use bitflags::bitflags;
 use crate::nes::{Nes, NesIo};
-use crate::video::{Video, Point, Color};
+use crate::video::{Color, Point, Video};
+use bitflags::bitflags;
+use std::cell::Cell;
+use std::ops::{Generator, GeneratorState};
+use std::pin::Pin;
+use std::u8;
 
 #[derive(Clone)]
 pub struct Ppu {
@@ -92,8 +92,7 @@ impl Ppu {
             let scroll_lo = self.scroll.get() & 0x00FF;
             let scroll_hi = (value as u16) << 8;
             self.scroll.set(scroll_lo | scroll_hi);
-        }
-        else {
+        } else {
             let scroll_lo = value as u16;
             let scroll_hi = self.scroll.get() & 0xFF00;
             self.scroll.set(scroll_lo | scroll_hi);
@@ -109,8 +108,7 @@ impl Ppu {
             let addr_lo = value as u16;
             let addr_hi = self.addr.get() & 0xFF00;
             self.addr.set(addr_lo | addr_hi);
-        }
-        else {
+        } else {
             let addr_lo = self.addr.get() & 0x00FF;
             let addr_hi = (value as u16) << 8;
             self.addr.set(addr_lo | addr_hi);
@@ -155,15 +153,13 @@ impl Ppu {
         self.status.get().bits()
     }
 
-    pub fn run<'a>(nes: &'a Nes<impl NesIo>)
-        -> impl Generator<Yield = PpuStep, Return = !> + 'a
-    {
+    pub fn run<'a>(nes: &'a Nes<impl NesIo>) -> impl Generator<Yield = PpuStep, Return = !> + 'a {
         let mut run_sprite_evaluation = Ppu::run_sprite_evaluation(nes);
         let mut run_renderer = Ppu::run_renderer(nes);
 
         move || loop {
             loop {
-                match Pin::new(&mut run_sprite_evaluation).resume() {
+                match Pin::new(&mut run_sprite_evaluation).resume(()) {
                     GeneratorState::Yielded(PpuStep::Cycle) => {
                         break;
                     }
@@ -173,7 +169,7 @@ impl Ppu {
                 }
             }
             loop {
-                match Pin::new(&mut run_renderer).resume() {
+                match Pin::new(&mut run_renderer).resume(()) {
                     GeneratorState::Yielded(PpuStep::Cycle) => {
                         break;
                     }
@@ -187,9 +183,9 @@ impl Ppu {
         }
     }
 
-    fn run_sprite_evaluation<'a>(nes: &'a Nes<impl NesIo>)
-        -> impl Generator<Yield = PpuStep, Return = !> + 'a
-    {
+    fn run_sprite_evaluation<'a>(
+        nes: &'a Nes<impl NesIo>,
+    ) -> impl Generator<Yield = PpuStep, Return = !> + 'a {
         move || loop {
             for frame in 0_u64.. {
                 let frame_is_odd = frame % 2 != 0;
@@ -230,8 +226,7 @@ impl Ppu {
                         }
 
                         nes.ppu.scanline_sprite_indices.set(new_sprite_indices);
-                    }
-                    else {
+                    } else {
                         let new_sprite_indices = [0; 256];
                         nes.ppu.scanline_sprite_indices.set(new_sprite_indices);
                     }
@@ -240,9 +235,9 @@ impl Ppu {
         }
     }
 
-    fn run_renderer<'a>(nes: &'a Nes<impl NesIo>)
-        -> impl Generator<Yield = PpuStep, Return = !> + 'a
-    {
+    fn run_renderer<'a>(
+        nes: &'a Nes<impl NesIo>,
+    ) -> impl Generator<Yield = PpuStep, Return = !> + 'a {
         move || loop {
             for frame in 0_u64.. {
                 let frame_is_odd = frame % 2 != 0;
@@ -275,8 +270,7 @@ impl Ppu {
                         }
                         nes.io.video().present();
                         yield PpuStep::Vblank;
-                    }
-                    else if scanline == 0 {
+                    } else if scanline == 0 {
                         let _ = nes.ppu.status.update(|mut status| {
                             status.set(PpuStatusFlags::VBLANK_STARTED, false);
                             status
@@ -316,19 +310,22 @@ impl Ppu {
                         let attr_index = attr_y * 8 + attr_x;
                         let attr = nes.read_ppu_u8(0x23C0 + attr_index);
                         let background_palette_index = match (attr_is_top, attr_is_left) {
-                            (true, true)   =>  attr & 0b_0000_0011,
-                            (true, false)  => (attr & 0b_0000_1100) >> 2,
-                            (false, true)  => (attr & 0b_0011_0000) >> 4,
-                            (false, false) => (attr & 0b_1100_0000) >> 6
+                            (true, true) => attr & 0b_0000_0011,
+                            (true, false) => (attr & 0b_0000_1100) >> 2,
+                            (false, true) => (attr & 0b_0011_0000) >> 4,
+                            (false, false) => (attr & 0b_1100_0000) >> 6,
                         };
 
-                        let pattern_table_offset =
-                            if nes.ppu.ctrl.get().contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR) {
-                                0x1000
-                            }
-                            else {
-                                0x0000
-                            };
+                        let pattern_table_offset = if nes
+                            .ppu
+                            .ctrl
+                            .get()
+                            .contains(PpuCtrlFlags::BACKGROUND_PATTERN_TABLE_ADDR)
+                        {
+                            0x1000
+                        } else {
+                            0x0000
+                        };
                         let bitmap_offset = pattern_table_offset + nametable_byte as u16 * 16;
                         let bitmap_lo_byte = nes.read_ppu_u8(bitmap_offset + tile_y_pixel);
 
@@ -362,88 +359,97 @@ impl Ppu {
                                     (sprite_index_bitmask & (1_u64 << sprite_index)) != 0
                                 });
 
-                                let mut palette_and_color_indices = included_sprites.map(|sprite_index| {
-                                    let oam_index = (sprite_index * 4) as usize;
-                                    let sprite_y = oam[oam_index].get() as u16;
-                                    let tile_index = oam[oam_index + 1].get();
-                                    let attrs = oam[oam_index + 2].get();
-                                    let sprite_x = oam[oam_index + 3].get() as u16;
+                                let mut palette_and_color_indices =
+                                    included_sprites.map(|sprite_index| {
+                                        let oam_index = (sprite_index * 4) as usize;
+                                        let sprite_y = oam[oam_index].get() as u16;
+                                        let tile_index = oam[oam_index + 1].get();
+                                        let attrs = oam[oam_index + 2].get();
+                                        let sprite_x = oam[oam_index + 3].get() as u16;
 
-                                    let flip_horizontal = (attrs & 0b_0100_0000) != 0;
-                                    let flip_vertical = (attrs & 0b_1000_0000) != 0;
+                                        let flip_horizontal = (attrs & 0b_0100_0000) != 0;
+                                        let flip_vertical = (attrs & 0b_1000_0000) != 0;
 
-                                    let sprite_x_pixel = x.wrapping_sub(sprite_x) % 256;
-                                    let sprite_y_pixel = y.wrapping_sub(1).wrapping_sub(sprite_y) % 256;
+                                        let sprite_x_pixel = x.wrapping_sub(sprite_x) % 256;
+                                        let sprite_y_pixel =
+                                            y.wrapping_sub(1).wrapping_sub(sprite_y) % 256;
 
-                                    let sprite_x_pixel =
-                                        if flip_horizontal {
+                                        let sprite_x_pixel = if flip_horizontal {
                                             7 - sprite_x_pixel
-                                        }
-                                        else {
+                                        } else {
                                             sprite_x_pixel
                                         };
-                                    let sprite_y_pixel =
-                                        if flip_vertical {
+                                        let sprite_y_pixel = if flip_vertical {
                                             7 - sprite_y_pixel
-                                        }
-                                        else {
+                                        } else {
                                             sprite_y_pixel
                                         };
 
-                                    let pattern_bitmask = 0b_1000_0000 >> sprite_x_pixel;
-                                    let pattern_table_offset =
-                                        if nes.ppu.ctrl.get().contains(PpuCtrlFlags::SPRITE_PATTERN_TABLE_ADDR) {
+                                        let pattern_bitmask = 0b_1000_0000 >> sprite_x_pixel;
+                                        let pattern_table_offset = if nes
+                                            .ppu
+                                            .ctrl
+                                            .get()
+                                            .contains(PpuCtrlFlags::SPRITE_PATTERN_TABLE_ADDR)
+                                        {
                                             0x1000
-                                        }
-                                        else {
+                                        } else {
                                             0x0000
                                         };
-                                    let pattern_offset = pattern_table_offset as u16 + tile_index as u16 * 16;
-                                    let pattern_lo_byte = nes.read_ppu_u8(pattern_offset + sprite_y_pixel);
-                                    let pattern_hi_byte = nes.read_ppu_u8(pattern_offset + sprite_y_pixel + 8);
-                                    let pattern_lo_bit = (pattern_lo_byte & pattern_bitmask) != 0;
-                                    let pattern_hi_bit = (pattern_hi_byte & pattern_bitmask) != 0;
+                                        let pattern_offset =
+                                            pattern_table_offset as u16 + tile_index as u16 * 16;
+                                        let pattern_lo_byte =
+                                            nes.read_ppu_u8(pattern_offset + sprite_y_pixel);
+                                        let pattern_hi_byte =
+                                            nes.read_ppu_u8(pattern_offset + sprite_y_pixel + 8);
+                                        let pattern_lo_bit =
+                                            (pattern_lo_byte & pattern_bitmask) != 0;
+                                        let pattern_hi_bit =
+                                            (pattern_hi_byte & pattern_bitmask) != 0;
 
-                                    let palette_lo_bit = (attrs & 0b_0000_0001) != 0;
-                                    let palette_hi_bit = (attrs & 0b_0000_0010) != 0;
+                                        let palette_lo_bit = (attrs & 0b_0000_0001) != 0;
+                                        let palette_hi_bit = (attrs & 0b_0000_0010) != 0;
 
-                                    let palette_index = match (palette_hi_bit, palette_lo_bit) {
-                                        (false, false) => 4,
-                                        (false, true) => 5,
-                                        (true, false) => 6,
-                                        (true, true) => 7,
-                                    };
+                                        let palette_index = match (palette_hi_bit, palette_lo_bit) {
+                                            (false, false) => 4,
+                                            (false, true) => 5,
+                                            (true, false) => 6,
+                                            (true, true) => 7,
+                                        };
 
-                                    let color_index = match (pattern_hi_bit, pattern_lo_bit) {
-                                        (false, false) => 0,
-                                        (false, true) => 1,
-                                        (true, false) => 2,
-                                        (true, true) => 3,
-                                    };
+                                        let color_index = match (pattern_hi_bit, pattern_lo_bit) {
+                                            (false, false) => 0,
+                                            (false, true) => 1,
+                                            (true, false) => 2,
+                                            (true, true) => 3,
+                                        };
 
-                                    (palette_index, color_index)
-                                });
+                                        (palette_index, color_index)
+                                    });
 
-                                let palette_and_color_index = palette_and_color_indices.find(|&(_, color_index)| {
-                                    color_index != 0
-                                });
+                                let palette_and_color_index = palette_and_color_indices
+                                    .find(|&(_, color_index)| color_index != 0);
 
                                 palette_and_color_index
                             };
 
                             let color_code = match sprite_palette_and_color_index {
-                                None | Some((_, 0)) => {
-                                    nes.ppu.palette_index_to_nes_color_code(background_palette_index, background_color_index)
-                                }
+                                None | Some((_, 0)) => nes.ppu.palette_index_to_nes_color_code(
+                                    background_palette_index,
+                                    background_color_index,
+                                ),
                                 Some((sprite_palette_index, sprite_color_index)) => {
-                                    nes.ppu.palette_index_to_nes_color_code(sprite_palette_index, sprite_color_index)
+                                    nes.ppu.palette_index_to_nes_color_code(
+                                        sprite_palette_index,
+                                        sprite_color_index,
+                                    )
                                 }
                             };
                             let color = nes_color_code_to_rgb(color_code);
                             let point = Point { x, y };
                             nes.io.video().draw_point(point, color);
                         }
-                    };
+                    }
 
                     for _ in 0..4 {
                         // TODO: Implement PPU garbage reads
@@ -454,13 +460,7 @@ impl Ppu {
         }
     }
 
-    fn palette_index_to_nes_color_code(
-        &self,
-        palette_index: u8,
-        color_index: u8
-    )
-        -> u8
-    {
+    fn palette_index_to_nes_color_code(&self, palette_index: u8, color_index: u8) -> u8 {
         let palette_ram = self.palette_ram();
         let palette_ram_indices = [
             [0x00, 0x01, 0x02, 0x03],
@@ -537,71 +537,329 @@ fn nes_color_code_to_rgb(color_code: u8) -> Color {
     // - https://wiki.nesdev.com/w/index.php/PPU_palettes
     // - https://wiki.nesdev.com/w/index.php/File:Savtool-swatches.png
     match color_code & 0x3F {
-        0x00 => Color { r: 0x54, g: 0x54, b: 0x54 },
-        0x01 => Color { r: 0x00, g: 0x1E, b: 0x74 },
-        0x02 => Color { r: 0x08, g: 0x10, b: 0x90 },
-        0x03 => Color { r: 0x30, g: 0x00, b: 0x88 },
-        0x04 => Color { r: 0x44, g: 0x00, b: 0x64 },
-        0x05 => Color { r: 0x5C, g: 0x00, b: 0x30 },
-        0x06 => Color { r: 0x54, g: 0x04, b: 0x00 },
-        0x07 => Color { r: 0x3C, g: 0x18, b: 0x00 },
-        0x08 => Color { r: 0x20, g: 0x2A, b: 0x00 },
-        0x09 => Color { r: 0x08, g: 0x3A, b: 0x00 },
-        0x0A => Color { r: 0x00, g: 0x40, b: 0x00 },
-        0x0B => Color { r: 0x00, g: 0x3C, b: 0x00 },
-        0x0C => Color { r: 0x00, g: 0x32, b: 0x3C },
-        0x0D => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x0E => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x0F => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x10 => Color { r: 0x98, g: 0x96, b: 0x98 },
-        0x11 => Color { r: 0x08, g: 0x4C, b: 0xC4 },
-        0x12 => Color { r: 0x30, g: 0x32, b: 0xEC },
-        0x13 => Color { r: 0x5C, g: 0x1E, b: 0xE4 },
-        0x14 => Color { r: 0x88, g: 0x14, b: 0xB0 },
-        0x15 => Color { r: 0xA0, g: 0x14, b: 0x64 },
-        0x16 => Color { r: 0x98, g: 0x22, b: 0x20 },
-        0x17 => Color { r: 0x78, g: 0x3C, b: 0x00 },
-        0x18 => Color { r: 0x54, g: 0x5A, b: 0x00 },
-        0x19 => Color { r: 0x28, g: 0x72, b: 0x00 },
-        0x1A => Color { r: 0x08, g: 0x7C, b: 0x00 },
-        0x1B => Color { r: 0x00, g: 0x76, b: 0x28 },
-        0x1C => Color { r: 0x00, g: 0x66, b: 0x78 },
-        0x1D => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x1E => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x1F => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x20 => Color { r: 0xEC, g: 0xEE, b: 0xEC },
-        0x21 => Color { r: 0x4C, g: 0x9A, b: 0xEC },
-        0x22 => Color { r: 0x78, g: 0x7C, b: 0xEC },
-        0x23 => Color { r: 0xB0, g: 0x62, b: 0xEC },
-        0x24 => Color { r: 0xE4, g: 0x54, b: 0xEC },
-        0x25 => Color { r: 0xEC, g: 0x58, b: 0xB4 },
-        0x26 => Color { r: 0xEC, g: 0x6A, b: 0x64 },
-        0x27 => Color { r: 0xD4, g: 0x88, b: 0x20 },
-        0x28 => Color { r: 0xA0, g: 0xAA, b: 0x00 },
-        0x29 => Color { r: 0x74, g: 0xC4, b: 0x00 },
-        0x2A => Color { r: 0x4C, g: 0xD0, b: 0x20 },
-        0x2B => Color { r: 0x38, g: 0xCC, b: 0x6C },
-        0x2C => Color { r: 0x38, g: 0xB4, b: 0xCC },
-        0x2D => Color { r: 0x3C, g: 0x3C, b: 0x3C },
-        0x2E => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x2F => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x30 => Color { r: 0xEC, g: 0xEE, b: 0xEC },
-        0x31 => Color { r: 0xA8, g: 0xCC, b: 0xEC },
-        0x32 => Color { r: 0xBC, g: 0xBC, b: 0xEC },
-        0x33 => Color { r: 0xD4, g: 0xB2, b: 0xEC },
-        0x34 => Color { r: 0xEC, g: 0xAE, b: 0xEC },
-        0x35 => Color { r: 0xEC, g: 0xAE, b: 0xD4 },
-        0x36 => Color { r: 0xEC, g: 0xB4, b: 0xB0 },
-        0x37 => Color { r: 0xE4, g: 0xC4, b: 0x90 },
-        0x38 => Color { r: 0xCC, g: 0xD2, b: 0x78 },
-        0x39 => Color { r: 0xB4, g: 0xDE, b: 0x78 },
-        0x3A => Color { r: 0xA8, g: 0xE2, b: 0x90 },
-        0x3B => Color { r: 0x98, g: 0xE2, b: 0xB4 },
-        0x3C => Color { r: 0xA0, g: 0xD6, b: 0xE4 },
-        0x3D => Color { r: 0xA0, g: 0xA2, b: 0xA0 },
-        0x3E => Color { r: 0x00, g: 0x00, b: 0x00 },
-        0x3F => Color { r: 0x00, g: 0x00, b: 0x00 },
-        _ => { unreachable!(); },
+        0x00 => Color {
+            r: 0x54,
+            g: 0x54,
+            b: 0x54,
+        },
+        0x01 => Color {
+            r: 0x00,
+            g: 0x1E,
+            b: 0x74,
+        },
+        0x02 => Color {
+            r: 0x08,
+            g: 0x10,
+            b: 0x90,
+        },
+        0x03 => Color {
+            r: 0x30,
+            g: 0x00,
+            b: 0x88,
+        },
+        0x04 => Color {
+            r: 0x44,
+            g: 0x00,
+            b: 0x64,
+        },
+        0x05 => Color {
+            r: 0x5C,
+            g: 0x00,
+            b: 0x30,
+        },
+        0x06 => Color {
+            r: 0x54,
+            g: 0x04,
+            b: 0x00,
+        },
+        0x07 => Color {
+            r: 0x3C,
+            g: 0x18,
+            b: 0x00,
+        },
+        0x08 => Color {
+            r: 0x20,
+            g: 0x2A,
+            b: 0x00,
+        },
+        0x09 => Color {
+            r: 0x08,
+            g: 0x3A,
+            b: 0x00,
+        },
+        0x0A => Color {
+            r: 0x00,
+            g: 0x40,
+            b: 0x00,
+        },
+        0x0B => Color {
+            r: 0x00,
+            g: 0x3C,
+            b: 0x00,
+        },
+        0x0C => Color {
+            r: 0x00,
+            g: 0x32,
+            b: 0x3C,
+        },
+        0x0D => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x0E => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x0F => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x10 => Color {
+            r: 0x98,
+            g: 0x96,
+            b: 0x98,
+        },
+        0x11 => Color {
+            r: 0x08,
+            g: 0x4C,
+            b: 0xC4,
+        },
+        0x12 => Color {
+            r: 0x30,
+            g: 0x32,
+            b: 0xEC,
+        },
+        0x13 => Color {
+            r: 0x5C,
+            g: 0x1E,
+            b: 0xE4,
+        },
+        0x14 => Color {
+            r: 0x88,
+            g: 0x14,
+            b: 0xB0,
+        },
+        0x15 => Color {
+            r: 0xA0,
+            g: 0x14,
+            b: 0x64,
+        },
+        0x16 => Color {
+            r: 0x98,
+            g: 0x22,
+            b: 0x20,
+        },
+        0x17 => Color {
+            r: 0x78,
+            g: 0x3C,
+            b: 0x00,
+        },
+        0x18 => Color {
+            r: 0x54,
+            g: 0x5A,
+            b: 0x00,
+        },
+        0x19 => Color {
+            r: 0x28,
+            g: 0x72,
+            b: 0x00,
+        },
+        0x1A => Color {
+            r: 0x08,
+            g: 0x7C,
+            b: 0x00,
+        },
+        0x1B => Color {
+            r: 0x00,
+            g: 0x76,
+            b: 0x28,
+        },
+        0x1C => Color {
+            r: 0x00,
+            g: 0x66,
+            b: 0x78,
+        },
+        0x1D => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x1E => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x1F => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x20 => Color {
+            r: 0xEC,
+            g: 0xEE,
+            b: 0xEC,
+        },
+        0x21 => Color {
+            r: 0x4C,
+            g: 0x9A,
+            b: 0xEC,
+        },
+        0x22 => Color {
+            r: 0x78,
+            g: 0x7C,
+            b: 0xEC,
+        },
+        0x23 => Color {
+            r: 0xB0,
+            g: 0x62,
+            b: 0xEC,
+        },
+        0x24 => Color {
+            r: 0xE4,
+            g: 0x54,
+            b: 0xEC,
+        },
+        0x25 => Color {
+            r: 0xEC,
+            g: 0x58,
+            b: 0xB4,
+        },
+        0x26 => Color {
+            r: 0xEC,
+            g: 0x6A,
+            b: 0x64,
+        },
+        0x27 => Color {
+            r: 0xD4,
+            g: 0x88,
+            b: 0x20,
+        },
+        0x28 => Color {
+            r: 0xA0,
+            g: 0xAA,
+            b: 0x00,
+        },
+        0x29 => Color {
+            r: 0x74,
+            g: 0xC4,
+            b: 0x00,
+        },
+        0x2A => Color {
+            r: 0x4C,
+            g: 0xD0,
+            b: 0x20,
+        },
+        0x2B => Color {
+            r: 0x38,
+            g: 0xCC,
+            b: 0x6C,
+        },
+        0x2C => Color {
+            r: 0x38,
+            g: 0xB4,
+            b: 0xCC,
+        },
+        0x2D => Color {
+            r: 0x3C,
+            g: 0x3C,
+            b: 0x3C,
+        },
+        0x2E => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x2F => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x30 => Color {
+            r: 0xEC,
+            g: 0xEE,
+            b: 0xEC,
+        },
+        0x31 => Color {
+            r: 0xA8,
+            g: 0xCC,
+            b: 0xEC,
+        },
+        0x32 => Color {
+            r: 0xBC,
+            g: 0xBC,
+            b: 0xEC,
+        },
+        0x33 => Color {
+            r: 0xD4,
+            g: 0xB2,
+            b: 0xEC,
+        },
+        0x34 => Color {
+            r: 0xEC,
+            g: 0xAE,
+            b: 0xEC,
+        },
+        0x35 => Color {
+            r: 0xEC,
+            g: 0xAE,
+            b: 0xD4,
+        },
+        0x36 => Color {
+            r: 0xEC,
+            g: 0xB4,
+            b: 0xB0,
+        },
+        0x37 => Color {
+            r: 0xE4,
+            g: 0xC4,
+            b: 0x90,
+        },
+        0x38 => Color {
+            r: 0xCC,
+            g: 0xD2,
+            b: 0x78,
+        },
+        0x39 => Color {
+            r: 0xB4,
+            g: 0xDE,
+            b: 0x78,
+        },
+        0x3A => Color {
+            r: 0xA8,
+            g: 0xE2,
+            b: 0x90,
+        },
+        0x3B => Color {
+            r: 0x98,
+            g: 0xE2,
+            b: 0xB4,
+        },
+        0x3C => Color {
+            r: 0xA0,
+            g: 0xD6,
+            b: 0xE4,
+        },
+        0x3D => Color {
+            r: 0xA0,
+            g: 0xA2,
+            b: 0xA0,
+        },
+        0x3E => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        0x3F => Color {
+            r: 0x00,
+            g: 0x00,
+            b: 0x00,
+        },
+        _ => {
+            unreachable!();
+        }
     }
 }
 

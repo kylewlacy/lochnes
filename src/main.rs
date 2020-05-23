@@ -1,25 +1,28 @@
 #![feature(
-    cell_update, never_type, exhaustive_patterns,
-    generators, generator_trait
+    cell_update,
+    never_type,
+    exhaustive_patterns,
+    generators,
+    generator_trait
 )]
 
-use std::ops::{Generator, GeneratorState};
-use std::pin::Pin;
-use std::time::{Duration, Instant};
-use std::path::PathBuf;
-use std::process;
-use std::io;
-use std::fs;
-use std::thread;
-use log::{info, debug, trace};
-use structopt::StructOpt;
+use log::{debug, info, trace};
+use nes::ppu::PpuStep;
+use nes::NesStep;
+use sdl2::controller::Button as SdlButton;
 use sdl2::event::Event as SdlEvent;
 use sdl2::keyboard::Keycode as SdlKeycode;
-use sdl2::controller::Button as SdlButton;
-use nes::NesStep;
-use nes::ppu::PpuStep;
+use std::fs;
+use std::io;
+use std::ops::{Generator, GeneratorState};
+use std::path::PathBuf;
+use std::pin::Pin;
+use std::process;
+use std::thread;
+use std::time::{Duration, Instant};
+use structopt::StructOpt;
 
-use lochnes::{rom, nes, video, input};
+use lochnes::{input, nes, rom, video};
 
 fn main() {
     let opts = Options::from_args();
@@ -32,7 +35,7 @@ fn main() {
     let run_result = run(opts);
 
     match run_result {
-        Ok(_) => { }
+        Ok(_) => {}
         Err(err) => {
             eprintln!("{:?}", err);
             process::exit(1);
@@ -59,7 +62,8 @@ struct Options {
 fn run(opts: Options) -> Result<(), LochnesError> {
     debug!("Options: {:#?}", opts);
 
-    #[cfg(feature = "easter-egg")] {
+    #[cfg(feature = "easter-egg")]
+    {
         if opts.verbose == 6 {
             let bytes = include_bytes!("../tests/fixtures/egg.nes");
             let mut bytes: Vec<u8> = bytes.to_vec();
@@ -93,37 +97,32 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
 
     let sdl = sdl2::init().map_err(LochnesError::Sdl2Error)?;
     let sdl_video = sdl.video().map_err(LochnesError::Sdl2Error)?;
-    let sdl_window = sdl_video.window("Lochnes", window_width, window_height)
+    let sdl_window = sdl_video
+        .window("Lochnes", window_width, window_height)
         .opengl()
         .build()?;
-    let mut sdl_canvas = sdl_window.into_canvas()
-        .build()?;
+    let mut sdl_canvas = sdl_window.into_canvas().build()?;
     let sdl_texture_creator = sdl_canvas.texture_creator();
-    let sdl_controllers = sdl.game_controller()
-        .map_err(LochnesError::Sdl2Error)?;
+    let sdl_controllers = sdl.game_controller().map_err(LochnesError::Sdl2Error)?;
 
-    let num_sdl_controllers = sdl_controllers.num_joysticks()
+    let num_sdl_controllers = sdl_controllers
+        .num_joysticks()
         .map_err(LochnesError::Sdl2Error)?;
 
     let sdl_controller_index = (0..num_sdl_controllers).find_map(|n| {
         if sdl_controllers.is_game_controller(n) {
             Some(n)
-        }
-        else {
+        } else {
             None
         }
     });
-    let _sdl_controller = sdl_controller_index.map(|index| {
-        sdl_controllers.open(index)
-    }).transpose()?;
+    let _sdl_controller = sdl_controller_index
+        .map(|index| sdl_controllers.open(index))
+        .transpose()?;
 
     let mut sdl_event_pump = sdl.event_pump().map_err(LochnesError::Sdl2Error)?;
 
-    let video = &video::TextureBufferedVideo::new(
-        &sdl_texture_creator,
-        NES_WIDTH,
-        NES_HEIGHT
-    )?;
+    let video = &video::TextureBufferedVideo::new(&sdl_texture_creator, NES_WIDTH, NES_HEIGHT)?;
     let mut input_state = input::InputState::default();
     let input = &input::SampledInput::new(input_state);
     let io = nes::NesIoWith { video, input };
@@ -135,110 +134,181 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         for event in sdl_event_pump.poll_iter() {
             match event {
                 SdlEvent::Quit { .. }
-                | SdlEvent::KeyDown { keycode: Some(SdlKeycode::Escape), .. }
-                    =>
-                {
+                | SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Escape),
+                    ..
+                } => {
                     break 'running;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Z), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::A, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Z),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::A,
+                    ..
+                } => {
                     input_state.joypad_1.a = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Z), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::A, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Z),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::A,
+                    ..
+                } => {
                     input_state.joypad_1.a = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::X), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::B, .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::X, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::X),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::B,
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::X,
+                    ..
+                } => {
                     input_state.joypad_1.b = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::X), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::B, .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::X, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::X),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::B,
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::X,
+                    ..
+                } => {
                     input_state.joypad_1.b = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Return), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::Start, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Return),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::Start,
+                    ..
+                } => {
                     input_state.joypad_1.start = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Return), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::Start, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Return),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::Start,
+                    ..
+                } => {
                     input_state.joypad_1.start = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Backslash), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::Back, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Backslash),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::Back,
+                    ..
+                } => {
                     input_state.joypad_1.select = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Backslash), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::Back, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Backslash),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::Back,
+                    ..
+                } => {
                     input_state.joypad_1.select = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Up), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadUp, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Up),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::DPadUp,
+                    ..
+                } => {
                     input_state.joypad_1.up = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Up), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadUp, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Up),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::DPadUp,
+                    ..
+                } => {
                     input_state.joypad_1.up = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Down), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadDown, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Down),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::DPadDown,
+                    ..
+                } => {
                     input_state.joypad_1.down = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Down), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadDown, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Down),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::DPadDown,
+                    ..
+                } => {
                     input_state.joypad_1.down = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Left), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadLeft, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Left),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::DPadLeft,
+                    ..
+                } => {
                     input_state.joypad_1.left = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Left), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadLeft, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Left),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::DPadLeft,
+                    ..
+                } => {
                     input_state.joypad_1.left = false;
                 }
-                SdlEvent::KeyDown { keycode: Some(SdlKeycode::Right), .. }
-                | SdlEvent::ControllerButtonDown { button: SdlButton::DPadRight, .. }
-                    =>
-                {
+                SdlEvent::KeyDown {
+                    keycode: Some(SdlKeycode::Right),
+                    ..
+                }
+                | SdlEvent::ControllerButtonDown {
+                    button: SdlButton::DPadRight,
+                    ..
+                } => {
                     input_state.joypad_1.right = true;
                 }
-                SdlEvent::KeyUp { keycode: Some(SdlKeycode::Right), .. }
-                | SdlEvent::ControllerButtonUp { button: SdlButton::DPadRight, .. }
-                    =>
-                {
+                SdlEvent::KeyUp {
+                    keycode: Some(SdlKeycode::Right),
+                    ..
+                }
+                | SdlEvent::ControllerButtonUp {
+                    button: SdlButton::DPadRight,
+                    ..
+                } => {
                     input_state.joypad_1.right = false;
                 }
-                _ => { }
+                _ => {}
             }
         }
 
@@ -246,7 +316,7 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         debug!("Input: {:?}", input_state);
 
         loop {
-            match Pin::new(&mut run_nes).resume() {
+            match Pin::new(&mut run_nes).resume(()) {
                 GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
                     break;
                 }
@@ -255,19 +325,19 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
                     trace!("${:04X}: {}", op.pc, op.op);
                     trace!("----------");
                 }
-                GeneratorState::Yielded(_) => { }
+                GeneratorState::Yielded(_) => {}
             }
         }
 
-        video.copy_to(&mut sdl_canvas).map_err(LochnesError::Sdl2Error)?;
+        video
+            .copy_to(&mut sdl_canvas)
+            .map_err(LochnesError::Sdl2Error)?;
         sdl_canvas.present();
 
         let elapsed = frame_start.elapsed();
         info!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
         let duration_until_refresh = NES_REFRESH_RATE.checked_sub(elapsed);
-        let sleep_duration = duration_until_refresh.unwrap_or_else(|| {
-            Duration::from_secs(0)
-        });
+        let sleep_duration = duration_until_refresh.unwrap_or_else(|| Duration::from_secs(0));
         thread::sleep(sleep_duration);
     }
 

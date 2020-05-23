@@ -52,7 +52,7 @@ pub struct SampledInput {
 impl SampledInput {
     pub fn new(state: InputState) -> Self {
         SampledInput {
-            state: Cell::new(state)
+            state: Cell::new(state),
         }
     }
 
@@ -70,7 +70,8 @@ impl Input for SampledInput {
 }
 
 impl<'a, I> Input for &'a I
-    where I: Input
+where
+    I: Input,
 {
     fn input_state(&self) -> InputState {
         (*self).input_state()
