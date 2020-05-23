@@ -25,7 +25,7 @@ fn run_blargg_instr_test_with_expected_result(
     // Run for a max of 240 frames, just in case the test ROM never completes
     for frame in 0..240 {
         loop {
-            match Pin::new(&mut run_nes).resume() {
+            match Pin::new(&mut run_nes).resume(()) {
                 GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
                     break;
                 }

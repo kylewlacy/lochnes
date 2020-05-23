@@ -28,7 +28,7 @@ fn bench_frames(b: &mut Bencher) {
 
         for _ in 0..10 {
             loop {
-                match Pin::new(&mut run_nes).resume() {
+                match Pin::new(&mut run_nes).resume(()) {
                     GeneratorState::Yielded(NesStep::Ppu(PpuStep::Vblank)) => {
                         break;
                     }
