@@ -6,7 +6,6 @@
     generator_trait
 )]
 
-use log::{debug, info, trace};
 use nes::ppu::PpuStep;
 use nes::NesStep;
 use sdl2::controller::Button as SdlButton;
@@ -26,12 +25,17 @@ use lochnes::{input, nes, rom, video};
 
 fn main() {
     let opts = Options::from_args();
-    stderrlog::new()
-        .module(module_path!())
-        .quiet(opts.quiet || opts.verbose == 6)
-        .verbosity(opts.verbose as usize)
-        .init()
-        .expect("Failed to set up logging");
+
+    let log_level = match (opts.quiet, opts.verbose) {
+        (true, _) => None,
+        (false, 0) => Some(tracing::Level::WARN),
+        (false, 1) => Some(tracing::Level::INFO),
+        (false, 2) => Some(tracing::Level::DEBUG),
+        (false, 3..) => Some(tracing::Level::TRACE),
+    };
+
+    tracing_subscriber::fmt().with_max_level(log_level).init();
+
     let run_result = run(opts);
 
     match run_result {
@@ -60,7 +64,7 @@ struct Options {
 }
 
 fn run(opts: Options) -> Result<(), LochnesError> {
-    debug!("Options: {:#?}", opts);
+    tracing::debug!("Options: {:#?}", opts);
 
     #[cfg(feature = "easter-egg")]
     {
@@ -78,7 +82,7 @@ fn run(opts: Options) -> Result<(), LochnesError> {
     let bytes = fs::read(&opts.rom)?;
     let rom = rom::Rom::from_bytes(bytes.into_iter())?;
 
-    debug!("ROM header: {:#04X?}", rom.header);
+    tracing::debug!("ROM header: {:#04X?}", rom.header);
 
     run_rom(opts, rom)?;
 
@@ -313,7 +317,7 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         }
 
         input.set_state(input_state);
-        debug!("Input: {:?}", input_state);
+        tracing::debug!("Input: {:?}", input_state);
 
         loop {
             match Pin::new(&mut run_nes).resume(()) {
@@ -321,9 +325,9 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
                     break;
                 }
                 GeneratorState::Yielded(NesStep::Cpu(nes::cpu::CpuStep::Op(op))) => {
-                    trace!("{:X?}", nes.cpu);
-                    trace!("${:04X}: {}", op.pc, op.op);
-                    trace!("----------");
+                    tracing::trace!("{:X?}", nes.cpu);
+                    tracing::trace!("${:04X}: {}", op.pc, op.op);
+                    tracing::trace!("----------");
                 }
                 GeneratorState::Yielded(_) => {}
             }
@@ -335,7 +339,7 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         sdl_canvas.present();
 
         let elapsed = frame_start.elapsed();
-        info!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
+        tracing::info!("frame time: {:5.2}ms", elapsed.as_micros() as f64 / 1_000.0);
         let duration_until_refresh = NES_REFRESH_RATE.checked_sub(elapsed);
         let sleep_duration = duration_until_refresh.unwrap_or_else(|| Duration::from_secs(0));
         thread::sleep(sleep_duration);
