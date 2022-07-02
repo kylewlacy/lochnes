@@ -141,7 +141,7 @@ fn run_rom(opts: Options, rom: rom::Rom) -> Result<(), LochnesError> {
         for event in sdl_event_pump.poll_iter() {
             match event {
                 SdlEvent::Quit { .. }
-                | SdlEvent::KeyDown {
+                | SdlEvent::KeyUp {
                     keycode: Some(SdlKeycode::Escape),
                     ..
                 } => {
