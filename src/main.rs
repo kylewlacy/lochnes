@@ -34,7 +34,10 @@ fn main() {
         (false, 3..) => Some(tracing::Level::TRACE),
     };
 
-    tracing_subscriber::fmt().with_max_level(log_level).init();
+    tracing_subscriber::fmt()
+        .with_max_level(log_level)
+        .without_time()
+        .init();
 
     let run_result = run(opts);
 
