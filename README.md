@@ -2,9 +2,9 @@
 
 ![𝕃𝕆ℂℍℕ𝔼𝕊](./assets/lochnes.png)
 
-This is a toy NES emulator in Rust, which uses generators for control flow. **NOTE:** It uses nightly features (check commit history to see working versions of `rustc` in case something breaks)
+This is a toy NES emulator in Rust, which uses generators for control flow. I wrote a blog post going over some of the implementation details here: https://kyle.space/posts/i-made-a-nes-emulator/
 
-I wrote a blog post going over some of the implementation details here: https://kyle.space/posts/i-made-a-nes-emulator/
+**NOTE:** Lochnes uses nightly features! The project is pinned to a specific working nightly version of Rust in `rust-toolchain.toml`. Rustup should ensure that an appropriate version of Rust is installed when building or running the project from the repo root.
 
 ## Compatibility
 
