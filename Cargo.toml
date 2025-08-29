@@ -13,7 +13,7 @@ enum-kinds = "0.5.1"
 structopt = "0.3.26"
 sdl2 = "0.35.2"
 tracing = "0.1.35"
-tracing-subscriber = "0.3.14"
+tracing-subscriber = "0.3.20"
 
 [features]
 default = ["easter-egg"]
